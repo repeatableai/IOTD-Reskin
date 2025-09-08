@@ -1,0 +1,340 @@
+# Repeatable.ai - Complete Setup Instructions for Replit
+
+## Quick Start Guide
+
+### Step 1: Create a New Replit Project
+
+1. Go to [Replit.com](https://replit.com)
+2. Click "Create Repl"
+3. Choose "Import from GitHub" or "Blank Repl"
+4. Select "Node.js" as the template
+5. Name your project "repeatable-ai"
+
+### Step 2: Set Up the File Structure
+
+Create the following folder structure in your Replit project:
+
+```
+repeatable-ai/
+├── components/
+│   ├── Layout.js
+│   └── IdeaCard.js
+├── content/
+│   └── ideas/
+│       └── (your .md files will go here)
+├── data/
+│   └── sample-ideas.json
+├── lib/
+│   └── ideas.js
+├── pages/
+│   ├── idea/
+│   │   └── [slug].js
+│   ├── _app.js
+│   ├── index.js
+│   └── idea-database.js
+├── scripts/
+│   └── import-ideas.js
+├── styles/
+│   └── globals.css
+├── package.json
+├── next.config.js
+├── tailwind.config.js
+└── postcss.config.js
+```
+
+### Step 3: Copy the Code Files
+
+Copy each artifact's content into the appropriate files:
+
+1. **package.json** - Use the "Repeatable.ai - Package.json" artifact
+2. **next.config.js** - Use the "Repeatable.ai - next.config.js" artifact
+3. **tailwind.config.js** - Use the "Repeatable.ai - tailwind.config.js" artifact
+4. Create **postcss.config.js** with:
+```javascript
+module.exports = {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+```
+
+5. Split the "Complete Next.js Application" artifact into separate files:
+   - `pages/_app.js`
+   - `pages/index.js`
+   - `pages/idea-database.js`
+   - `pages/idea/[slug].js`
+
+6. Split the "Components" artifact into:
+   - `components/Layout.js`
+   - `components/IdeaCard.js`
+
+7. Split the "Library Functions and Styles" artifact into:
+   - `lib/ideas.js`
+   - `styles/globals.css`
+   - `scripts/import-ideas.js`
+   - `data/sample-ideas.json`
+
+### Step 4: Install Dependencies
+
+In the Replit shell, run:
+```bash
+npm install
+```
+
+### Step 5: Run the Development Server
+
+In the Replit shell, run:
+```bash
+npm run dev
+```
+
+Your app will be available at the Replit preview URL!
+
+## Importing Your Own Data
+
+### Method 1: Manual Markdown Files
+
+Create markdown files in `content/ideas/` with this format:
+
+```markdown
+---
+title: "Your App Idea Title"
+subtitle: "$5M ARR Potential"
+tags: ["High Growth", "SaaS", "B2B"]
+keyword: "main keyword"
+keyword_volume: 15000
+keyword_growth: "125"
+opportunity_score: 8
+opportunity_label: "Very Strong"
+problem_score: 7
+problem_label: "Significant"
+feasibility_score: 6
+feasibility_label: "Moderate"
+timing_score: 8
+timing_label: "Great Timing"
+revenue_potential: "$3M-$5M ARR with subscription model"
+revenue_potential_num: 4000000
+execution_difficulty: "Moderate complexity, 4-month MVP"
+execution_score: 6
+gtm_strength: "Strong organic growth potential"
+gtm_score: 7
+type: "web_app"
+market: "B2B"
+target_audience: "Small businesses"
+main_competitor: "Competitor Name"
+---
+
+Your full description and analysis goes here...
+
+## Market Opportunity
+
+Details about the market...
+
+## Revenue Model
+
+1. **Tier 1** - Description
+2. **Tier 2** - Description
+
+## Execution Strategy
+
+How to build and launch...
+```
+
+### Method 2: Bulk Import from JSON
+
+1. Place your data in `data/ideas.json` following this format:
+
+```json
+[
+  {
+    "title": "App Idea Name",
+    "subtitle": "$XM ARR Potential",
+    "tags": ["Tag1", "Tag2"],
+    "keyword": "search keyword",
+    "keyword_volume": 10000,
+    "keyword_growth": "150",
+    "opportunity_score": 8,
+    "opportunity_label": "Very Strong",
+    "problem_score": 7,
+    "problem_label": "Significant",
+    "feasibility_score": 6,
+    "feasibility_label": "Moderate",
+    "timing_score": 8,
+    "timing_label": "Great Timing",
+    "revenue_potential": 5000000,
+    "revenue_potential_text": "$3M-$5M ARR",
+    "execution_difficulty": "Description of difficulty",
+    "execution_score": 6,
+    "gtm_strength": "Go-to-market description",
+    "gtm_score": 7,
+    "type": "web_app",
+    "market": "B2C",
+    "target_audience": "Target description",
+    "main_competitor": "Competitor",
+    "description": "Short description",
+    "content": "Full markdown content with ## headers"
+  }
+]
+```
+
+2. Run the import script:
+```bash
+npm run import-data
+```
+
+### Method 3: Import from CSV
+
+Modify `scripts/import-ideas.js` to read from CSV:
+
+```javascript
+const csv = require('csv-parser')
+const results = []
+
+fs.createReadStream('data/ideas.csv')
+  .pipe(csv())
+  .on('data', (data) => results.push(data))
+  .on('end', () => {
+    // Process results array
+  })
+```
+
+## Customization Guide
+
+### 1. Change Brand Colors
+
+Edit `tailwind.config.js`:
+```javascript
+colors: {
+  primary: {
+    // Change these hex values to your brand colors
+    500: '#your-primary-color',
+    600: '#your-primary-darker',
+    // ...
+  }
+}
+```
+
+### 2. Update Logo and Branding
+
+In `components/Layout.js`, update the logo:
+```javascript
+<span className="text-2xl font-bold text-primary-600">YourBrand</span>
+<span className="text-2xl font-bold text-gray-900">.ai</span>
+```
+
+### 3. Add Your Own Fonts
+
+1. Add to `pages/_app.js`:
+```javascript
+import { Inter } from 'next/font/google'
+const inter = Inter({ subsets: ['latin'] })
+```
+
+2. Or add custom fonts in `styles/globals.css`:
+```css
+@import url('your-font-url');
+```
+
+### 4. Modify Scoring System
+
+Edit the score ranges in `pages/idea/[slug].js`:
+```javascript
+const scoreColor = (score) => {
+  if (score >= 8) return 'text-green-600 bg-green-50'
+  if (score >= 6) return 'text-yellow-600 bg-yellow-50'
+  return 'text-red-600 bg-red-50'
+}
+```
+
+## Deployment Options
+
+### Deploy from Replit
+
+1. Your app automatically runs on Replit's servers
+2. Access it via the Replit URL provided
+3. For custom domain, upgrade to Replit's Hacker plan
+
+### Deploy to Vercel (Recommended for Production)
+
+1. Push your code to GitHub
+2. Connect your GitHub repo to [Vercel](https://vercel.com)
+3. Vercel will auto-deploy on every push
+4. Get a free `.vercel.app` domain or connect your own
+
+### Deploy to Netlify
+
+1. Build the static site:
+```bash
+npm run build
+npm run export
+```
+
+2. Drag the `out` folder to Netlify's deploy area
+
+## Environment Variables (Optional)
+
+Create a `.env.local` file for any API keys:
+
+```env
+NEXT_PUBLIC_API_URL=your-api-url
+OPENAI_API_KEY=your-key-if-using-ai
+```
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Module not found" errors**
+   - Run `npm install` again
+   - Check that all dependencies are in package.json
+
+2. **Styles not loading**
+   - Ensure `postcss.config.js` exists
+   - Check that Tailwind is properly imported in `globals.css`
+
+3. **Pages not found**
+   - Verify file names match exactly (case-sensitive)
+   - Check that dynamic routes use square brackets `[slug].js`
+
+4. **No ideas showing**
+   - Create at least one `.md` file in `content/ideas/`
+   - Or use the sample data that loads automatically
+
+### Getting Help
+
+- Check Next.js docs: https://nextjs.org/docs
+- Tailwind CSS docs: https://tailwindcss.com/docs
+- Ask in Replit community forums
+
+## Next Steps
+
+1. **Add Authentication**: Implement NextAuth.js for user accounts
+2. **Add Search**: Integrate Algolia or build client-side search
+3. **Add Analytics**: Install Google Analytics or Plausible
+4. **Add CMS**: Connect Contentful or Sanity for easier content management
+5. **Add AI Features**: Integrate OpenAI API for idea generation or chat
+
+## Performance Optimization
+
+- Enable Image Optimization with `next/image`
+- Implement lazy loading for idea cards
+- Use Static Generation for all pages
+- Enable ISR (Incremental Static Regeneration) for dynamic content
+- Implement proper caching headers
+
+## SEO Optimization
+
+Add to each page's `<Head>`:
+```javascript
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:image" content={image} />
+<meta name="twitter:card" content="summary_large_image" />
+```
+
+Create `public/sitemap.xml` for better indexing.
+
+## License
+
+This template is provided as-is for use with Repeatable.ai. Customize freely for your needs.
