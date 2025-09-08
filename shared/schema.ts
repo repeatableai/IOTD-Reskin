@@ -228,14 +228,14 @@ export const ideaFiltersSchema = z.object({
   search: z.string().optional(),
   market: z.enum(['B2B', 'B2C', 'B2B2C']).optional(),
   type: z.string().optional(),
-  minOpportunityScore: z.number().min(1).max(10).optional(),
-  maxExecutionScore: z.number().min(1).max(10).optional(),
-  minRevenueNum: z.number().optional(),
-  maxRevenueNum: z.number().optional(),
+  minOpportunityScore: z.coerce.number().min(1).max(10).optional(),
+  maxExecutionScore: z.coerce.number().min(1).max(10).optional(),
+  minRevenueNum: z.coerce.number().optional(),
+  maxRevenueNum: z.coerce.number().optional(),
   tags: z.array(z.string()).optional(),
   sortBy: z.enum(['newest', 'popular', 'opportunity', 'revenue']).default('newest'),
-  limit: z.number().min(1).max(100).default(20),
-  offset: z.number().min(0).default(0),
+  limit: z.coerce.number().min(1).max(100).default(20),
+  offset: z.coerce.number().min(0).default(0),
 });
 
 export type IdeaFilters = z.infer<typeof ideaFiltersSchema>;

@@ -94,14 +94,14 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
         <div>
           <Label className="text-sm font-medium mb-2 block">Market</Label>
           <Select
-            value={filters.market || ''}
-            onValueChange={(value) => onFiltersChange({ market: value || undefined })}
+            value={filters.market || 'all'}
+            onValueChange={(value) => onFiltersChange({ market: value === 'all' ? undefined : value as any })}
           >
             <SelectTrigger data-testid="select-market">
               <SelectValue placeholder="All Markets" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Markets</SelectItem>
+              <SelectItem value="all">All Markets</SelectItem>
               <SelectItem value="B2B">B2B</SelectItem>
               <SelectItem value="B2C">B2C</SelectItem>
               <SelectItem value="B2B2C">B2B2C</SelectItem>
@@ -113,14 +113,14 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
         <div>
           <Label className="text-sm font-medium mb-2 block">Type</Label>
           <Select
-            value={filters.type || ''}
-            onValueChange={(value) => onFiltersChange({ type: value || undefined })}
+            value={filters.type || 'all'}
+            onValueChange={(value) => onFiltersChange({ type: value === 'all' ? undefined : value })}
           >
             <SelectTrigger data-testid="select-type">
               <SelectValue placeholder="All Types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
               <SelectItem value="mobile_app">Mobile App</SelectItem>
               <SelectItem value="web_app">Web App</SelectItem>
               <SelectItem value="saas">SaaS</SelectItem>
@@ -137,10 +137,10 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
             Minimum Opportunity Score
           </Label>
           <Select
-            value={filters.minOpportunityScore?.toString() || ''}
+            value={filters.minOpportunityScore?.toString() || 'all'}
             onValueChange={(value) => 
               onFiltersChange({ 
-                minOpportunityScore: value ? parseInt(value) : undefined 
+                minOpportunityScore: value === 'all' ? undefined : parseInt(value) 
               })
             }
           >
@@ -148,7 +148,7 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
               <SelectValue placeholder="Any Score" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any Score</SelectItem>
+              <SelectItem value="all">Any Score</SelectItem>
               <SelectItem value="7">7+ (High)</SelectItem>
               <SelectItem value="8">8+ (Very High)</SelectItem>
               <SelectItem value="9">9+ (Exceptional)</SelectItem>
@@ -162,10 +162,10 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
             Maximum Execution Difficulty
           </Label>
           <Select
-            value={filters.maxExecutionScore?.toString() || ''}
+            value={filters.maxExecutionScore?.toString() || 'all'}
             onValueChange={(value) => 
               onFiltersChange({ 
-                maxExecutionScore: value ? parseInt(value) : undefined 
+                maxExecutionScore: value === 'all' ? undefined : parseInt(value) 
               })
             }
           >
@@ -173,7 +173,7 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
               <SelectValue placeholder="Any Difficulty" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Any Difficulty</SelectItem>
+              <SelectItem value="all">Any Difficulty</SelectItem>
               <SelectItem value="3">3 or lower (Easy)</SelectItem>
               <SelectItem value="6">6 or lower (Moderate)</SelectItem>
               <SelectItem value="8">8 or lower (Challenging)</SelectItem>
