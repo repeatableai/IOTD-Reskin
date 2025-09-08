@@ -79,10 +79,7 @@ export class DatabaseStorage implements IStorage {
 
   // Ideas operations
   async getIdeas(filters: IdeaFilters): Promise<{ ideas: Idea[]; total: number }> {
-    let query = db.select().from(ideas).where(eq(ideas.isPublished, true));
-    let countQuery = db.select({ count: sql`count(*)` }).from(ideas).where(eq(ideas.isPublished, true));
-
-    const conditions = [];
+    const conditions = [eq(ideas.isPublished, true)];
 
     if (filters.search) {
       const searchCondition = or(
@@ -117,11 +114,10 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${ideas.revenuePotentialNum} <= ${filters.maxRevenueNum}`);
     }
 
-    if (conditions.length > 0) {
-      const whereCondition = and(...conditions);
-      query = query.where(whereCondition);
-      countQuery = countQuery.where(whereCondition);
-    }
+    const whereCondition = and(...conditions);
+
+    // Build the main query
+    let query = db.select().from(ideas).where(whereCondition);
 
     // Sorting
     switch (filters.sortBy) {
@@ -141,6 +137,9 @@ export class DatabaseStorage implements IStorage {
 
     // Pagination
     query = query.limit(filters.limit).offset(filters.offset);
+
+    // Count query
+    const countQuery = db.select({ count: sql`count(*)` }).from(ideas).where(whereCondition);
 
     const [ideasResult, countResult] = await Promise.all([
       query,
