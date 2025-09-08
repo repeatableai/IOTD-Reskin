@@ -20,7 +20,9 @@ import {
   Code, 
   ExternalLink,
   TrendingUp,
-  Users
+  Users,
+  FileText,
+  Sparkles
 } from "lucide-react";
 
 export default function IdeaDetail() {
@@ -50,6 +52,9 @@ export default function IdeaDetail() {
     queryKey: ["/api/ideas", idea?.id, "community-signals"],
     enabled: !!idea?.id,
   });
+
+  const [researchReport, setResearchReport] = useState<any>(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const saveIdeaMutation = useMutation({
     mutationFn: async () => {
@@ -196,6 +201,42 @@ export default function IdeaDetail() {
     },
   });
 
+  const generateResearchReport = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to generate AI research reports.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGeneratingReport(true);
+    
+    try {
+      const response = await apiRequest('POST', '/api/ai/research-report', {
+        ideaTitle: idea.title,
+        ideaDescription: idea.description,
+      });
+      const report = await response.json();
+      setResearchReport(report);
+      
+      toast({
+        title: "Research Report Generated!",
+        description: "Your AI-powered research report is ready.",
+      });
+    } catch (error) {
+      console.error('Error generating research report:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate research report. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   const handleVote = (voteType: 'up' | 'down') => {
     if (!isAuthenticated) {
       toast({
@@ -206,7 +247,7 @@ export default function IdeaDetail() {
       return;
     }
 
-    if (userVote?.vote === voteType) {
+    if ((userVote as any)?.vote === voteType) {
       removeVoteMutation.mutate();
     } else {
       voteMutation.mutate(voteType);
@@ -302,7 +343,7 @@ export default function IdeaDetail() {
                 </Button>
                 
                 <Button
-                  variant={userVote?.vote === 'up' ? 'default' : 'outline'}
+                  variant={(userVote as any)?.vote === 'up' ? 'default' : 'outline'}
                   onClick={() => handleVote('up')}
                   disabled={voteMutation.isPending || removeVoteMutation.isPending}
                   data-testid="button-vote-up"
@@ -312,7 +353,7 @@ export default function IdeaDetail() {
                 </Button>
                 
                 <Button
-                  variant={userVote?.vote === 'down' ? 'default' : 'outline'}
+                  variant={(userVote as any)?.vote === 'down' ? 'default' : 'outline'}
                   onClick={() => handleVote('down')}
                   disabled={voteMutation.isPending || removeVoteMutation.isPending}
                   data-testid="button-vote-down"
@@ -421,7 +462,7 @@ export default function IdeaDetail() {
             </Card>
 
             {/* Community Signals */}
-            {communitySignals && communitySignals.length > 0 && (
+            {communitySignals && (communitySignals as any).length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
@@ -431,7 +472,7 @@ export default function IdeaDetail() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {communitySignals.map((signal) => (
+                    {(communitySignals as any).map((signal: any) => (
                       <div key={signal.id} className="border rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h4 className="font-semibold">{signal.name}</h4>
@@ -446,6 +487,71 @@ export default function IdeaDetail() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* AI Research Report */}
+            {researchReport && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Sparkles className="w-5 h-5 mr-2" />
+                    AI Research Report
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div>
+                    <h4 className="font-semibold mb-2">Executive Summary</h4>
+                    <p className="text-sm text-muted-foreground">{researchReport.executiveSummary}</p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h4 className="font-semibold mb-2">Market Analysis</h4>
+                    <p className="text-sm text-muted-foreground">{researchReport.marketAnalysis}</p>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h4 className="font-semibold mb-2">Key Findings</h4>
+                    <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                      {researchReport.keyFindings?.map((finding: string, index: number) => (
+                        <li key={index}>{finding}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Market Opportunities</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        {researchReport.opportunities?.map((opportunity: string, index: number) => (
+                          <li key={index}>{opportunity}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold mb-2">Potential Barriers</h4>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
+                        {researchReport.barriers?.map((barrier: string, index: number) => (
+                          <li key={index}>{barrier}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <Separator />
+                  
+                  <div>
+                    <h4 className="font-semibold mb-2">Next Steps</h4>
+                    <p className="text-sm text-muted-foreground">{researchReport.nextSteps}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -532,9 +638,23 @@ export default function IdeaDetail() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                <Button className="w-full" data-testid="button-ai-research">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  AI Research Report
+                <Button 
+                  className="w-full" 
+                  onClick={generateResearchReport}
+                  disabled={isGeneratingReport || !isAuthenticated}
+                  data-testid="button-ai-research"
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="w-4 h-4 mr-2" />
+                      AI Research Report
+                    </>
+                  )}
                 </Button>
                 <Button variant="outline" className="w-full" data-testid="button-founder-fit">
                   <Users className="w-4 h-4 mr-2" />
