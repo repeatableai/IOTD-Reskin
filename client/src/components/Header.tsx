@@ -28,15 +28,33 @@ export default function Header() {
             >
               Database
             </Link>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link 
+              href="/top-ideas" 
+              className={`text-muted-foreground hover:text-foreground transition-colors ${
+                location.startsWith('/top-ideas') ? 'text-foreground font-medium' : ''
+              }`}
+              data-testid="link-top-ideas"
+            >
               Top Ideas
-            </button>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link 
+              href="/features" 
+              className={`text-muted-foreground hover:text-foreground transition-colors ${
+                location.startsWith('/features') ? 'text-foreground font-medium' : ''
+              }`}
+              data-testid="link-features"
+            >
               Features
-            </button>
-            <button className="text-muted-foreground hover:text-foreground transition-colors">
+            </Link>
+            <Link 
+              href="/pricing" 
+              className={`text-muted-foreground hover:text-foreground transition-colors ${
+                location.startsWith('/pricing') ? 'text-foreground font-medium' : ''
+              }`}
+              data-testid="link-pricing"
+            >
               Pricing
-            </button>
+            </Link>
           </nav>
           
           {/* Actions */}
@@ -48,7 +66,7 @@ export default function Header() {
             {isAuthenticated ? (
               <div className="flex items-center space-x-3">
                 <span className="text-sm text-muted-foreground hidden sm:inline" data-testid="text-user-greeting">
-                  Hi, {user?.firstName || 'User'}!
+                  Hi, {(user as any)?.firstName || 'User'}!
                 </span>
                 <Button
                   variant="outline"

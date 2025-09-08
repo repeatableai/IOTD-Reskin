@@ -9,6 +9,9 @@ import Landing from "@/pages/landing";
 import Home from "@/pages/home";
 import Database from "@/pages/database";
 import IdeaDetail from "@/pages/idea-detail";
+import TopIdeas from "@/pages/top-ideas";
+import Features from "@/pages/features";
+import Pricing from "@/pages/pricing";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -20,12 +23,18 @@ function Router() {
           <Route path="/" component={Landing} />
           <Route path="/database" component={Database} />
           <Route path="/idea/:slug" component={IdeaDetail} />
+          <Route path="/top-ideas" component={TopIdeas} />
+          <Route path="/features" component={Features} />
+          <Route path="/pricing" component={Pricing} />
         </>
       ) : (
         <>
           <Route path="/" component={Home} />
           <Route path="/database" component={Database} />
           <Route path="/idea/:slug" component={IdeaDetail} />
+          <Route path="/top-ideas" component={TopIdeas} />
+          <Route path="/features" component={Features} />
+          <Route path="/pricing" component={Pricing} />
         </>
       )}
       <Route component={NotFound} />
