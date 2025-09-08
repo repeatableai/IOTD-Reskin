@@ -84,6 +84,12 @@ export const ideas = pgTable("ideas", {
   isPublished: boolean("is_published").default(true),
   isFeatured: boolean("is_featured").default(false),
   
+  // User creation tracking
+  createdBy: varchar("created_by").references(() => users.id),
+  sourceType: varchar("source_type").default('curated'), // 'curated', 'user_import', 'user_generated'
+  sourceData: text("source_data"), // Original imported HTML/instructions
+  builderUrl: varchar("builder_url"), // URL to no-code builder project
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -140,13 +146,18 @@ export const communitySignals = pgTable("community_signals", {
 export const usersRelations = relations(users, ({ many }) => ({
   savedIdeas: many(userSavedIdeas),
   votes: many(userIdeaVotes),
+  createdIdeas: many(ideas),
 }));
 
-export const ideasRelations = relations(ideas, ({ many }) => ({
+export const ideasRelations = relations(ideas, ({ many, one }) => ({
   tags: many(ideaTags),
   saves: many(userSavedIdeas),
   votes: many(userIdeaVotes),
   communitySignals: many(communitySignals),
+  creator: one(users, {
+    fields: [ideas.createdBy],
+    references: [users.id],
+  }),
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
