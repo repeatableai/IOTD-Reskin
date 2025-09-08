@@ -202,12 +202,65 @@ export default function CreateIdea() {
     createIdeaMutation.mutate(formData);
   };
 
-  const generateWithAI = () => {
-    // Placeholder for AI generation
-    toast({
-      title: "AI Generation",
-      description: "AI-powered idea generation coming soon!",
-    });
+  const [aiParams, setAiParams] = useState({
+    industry: '',
+    type: 'web_app',
+    market: 'B2C',
+    targetAudience: '',
+    problemArea: '',
+    constraints: '',
+  });
+  
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateWithAI = async () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use AI-powered idea generation.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    
+    try {
+      const response = await apiRequest('POST', '/api/ai/generate-idea', aiParams);
+      const generatedIdea = await response.json();
+      
+      // Map AI response to form data
+      setFormData(prev => ({
+        ...prev,
+        title: generatedIdea.title,
+        subtitle: generatedIdea.subtitle,
+        description: generatedIdea.description,
+        content: generatedIdea.content,
+        type: generatedIdea.type,
+        market: generatedIdea.market,
+        targetAudience: generatedIdea.targetAudience,
+        keyword: generatedIdea.keyword,
+        sourceType: 'user_generated',
+        sourceData: 'AI Generated',
+      }));
+      
+      // Switch to manual tab to review/edit the generated idea
+      setActiveTab('manual');
+      
+      toast({
+        title: "AI Idea Generated!",
+        description: "Your AI-generated startup idea is ready for review.",
+      });
+    } catch (error) {
+      console.error('Error generating AI idea:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate idea. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -474,15 +527,120 @@ export default function CreateIdea() {
                   AI-Powered Idea Generation
                 </CardTitle>
               </CardHeader>
-              <CardContent className="text-center py-12">
-                <Sparkles className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Coming Soon</h3>
-                <p className="text-muted-foreground mb-6">
-                  AI-powered idea generation and analysis will be available soon!
-                </p>
-                <Button onClick={generateWithAI} disabled data-testid="button-ai-generate">
-                  Generate with AI
-                </Button>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="ai-industry">Industry Focus</Label>
+                      <Input
+                        id="ai-industry"
+                        value={aiParams.industry}
+                        onChange={(e) => setAiParams(prev => ({ ...prev, industry: e.target.value }))}
+                        placeholder="e.g., healthcare, fintech, education"
+                        data-testid="input-ai-industry"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label>Startup Type</Label>
+                      <Select value={aiParams.type} onValueChange={(value) => setAiParams(prev => ({ ...prev, type: value }))}>
+                        <SelectTrigger data-testid="select-ai-type">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="mobile_app">Mobile App</SelectItem>
+                          <SelectItem value="web_app">Web App</SelectItem>
+                          <SelectItem value="saas">SaaS</SelectItem>
+                          <SelectItem value="marketplace">Marketplace</SelectItem>
+                          <SelectItem value="subscription">Subscription</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label>Target Market</Label>
+                      <Select value={aiParams.market} onValueChange={(value) => setAiParams(prev => ({ ...prev, market: value }))}>
+                        <SelectTrigger data-testid="select-ai-market">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="B2B">B2B</SelectItem>
+                          <SelectItem value="B2C">B2C</SelectItem>
+                          <SelectItem value="B2B2C">B2B2C</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="ai-audience">Target Audience</Label>
+                      <Input
+                        id="ai-audience"
+                        value={aiParams.targetAudience}
+                        onChange={(e) => setAiParams(prev => ({ ...prev, targetAudience: e.target.value }))}
+                        placeholder="e.g., small business owners, students"
+                        data-testid="input-ai-audience"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="ai-problem">Problem Area</Label>
+                      <Input
+                        id="ai-problem"
+                        value={aiParams.problemArea}
+                        onChange={(e) => setAiParams(prev => ({ ...prev, problemArea: e.target.value }))}
+                        placeholder="e.g., productivity, communication, analytics"
+                        data-testid="input-ai-problem"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="ai-constraints">Additional Context</Label>
+                      <Textarea
+                        id="ai-constraints"
+                        value={aiParams.constraints}
+                        onChange={(e) => setAiParams(prev => ({ ...prev, constraints: e.target.value }))}
+                        placeholder="Any specific requirements or constraints..."
+                        className="min-h-16"
+                        data-testid="textarea-ai-constraints"
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="text-center pt-4 border-t">
+                  <Button 
+                    onClick={generateWithAI} 
+                    disabled={isGenerating || !isAuthenticated}
+                    size="lg"
+                    className="min-w-48"
+                    data-testid="button-ai-generate"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                        Generating Idea...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Generate AI Idea
+                      </>
+                    )}
+                  </Button>
+                  
+                  {!isAuthenticated && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Please log in to use AI-powered idea generation
+                    </p>
+                  )}
+                  
+                  <p className="text-xs text-muted-foreground mt-4">
+                    AI will generate a comprehensive startup idea with market analysis, scoring, and detailed business insights based on your preferences.
+                  </p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
