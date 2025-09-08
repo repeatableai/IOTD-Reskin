@@ -6,6 +6,7 @@ import { ideaFiltersSchema, insertIdeaSchema } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
+import { aiService, type IdeaGenerationParams } from "./aiService";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -308,6 +309,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating builder project:", error);
       res.status(500).json({ message: "Failed to create builder project" });
+    }
+  });
+
+  // AI-powered idea generation
+  app.post('/api/ai/generate-idea', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate and parse generation parameters
+      const generationSchema = z.object({
+        industry: z.string().optional(),
+        type: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+        problemArea: z.string().optional(),
+        constraints: z.string().optional(),
+      });
+      
+      const params: IdeaGenerationParams = generationSchema.parse(req.body);
+      
+      // Generate idea using AI service
+      const generatedIdea = await aiService.generateIdea(params);
+      
+      res.json(generatedIdea);
+    } catch (error) {
+      console.error("Error generating AI idea:", error);
+      res.status(500).json({ 
+        message: "Failed to generate idea",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // AI-powered research report generation
+  app.post('/api/ai/research-report', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      // Validate request body
+      const reportSchema = z.object({
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+      });
+      
+      const { ideaTitle, ideaDescription } = reportSchema.parse(req.body);
+      
+      // Generate research report using AI service
+      const researchReport = await aiService.generateResearchReport(ideaTitle, ideaDescription);
+      
+      res.json(researchReport);
+    } catch (error) {
+      console.error("Error generating AI research report:", error);
+      res.status(500).json({ 
+        message: "Failed to generate research report",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
