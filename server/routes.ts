@@ -2,8 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { ideaFiltersSchema } from "@shared/schema";
+import { ideaFiltersSchema, insertIdeaSchema } from "@shared/schema";
 import { z } from "zod";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { ObjectPermission } from "./objectAcl";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -184,6 +186,128 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching community signals:", error);
       res.status(500).json({ message: "Failed to fetch community signals" });
+    }
+  });
+
+  // Object storage routes
+  app.post('/api/objects/upload', isAuthenticated, async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error getting upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  app.post('/api/ideas/set-image', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { imageURL } = req.body;
+      
+      if (!imageURL) {
+        return res.status(400).json({ error: "imageURL is required" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const objectPath = await objectStorageService.trySetObjectEntityAclPolicy(
+        imageURL,
+        {
+          owner: userId,
+          visibility: "public", // Ideas are generally public
+        },
+      );
+
+      res.json({ objectPath });
+    } catch (error) {
+      console.error("Error setting image ACL:", error);
+      res.status(500).json({ error: "Failed to set image ACL" });
+    }
+  });
+
+  // Object serving route
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(
+        req.path,
+      );
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error serving object:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  // Create idea route
+  app.post('/api/ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const ideaData = req.body;
+      
+      // Generate slug from title
+      const slug = ideaData.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+      
+      // Set default scores for user-created ideas
+      const newIdea = {
+        ...ideaData,
+        slug,
+        createdBy: userId,
+        opportunityScore: 7,
+        opportunityLabel: "Good",
+        problemScore: 7,
+        problemLabel: "Good",
+        feasibilityScore: 7,
+        feasibilityLabel: "Good",
+        timingScore: 7,
+        timingLabel: "Good",
+        executionScore: 7,
+        gtmScore: 7,
+        revenuePotential: "TBD",
+        revenuePotentialNum: 1000000,
+        executionDifficulty: "Medium",
+        gtmStrength: "TBD",
+        isPublished: true,
+      };
+
+      const createdIdea = await storage.createIdea(newIdea);
+      res.json(createdIdea);
+    } catch (error) {
+      console.error("Error creating idea:", error);
+      res.status(500).json({ message: "Failed to create idea" });
+    }
+  });
+
+  // Build idea route - redirect to no-code builder
+  app.post('/api/ideas/:id/build', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const idea = await storage.getIdeaById(id);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Create a simple builder URL (placeholder for now)
+      const builderUrl = `https://builder.replit.com/new?template=web&name=${encodeURIComponent(idea.title.replace(/\s+/g, '-').toLowerCase())}&description=${encodeURIComponent(idea.description)}`;
+      
+      // Update idea with builder URL
+      await storage.updateIdea(id, { builderUrl });
+      
+      res.json({ builderUrl });
+    } catch (error) {
+      console.error("Error creating builder project:", error);
+      res.status(500).json({ message: "Failed to create builder project" });
     }
   });
 

@@ -59,6 +59,13 @@ export default function Header() {
           
           {/* Actions */}
           <div className="flex items-center space-x-4">
+            {isAuthenticated && (
+              <Link href="/create-idea">
+                <Button variant="default" size="sm" data-testid="button-create-idea">
+                  Create Idea
+                </Button>
+              </Link>
+            )}
             <Button variant="ghost" size="sm" data-testid="button-search">
               <Search className="w-5 h-5" />
             </Button>

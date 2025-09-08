@@ -12,6 +12,7 @@ import IdeaDetail from "@/pages/idea-detail";
 import TopIdeas from "@/pages/top-ideas";
 import Features from "@/pages/features";
 import Pricing from "@/pages/pricing";
+import CreateIdea from "@/pages/create-idea";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,6 +36,7 @@ function Router() {
           <Route path="/top-ideas" component={TopIdeas} />
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/create-idea" component={CreateIdea} />
         </>
       )}
       <Route component={NotFound} />

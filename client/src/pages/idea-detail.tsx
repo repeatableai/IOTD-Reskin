@@ -163,6 +163,39 @@ export default function IdeaDetail() {
     },
   });
 
+  const buildIdeaMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/ideas/${idea.id}/build`);
+      return await response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Success!",
+        description: "Your no-code builder project has been created.",
+      });
+      // Open the builder in a new tab
+      window.open(data.builderUrl, '_blank');
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to create builder project. Please try again.",
+        variant: "destructive"
+      });
+    },
+  });
+
   const handleVote = (voteType: 'up' | 'down') => {
     if (!isAuthenticated) {
       toast({
@@ -290,9 +323,14 @@ export default function IdeaDetail() {
               </>
             )}
             
-            <Button variant="outline" data-testid="button-build-idea">
+            <Button 
+              variant="outline" 
+              onClick={() => buildIdeaMutation.mutate()}
+              disabled={buildIdeaMutation.isPending}
+              data-testid="button-build-idea"
+            >
               <Code className="w-4 h-4 mr-2" />
-              Build This Idea
+              {buildIdeaMutation.isPending ? 'Creating...' : 'Build This Idea'}
             </Button>
             
             <Button variant="outline" data-testid="button-export-data">
