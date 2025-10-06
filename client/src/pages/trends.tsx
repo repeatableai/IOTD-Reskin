@@ -92,7 +92,7 @@ export default function Trends() {
               <h2 className="text-2xl font-bold mb-6">Trending Markets</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {trendingMarkets.map((market, index) => (
-                  <Link key={market.name} href={`/ideas?market=${encodeURIComponent(market.name)}`}>
+                  <Link key={market.name} href={`/database?market=${encodeURIComponent(market.name)}`}>
                     <div
                       className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
                       data-testid={`card-trend-${market.name.toLowerCase().replace(/\s+/g, '-')}`}
@@ -137,7 +137,7 @@ export default function Trends() {
                 
                 <TabsContent value="top-scored" className="space-y-4">
                   {topIdeas.map((idea) => (
-                    <Link key={idea.id} href={`/ideas/${idea.slug}`}>
+                    <Link key={idea.id} href={`/idea/${idea.slug}`}>
                       <div
                         className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
                         data-testid={`idea-card-${idea.id}`}
@@ -178,7 +178,7 @@ export default function Trends() {
                 
                 <TabsContent value="recently-added" className="space-y-4">
                   {recentIdeas.map((idea) => (
-                    <Link key={idea.id} href={`/ideas/${idea.slug}`}>
+                    <Link key={idea.id} href={`/idea/${idea.slug}`}>
                       <div
                         className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
                         data-testid={`recent-idea-card-${idea.id}`}
