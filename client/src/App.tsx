@@ -15,6 +15,17 @@ import Pricing from "@/pages/pricing";
 import CreateIdea from "@/pages/create-idea";
 import FounderFit from "@/pages/founder-fit";
 import AIChat from "@/pages/ai-chat";
+import Trends from "@/pages/trends";
+import MarketInsights from "@/pages/market-insights";
+import Research from "@/pages/research";
+import IdeaBuilder from "@/pages/idea-builder";
+import Tour from "@/pages/tour";
+import ToolsLibrary from "@/pages/tools-library";
+import WhatsNew from "@/pages/whats-new";
+import About from "@/pages/about";
+import FAQ from "@/pages/faq";
+import Contact from "@/pages/contact";
+import PlanDetails from "@/pages/plan-details";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -25,10 +36,22 @@ function Router() {
       <Route path="/database" component={Database} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
+      <Route path="/trends" component={Trends} />
+      <Route path="/market-insights" component={MarketInsights} />
+      <Route path="/research" component={Research} />
+      <Route path="/idea-builder" component={IdeaBuilder} />
       <Route path="/features" component={Features} />
       <Route path="/pricing" component={Pricing} />
       <Route path="/founder-fit" component={FounderFit} />
       <Route path="/ai-chat/:slug" component={AIChat} />
+      <Route path="/ai-chat" component={AIChat} />
+      <Route path="/tour" component={Tour} />
+      <Route path="/tools-library" component={ToolsLibrary} />
+      <Route path="/whats-new" component={WhatsNew} />
+      <Route path="/about" component={About} />
+      <Route path="/faq" component={FAQ} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/plan-details" component={PlanDetails} />
       {isAuthenticated && (
         <>
           <Route path="/home" component={Home} />
