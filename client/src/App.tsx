@@ -21,28 +21,18 @@ function Router() {
 
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      <Route path="/" component={TopIdeas} />
+      <Route path="/database" component={Database} />
+      <Route path="/idea/:slug" component={IdeaDetail} />
+      <Route path="/top-ideas" component={TopIdeas} />
+      <Route path="/features" component={Features} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/founder-fit" component={FounderFit} />
+      <Route path="/ai-chat/:slug" component={AIChat} />
+      {isAuthenticated && (
         <>
-          <Route path="/" component={Landing} />
-          <Route path="/database" component={Database} />
-          <Route path="/idea/:slug" component={IdeaDetail} />
-          <Route path="/top-ideas" component={TopIdeas} />
-          <Route path="/features" component={Features} />
-          <Route path="/pricing" component={Pricing} />
-          <Route path="/founder-fit" component={FounderFit} />
-          <Route path="/ai-chat/:slug" component={AIChat} />
-        </>
-      ) : (
-        <>
-          <Route path="/" component={Home} />
-          <Route path="/database" component={Database} />
-          <Route path="/idea/:slug" component={IdeaDetail} />
-          <Route path="/top-ideas" component={TopIdeas} />
-          <Route path="/features" component={Features} />
-          <Route path="/pricing" component={Pricing} />
+          <Route path="/home" component={Home} />
           <Route path="/create-idea" component={CreateIdea} />
-          <Route path="/founder-fit" component={FounderFit} />
-          <Route path="/ai-chat/:slug" component={AIChat} />
         </>
       )}
       <Route component={NotFound} />

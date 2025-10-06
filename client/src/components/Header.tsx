@@ -29,15 +29,6 @@ export default function Header() {
               Database
             </Link>
             <Link 
-              href="/top-ideas" 
-              className={`text-muted-foreground hover:text-foreground transition-colors ${
-                location.startsWith('/top-ideas') ? 'text-foreground font-medium' : ''
-              }`}
-              data-testid="link-top-ideas"
-            >
-              Top Ideas
-            </Link>
-            <Link 
               href="/features" 
               className={`text-muted-foreground hover:text-foreground transition-colors ${
                 location.startsWith('/features') ? 'text-foreground font-medium' : ''

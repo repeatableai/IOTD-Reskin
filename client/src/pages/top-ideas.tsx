@@ -584,22 +584,106 @@ export default function TopIdeas() {
           </Card>
         )}
 
-        {/* Browse All Ideas CTA */}
-        <div className="text-center mt-12">
-          <p className="text-muted-foreground mb-4">
-            Want to explore more ideas?
-          </p>
-          <Button 
-            variant="outline" 
-            size="lg"
-            onClick={() => setLocation('/database')}
-            data-testid="button-browse-all"
-          >
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Browse All Ideas
-          </Button>
+        {/* The Idea Database Section */}
+        <div className="mt-16 border-t pt-16">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-4">The Idea Database</h2>
+            <p className="text-xl text-muted-foreground">
+              Dive into deep research and analysis on 400+ business ideas
+            </p>
+          </div>
+          
+          <DatabasePreview />
+          
+          <div className="text-center mt-8">
+            <Button 
+              size="lg"
+              onClick={() => setLocation('/database')}
+              data-testid="button-browse-all"
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              See Full Database
+            </Button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Database Preview Component
+function DatabasePreview() {
+  const { data: ideas, isLoading } = useQuery<any>({
+    queryKey: ["/api/ideas", { limit: 6, sortBy: "newest" }],
+  });
+
+  const [, setLocation] = useLocation();
+
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[...Array(6)].map((_, i) => (
+          <Card key={i} className="animate-pulse">
+            <CardContent className="p-6">
+              <div className="h-48 bg-muted rounded mb-4"></div>
+              <div className="h-6 bg-muted rounded mb-2"></div>
+              <div className="h-4 bg-muted rounded w-3/4"></div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const ideaList = ideas?.ideas || [];
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {ideaList.map((idea: any) => (
+        <Card 
+          key={idea.id} 
+          className="hover:shadow-lg transition-shadow cursor-pointer group"
+          onClick={() => setLocation(`/idea/${idea.slug}`)}
+          data-testid={`card-preview-${idea.id}`}
+        >
+          {idea.imageUrl && (
+            <div className="relative h-48 w-full overflow-hidden rounded-t-lg">
+              <img 
+                src={idea.imageUrl} 
+                alt={idea.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+              />
+            </div>
+          )}
+          <CardContent className="p-6">
+            <h3 className="font-bold text-lg mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+              {idea.title}
+            </h3>
+            <p className="text-sm text-muted-foreground line-clamp-3 mb-4">
+              {idea.description}
+            </p>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              {idea.opportunityScore && (
+                <div className="flex items-center gap-1">
+                  <Star className="w-3 h-3" />
+                  <span>{idea.opportunityScore}/10</span>
+                </div>
+              )}
+              {idea.viewCount && (
+                <div className="flex items-center gap-1">
+                  <Eye className="w-3 h-3" />
+                  <span>{idea.viewCount}</span>
+                </div>
+              )}
+              {idea.market && (
+                <Badge variant="secondary" className="text-xs">
+                  {idea.market}
+                </Badge>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
