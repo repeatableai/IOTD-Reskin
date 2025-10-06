@@ -90,6 +90,22 @@ export const ideas = pgTable("ideas", {
   sourceData: text("source_data"), // Original imported HTML/instructions
   builderUrl: varchar("builder_url"), // URL to no-code builder project
   
+  // Detailed analysis sections (for 1:1 ideabrowser.com copy)
+  offerTiers: jsonb("offer_tiers"), // Value ladder with lead magnet, frontend, core, backend, continuity
+  whyNowAnalysis: text("why_now_analysis"), // Why Now section content
+  proofSignals: text("proof_signals"), // Proof & Signals section content
+  marketGap: text("market_gap"), // Market Gap section content
+  executionPlan: text("execution_plan"), // Execution Plan section content
+  frameworkData: jsonb("framework_data"), // All framework analyses (Value Equation, Market Matrix, A.C.P., Value Ladder)
+  trendAnalysis: text("trend_analysis"), // Trend analysis content
+  keywordData: jsonb("keyword_data"), // Enhanced keyword data with categories and competition
+  builderPrompts: jsonb("builder_prompts"), // Pre-built prompts for various AI builders
+  
+  // User engagement
+  claimedBy: varchar("claimed_by").references(() => users.id), // User who claimed the idea
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }), // Average user rating
+  ratingCount: integer("rating_count").default(0), // Number of ratings
+  
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -142,10 +158,20 @@ export const communitySignals = pgTable("community_signals", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User ratings table
+export const userIdeaRatings = pgTable("user_idea_ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  rating: integer("rating").notNull(), // 1-5 scale
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   savedIdeas: many(userSavedIdeas),
   votes: many(userIdeaVotes),
+  ratings: many(userIdeaRatings),
   createdIdeas: many(ideas),
 }));
 
@@ -153,9 +179,14 @@ export const ideasRelations = relations(ideas, ({ many, one }) => ({
   tags: many(ideaTags),
   saves: many(userSavedIdeas),
   votes: many(userIdeaVotes),
+  ratings: many(userIdeaRatings),
   communitySignals: many(communitySignals),
   creator: one(users, {
     fields: [ideas.createdBy],
+    references: [users.id],
+  }),
+  claimer: one(users, {
+    fields: [ideas.claimedBy],
     references: [users.id],
   }),
 }));
@@ -204,6 +235,17 @@ export const communitySignalsRelations = relations(communitySignals, ({ one }) =
   }),
 }));
 
+export const userIdeaRatingsRelations = relations(userIdeaRatings, ({ one }) => ({
+  user: one(users, {
+    fields: [userIdeaRatings.userId],
+    references: [users.id],
+  }),
+  idea: one(ideas, {
+    fields: [userIdeaRatings.ideaId],
+    references: [ideas.id],
+  }),
+}));
+
 // Schema types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -216,6 +258,9 @@ export type Tag = typeof tags.$inferSelect;
 
 export type InsertCommunitySignal = typeof communitySignals.$inferInsert;
 export type CommunitySignal = typeof communitySignals.$inferSelect;
+
+export type InsertUserIdeaRating = typeof userIdeaRatings.$inferInsert;
+export type UserIdeaRating = typeof userIdeaRatings.$inferSelect;
 
 // Input schemas
 export const insertIdeaSchema = createInsertSchema(ideas).omit({
