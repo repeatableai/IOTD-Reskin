@@ -402,6 +402,36 @@ export default function IdeaDetail() {
             )}
           </div>
           
+          {/* Signal Badges */}
+          {idea.signalBadges && idea.signalBadges.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {idea.signalBadges.slice(0, 3).map((badge, index) => (
+                <Badge 
+                  key={index}
+                  variant="outline" 
+                  className="px-3 py-1 text-sm"
+                  data-testid={`badge-signal-${index}`}
+                >
+                  {badge === "Perfect Timing" && "⏰"}
+                  {badge === "Unfair Advantage" && "⚡"}
+                  {badge === "Organic Growth" && "🌱"}
+                  {badge === "Proven Model" && "✓"}
+                  {badge === "Low Competition" && "🎯"}
+                  {badge === "High Demand" && "🔥"}
+                  {badge === "Strong Community" && "👥"}
+                  {badge === "Tech Tailwind" && "🚀"}
+                  {badge === "Clear Monetization" && "💰"}
+                  {" "}{badge}
+                </Badge>
+              ))}
+              {idea.signalBadges.length > 3 && (
+                <Badge variant="secondary" className="px-3 py-1 text-sm">
+                  +{idea.signalBadges.length - 3} More
+                </Badge>
+              )}
+            </div>
+          )}
+          
           <h1 className="text-4xl font-bold mb-4" data-testid="text-idea-title">{idea.title}</h1>
           
           {idea.subtitle && (
@@ -1098,6 +1128,64 @@ export default function IdeaDetail() {
                       <p className="text-sm text-muted-foreground">
                         Average: {idea.averageRating}/5 ({idea.ratingCount || 0} ratings)
                       </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Community Signals */}
+            {idea.communitySignals && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Community Signals</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {idea.communitySignals.reddit && (
+                    <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-sm">Reddit</p>
+                        <p className="text-xs text-muted-foreground">
+                          {idea.communitySignals.reddit.subreddits} subreddits · {idea.communitySignals.reddit.members}
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold">{idea.communitySignals.reddit.score}/10</div>
+                    </div>
+                  )}
+                  
+                  {idea.communitySignals.facebook && (
+                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-sm">Facebook</p>
+                        <p className="text-xs text-muted-foreground">
+                          {idea.communitySignals.facebook.groups} groups · {idea.communitySignals.facebook.members}
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold">{idea.communitySignals.facebook.score}/10</div>
+                    </div>
+                  )}
+                  
+                  {idea.communitySignals.youtube && (
+                    <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-sm">YouTube</p>
+                        <p className="text-xs text-muted-foreground">
+                          {idea.communitySignals.youtube.channels} channels · {idea.communitySignals.youtube.views}
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold">{idea.communitySignals.youtube.score}/10</div>
+                    </div>
+                  )}
+                  
+                  {idea.communitySignals.other && (
+                    <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-sm">Other</p>
+                        <p className="text-xs text-muted-foreground">
+                          {idea.communitySignals.other.segments} segments · {idea.communitySignals.other.priorities} priorities
+                        </p>
+                      </div>
+                      <div className="text-2xl font-bold">{idea.communitySignals.other.score}/10</div>
                     </div>
                   )}
                 </CardContent>
