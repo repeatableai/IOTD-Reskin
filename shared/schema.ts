@@ -101,6 +101,10 @@ export const ideas = pgTable("ideas", {
   keywordData: jsonb("keyword_data"), // Enhanced keyword data with categories and competition
   builderPrompts: jsonb("builder_prompts"), // Pre-built prompts for various AI builders
   
+  // Community signals data
+  communitySignals: jsonb("community_signals"), // Reddit, Facebook, YouTube, Other community data with scores
+  signalBadges: text("signal_badges").array(), // Badge tags like "Perfect Timing", "Unfair Advantage", etc.
+  
   // User engagement
   claimedBy: varchar("claimed_by").references(() => users.id), // User who claimed the idea
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }), // Average user rating

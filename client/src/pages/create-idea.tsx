@@ -294,6 +294,8 @@ export default function CreateIdea() {
         trendAnalysis: generatedIdea.trendAnalysis,
         keywordData: generatedIdea.keywordData,
         builderPrompts: generatedIdea.builderPrompts,
+        communitySignals: generatedIdea.communitySignals,
+        signalBadges: generatedIdea.signalBadges,
         sourceType: 'user_generated',
         sourceData: 'AI Generated',
       }));

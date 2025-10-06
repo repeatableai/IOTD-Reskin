@@ -77,6 +77,13 @@ export interface GeneratedIdea {
     socialMedia: string;
     productDemo: string;
   };
+  communitySignals?: {
+    reddit: { subreddits: number; members: string; score: number; details: string };
+    facebook: { groups: number; members: string; score: number; details: string };
+    youtube: { channels: number; views: string; score: number; details: string };
+    other: { segments: number; priorities: number; score: number; details: string };
+  };
+  signalBadges?: string[];
 }
 
 export interface IdeaGenerationParams {
@@ -240,10 +247,17 @@ Return as JSON with this EXACT structure:
     "emailSequence": "Prompt for email marketing sequence",
     "socialMedia": "Prompt for social media content strategy",
     "productDemo": "Prompt for building product demo/MVP"
-  }
+  },
+  "communitySignals": {
+    "reddit": {"subreddits": 5, "members": "2.5M+", "score": 8, "details": "Strong community engagement across relevant subreddits"},
+    "facebook": {"groups": 7, "members": "150K+", "score": 7, "details": "Active Facebook groups discussing this problem"},
+    "youtube": {"channels": 14, "members": "1M+", "score": 7, "details": "Multiple YouTube channels covering this topic"},
+    "other": {"segments": 4, "priorities": 3, "score": 8, "details": "Strong signals across forums, Discord, and Slack communities"}
+  },
+  "signalBadges": ["Perfect Timing", "Unfair Advantage", "Organic Growth"]
 }
 
-Make it realistic, innovative, and comprehensive. Use real market insights.`;
+Make it realistic, innovative, and comprehensive. Use real market insights. Generate 2-5 relevant signal badges from options like: "Perfect Timing", "Unfair Advantage", "Organic Growth", "Proven Model", "Low Competition", "High Demand", "Strong Community", "Tech Tailwind", "Clear Monetization".`;
 
     const messages: ChatCompletionMessageParam[] = [
       {
