@@ -6,9 +6,11 @@ import type { Idea } from "@shared/schema";
 import { Link } from "wouter";
 
 export default function Trends() {
-  const { data: ideas, isLoading } = useQuery<Idea[]>({
+  const { data: response, isLoading } = useQuery<{ ideas: Idea[]; total: number }>({
     queryKey: ["/api/ideas"],
   });
+
+  const ideas = response?.ideas;
 
   const getTrendingMarkets = () => {
     if (!ideas) return [];

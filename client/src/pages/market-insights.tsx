@@ -6,9 +6,11 @@ import { Link } from "wouter";
 import type { Idea, CommunitySignal } from "@shared/schema";
 
 export default function MarketInsights() {
-  const { data: ideas, isLoading: ideasLoading } = useQuery<Idea[]>({
+  const { data: response, isLoading: ideasLoading } = useQuery<{ ideas: Idea[]; total: number }>({
     queryKey: ["/api/ideas"],
   });
+
+  const ideas = response?.ideas;
 
   const getIdeasWithSignals = () => {
     if (!ideas) return [];
