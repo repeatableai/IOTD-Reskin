@@ -2,7 +2,7 @@ import Header from "@/components/Header";
 import { Wrench, Layers, Code, Rocket, CheckCircle2, Sparkles, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
-import useAuth from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function IdeaBuilder() {

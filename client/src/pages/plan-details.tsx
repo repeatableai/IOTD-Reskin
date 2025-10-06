@@ -3,7 +3,7 @@ import { FileText, Check, X, Zap, Crown, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 import { Badge } from "@/components/ui/badge";
-import useAuth from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function PlanDetails() {
   const { user } = useAuth();
