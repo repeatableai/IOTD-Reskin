@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
 import ScoreDisplay from "@/components/ScoreDisplay";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Calendar, 
   ChevronLeft, 
@@ -16,7 +17,15 @@ import {
   Eye,
   Bookmark,
   ThumbsUp,
-  Star
+  Star,
+  DollarSign,
+  Wrench,
+  Rocket,
+  Brain,
+  Code,
+  TrendingUp,
+  Download,
+  Lock
 } from "lucide-react";
 import { format, subDays, addDays, isAfter } from "date-fns";
 
@@ -25,6 +34,7 @@ export default function TopIdeas() {
   const [, setLocation] = useLocation();
   const [email, setEmail] = useState("");
   const [showReminder, setShowReminder] = useState(false);
+  const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const { toast } = useToast();
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
@@ -35,6 +45,19 @@ export default function TopIdeas() {
       const response = await fetch(`/api/ideas/featured?date=${dateString}`);
       if (!response.ok) throw new Error('Failed to fetch featured idea');
       return response.json();
+    },
+  });
+
+  const ratingMutation = useMutation({
+    mutationFn: async (rating: number) => {
+      return apiRequest(`/api/ideas/${featuredIdea.id}/rate`, 'POST', { rating });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Rating Submitted",
+        description: "Thank you for your feedback!",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/ideas/featured", dateString] });
     },
   });
 
@@ -65,6 +88,11 @@ export default function TopIdeas() {
     });
     setShowReminder(false);
     setEmail("");
+  };
+
+  const handleRating = (rating: number) => {
+    setSelectedRating(rating);
+    ratingMutation.mutate(rating);
   };
 
   const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
@@ -174,7 +202,8 @@ export default function TopIdeas() {
             </CardContent>
           </Card>
         ) : featuredIdea ? (
-          <div className="max-w-4xl mx-auto">
+          <div className="max-w-5xl mx-auto space-y-8">
+            {/* Main Idea Card */}
             <div className="gradient-border">
               <div className="gradient-border-inner p-8">
                 {/* Signal Badges */}
@@ -188,6 +217,11 @@ export default function TopIdeas() {
                         {badge}
                       </Badge>
                     ))}
+                    {featuredIdea.signalBadges.length > 3 && (
+                      <Badge variant="outline">
+                        +{featuredIdea.signalBadges.length - 3} More
+                      </Badge>
+                    )}
                   </div>
                 )}
 
@@ -216,8 +250,34 @@ export default function TopIdeas() {
                   {featuredIdea.description}
                 </p>
 
+                {/* Keyword Info */}
+                {featuredIdea.keyword && (
+                  <Card className="mb-6 bg-muted/50">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-sm text-muted-foreground mb-1">Keyword</div>
+                          <div className="font-semibold">{featuredIdea.keyword}</div>
+                        </div>
+                        {featuredIdea.keywordVolume && (
+                          <div className="text-center px-4">
+                            <div className="text-2xl font-bold">{featuredIdea.keywordVolume}</div>
+                            <div className="text-xs text-muted-foreground">Volume</div>
+                          </div>
+                        )}
+                        {featuredIdea.keywordGrowth && (
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-green-600">+{featuredIdea.keywordGrowth}%</div>
+                            <div className="text-xs text-muted-foreground">Growth</div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Scores Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                   <ScoreDisplay 
                     score={featuredIdea.opportunityScore} 
                     label="Opportunity" 
@@ -240,8 +300,84 @@ export default function TopIdeas() {
                   />
                 </div>
 
+                {/* Business Fit Section */}
+                <Card className="mb-8">
+                  <CardContent className="p-6">
+                    <h3 className="text-xl font-bold mb-4">Business Fit</h3>
+                    <div className="grid md:grid-cols-3 gap-6">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <DollarSign className="w-5 h-5 text-green-600" />
+                          <span className="font-semibold">Revenue Potential</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {featuredIdea.revenuePotential || "Potential to reach significant ARR"}
+                        </p>
+                        <div className="mt-2 text-2xl font-bold text-green-600">
+                          {featuredIdea.revenuePotential?.includes('$') ? '' : '$$$'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Wrench className="w-5 h-5 text-orange-600" />
+                          <span className="font-semibold">Execution Difficulty</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {featuredIdea.executionDifficulty || "Moderate complexity"}
+                        </p>
+                        <div className="mt-2 text-2xl font-bold">
+                          {featuredIdea.executionScore || featuredIdea.feasibilityScore}/10
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Rocket className="w-5 h-5 text-blue-600" />
+                          <span className="font-semibold">Go-To-Market</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {featuredIdea.gtmStrength || "Clear growth channels"}
+                        </p>
+                        <div className="mt-2 text-2xl font-bold">
+                          {featuredIdea.gtmScore || 8}/10
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="outline"
+                      className="w-full mt-6"
+                      onClick={() => setLocation('/founder-fit')}
+                      data-testid="button-founder-fit-card"
+                    >
+                      <Brain className="w-4 h-4 mr-2" />
+                      Right for You? Find Out
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="grid md:grid-cols-2 gap-4 mb-8">
+                  <Button 
+                    size="lg"
+                    className="w-full"
+                    onClick={() => setLocation(`/idea/${featuredIdea.slug}`)}
+                    data-testid="button-view-full-analysis"
+                  >
+                    View Full Analysis
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    className="w-full"
+                    onClick={() => setLocation(`/ai-chat/${featuredIdea.slug}`)}
+                    data-testid="button-ai-chat-iotd"
+                  >
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI Chat with this Idea
+                  </Button>
+                </div>
+
                 {/* Stats */}
-                <div className="flex flex-wrap gap-6 mb-6 text-sm text-muted-foreground">
+                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground border-t pt-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4" />
                     <span>{featuredIdea.viewCount || 0} views</span>
@@ -261,27 +397,178 @@ export default function TopIdeas() {
                     </div>
                   )}
                 </div>
-
-                {/* CTA */}
-                <div className="flex flex-wrap gap-3">
-                  <Button 
-                    size="lg"
-                    onClick={() => setLocation(`/idea/${featuredIdea.slug}`)}
-                    data-testid="button-view-full-analysis"
-                  >
-                    View Full Analysis
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="lg"
-                    onClick={() => setLocation('/founder-fit')}
-                    data-testid="button-founder-fit"
-                  >
-                    Check Founder Fit
-                  </Button>
-                </div>
               </div>
             </div>
+
+            {/* Start Building Section */}
+            <Card>
+              <CardContent className="p-8">
+                <h3 className="text-2xl font-bold mb-2">Start Building in 1-click</h3>
+                <p className="text-muted-foreground mb-6">
+                  Turn this idea into your business with AI-powered development tools
+                </p>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-start"
+                    onClick={() => window.open(`https://bolt.new`, '_blank')}
+                  >
+                    <Code className="w-5 h-5 mb-2" />
+                    <div className="text-left">
+                      <div className="font-semibold">Bolt.new</div>
+                      <div className="text-xs text-muted-foreground">AI Full-Stack Dev</div>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-start"
+                    onClick={() => window.open('https://v0.dev', '_blank')}
+                  >
+                    <Code className="w-5 h-5 mb-2" />
+                    <div className="text-left">
+                      <div className="font-semibold">v0 by Vercel</div>
+                      <div className="text-xs text-muted-foreground">UI Generation</div>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-start"
+                    onClick={() => window.open(`https://replit.com/new?description=${encodeURIComponent(featuredIdea?.description || '')}`, '_blank')}
+                  >
+                    <Code className="w-5 h-5 mb-2" />
+                    <div className="text-left">
+                      <div className="font-semibold">Replit Agent</div>
+                      <div className="text-xs text-muted-foreground">Build with AI</div>
+                    </div>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto py-4 flex flex-col items-start"
+                    onClick={() => window.open('https://cursor.sh', '_blank')}
+                  >
+                    <Code className="w-5 h-5 mb-2" />
+                    <div className="text-left">
+                      <div className="font-semibold">Cursor IDE</div>
+                      <div className="text-xs text-muted-foreground">AI Code Editor</div>
+                    </div>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Categorization */}
+            {(featuredIdea.type || featuredIdea.market || featuredIdea.targetAudience) && (
+              <Card>
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4">Categorization</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {featuredIdea.type && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Type</div>
+                        <Badge variant="secondary">{featuredIdea.type}</Badge>
+                      </div>
+                    )}
+                    {featuredIdea.market && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Market</div>
+                        <Badge variant="secondary">{featuredIdea.market}</Badge>
+                      </div>
+                    )}
+                    {featuredIdea.targetAudience && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Target</div>
+                        <Badge variant="secondary">{featuredIdea.targetAudience}</Badge>
+                      </div>
+                    )}
+                    {featuredIdea.mainCompetitor && (
+                      <div>
+                        <div className="text-sm text-muted-foreground mb-1">Main Competitor</div>
+                        <Badge variant="secondary">{featuredIdea.mainCompetitor}</Badge>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Idea Actions */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-bold mb-4">Idea Actions</h3>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Button
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => setLocation(`/ai-chat/${featuredIdea.slug}`)}
+                    data-testid="button-ai-chat-action"
+                  >
+                    <Brain className="w-4 h-4 mr-2" />
+                    Get Instant Answers
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start"
+                    data-testid="button-download-data"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Data
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => setLocation('/founder-fit')}
+                    data-testid="button-founder-fit-action"
+                  >
+                    <Brain className="w-4 h-4 mr-2" />
+                    Founder Fit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="justify-start"
+                    data-testid="button-claim-idea"
+                  >
+                    <Lock className="w-4 h-4 mr-2" />
+                    Claim Idea
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Rating Section */}
+            <Card>
+              <CardContent className="p-8 text-center">
+                <h3 className="text-xl font-bold mb-4">What'd you think of this idea?</h3>
+                <div className="flex justify-center gap-2 mb-2">
+                  {[1, 2, 3, 4, 5].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => handleRating(rating)}
+                      className={`transition-all ${
+                        selectedRating && selectedRating >= rating
+                          ? 'scale-110'
+                          : 'opacity-50 hover:opacity-100'
+                      }`}
+                      data-testid={`button-rating-${rating}`}
+                    >
+                      <Star
+                        className={`w-10 h-10 ${
+                          selectedRating && selectedRating >= rating
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'fill-gray-300 text-gray-300'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {selectedRating === 5 && "Chef's kiss"}
+                  {selectedRating === 4 && "Pretty interesting"}
+                  {selectedRating === 3 && "It's okay"}
+                  {selectedRating === 2 && "Not for me"}
+                  {selectedRating === 1 && "Not interested"}
+                </p>
+              </CardContent>
+            </Card>
           </div>
         ) : (
           <Card className="max-w-4xl mx-auto">
@@ -308,6 +595,7 @@ export default function TopIdeas() {
             onClick={() => setLocation('/database')}
             data-testid="button-browse-all"
           >
+            <TrendingUp className="w-4 h-4 mr-2" />
             Browse All Ideas
           </Button>
         </div>
