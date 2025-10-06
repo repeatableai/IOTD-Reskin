@@ -614,7 +614,7 @@ export default function TopIdeas() {
 // Database Preview Component
 function DatabasePreview() {
   const { data: ideas, isLoading } = useQuery<any>({
-    queryKey: ["/api/ideas", { limit: 6, sortBy: "newest" }],
+    queryKey: ["/api/ideas?limit=6&sortBy=newest"],
   });
 
   const [, setLocation] = useLocation();
