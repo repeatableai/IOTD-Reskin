@@ -32,7 +32,8 @@ import {
   Activity,
   Search,
   Star,
-  Award
+  Award,
+  Check
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -985,6 +986,75 @@ export default function IdeaDetail() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Research Tool Promotional Section */}
+            {!researchReport && (
+              <Card className="bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-purple-950 dark:via-pink-950 dark:to-blue-950 border-2 border-purple-200 dark:border-purple-800">
+                <CardContent className="p-8">
+                  <div className="flex items-start gap-4">
+                    <div className="p-4 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                      <TrendingUp className="w-8 h-8 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-2xl font-bold mb-2">Get AI-Powered Market Research</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Generate a comprehensive market analysis report for this idea in seconds. Our AI analyzes market size, competition, customer segments, revenue potential, and provides actionable next steps.
+                      </p>
+                      <ul className="space-y-2 mb-6">
+                        <li className="flex items-center gap-2 text-sm">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          <span>Market size and growth analysis</span>
+                        </li>
+                        <li className="flex items-center gap-2 text-sm">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          <span>Competitive landscape overview</span>
+                        </li>
+                        <li className="flex items-center gap-2 text-sm">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          <span>Revenue projections and business model</span>
+                        </li>
+                        <li className="flex items-center gap-2 text-sm">
+                          <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-3 h-3 text-white" />
+                          </div>
+                          <span>Risk assessment and mitigation strategies</span>
+                        </li>
+                      </ul>
+                      <Button 
+                        size="lg"
+                        onClick={generateResearchReport}
+                        disabled={isGeneratingReport || !isAuthenticated}
+                        className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                        data-testid="button-generate-research"
+                      >
+                        {isGeneratingReport ? (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2 animate-spin" />
+                            Generating Research...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            Generate Research Report
+                          </>
+                        )}
+                      </Button>
+                      {!isAuthenticated && (
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Sign in to generate AI research reports
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
