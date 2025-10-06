@@ -12,23 +12,28 @@ export default function MarketInsights() {
 
   const ideas = response?.ideas;
 
+  const getEngagement = (idea: Idea): number => {
+    if (!idea.communitySignals || typeof idea.communitySignals !== 'object') return 0;
+    return (idea.communitySignals as any).engagement || 0;
+  };
+
   const getIdeasWithSignals = () => {
     if (!ideas) return [];
-    return ideas.filter(idea => idea.communityEngagement && parseInt(idea.communityEngagement) > 0);
+    return ideas.filter(idea => getEngagement(idea) > 0);
   };
 
   const getTopEngagementIdeas = () => {
     if (!ideas) return [];
     return [...ideas]
-      .filter(idea => idea.communityEngagement)
-      .sort((a, b) => parseInt(b.communityEngagement || "0") - parseInt(a.communityEngagement || "0"))
+      .filter(idea => getEngagement(idea) > 0)
+      .sort((a, b) => getEngagement(b) - getEngagement(a))
       .slice(0, 10);
   };
 
   const getRecentSignals = () => {
     if (!ideas) return [];
     return [...ideas]
-      .filter(idea => idea.communityEngagement)
+      .filter(idea => getEngagement(idea) > 0)
       .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
       .slice(0, 10);
   };
@@ -39,7 +44,7 @@ export default function MarketInsights() {
 
   const totalSignals = ideasWithSignals.length;
   const avgEngagement = ideasWithSignals.length > 0
-    ? ideasWithSignals.reduce((sum, idea) => sum + parseInt(idea.communityEngagement || "0"), 0) / ideasWithSignals.length
+    ? ideasWithSignals.reduce((sum, idea) => sum + getEngagement(idea), 0) / ideasWithSignals.length
     : 0;
 
   return (
@@ -146,7 +151,7 @@ export default function MarketInsights() {
                     </div>
                   ) : (
                     topEngagement.map((idea) => (
-                      <Link key={idea.id} href={`/ideas/${idea.slug}`}>
+                      <Link key={idea.id} href={`/idea/${idea.slug}`}>
                         <div
                           className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
                           data-testid={`insight-card-${idea.id}`}
@@ -159,7 +164,7 @@ export default function MarketInsights() {
                               </span>
                               <div className="flex items-center text-green-600 font-semibold">
                                 <Users className="w-4 h-4 mr-1" />
-                                {idea.communityEngagement}
+                                {getEngagement(idea)}
                               </div>
                             </div>
                           </div>
@@ -188,7 +193,7 @@ export default function MarketInsights() {
                     </div>
                   ) : (
                     recentSignals.map((idea) => (
-                      <Link key={idea.id} href={`/ideas/${idea.slug}`}>
+                      <Link key={idea.id} href={`/idea/${idea.slug}`}>
                         <div
                           className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
                           data-testid={`recent-signal-card-${idea.id}`}
@@ -201,7 +206,7 @@ export default function MarketInsights() {
                               </span>
                               <div className="flex items-center text-green-600 font-semibold">
                                 <Users className="w-4 h-4 mr-1" />
-                                {idea.communityEngagement}
+                                {getEngagement(idea)}
                               </div>
                             </div>
                           </div>
