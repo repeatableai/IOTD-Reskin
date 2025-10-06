@@ -1,47 +1,41 @@
 import Header from "@/components/Header";
-import { HelpCircle } from "lucide-react";
+import { HelpCircle, Search, ThumbsUp, ThumbsDown } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useState } from "react";
+import type { FaqQuestion } from "@shared/schema";
 
 export default function FAQ() {
-  const faqs = [
-    {
-      question: "What is the Idea Database?",
-      answer: "The Idea Database is a curated collection of 400+ validated startup opportunities. Each idea includes comprehensive research, market analysis, opportunity scoring, and community insights to help you make informed decisions.",
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  
+  const { data: faqQuestions, isLoading } = useQuery<FaqQuestion[]>({
+    queryKey: ["/api/faq", selectedCategory === "all" ? undefined : selectedCategory],
+  });
+
+  const voteMutation = useMutation({
+    mutationFn: ({ id, helpful }: { id: string; helpful: boolean }) =>
+      apiRequest('POST', `/api/faq/${id}/vote`, { helpful }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/faq"] });
     },
-    {
-      question: "How do you score ideas?",
-      answer: "We use a multi-factor scoring system that evaluates market opportunity, problem severity, execution difficulty, and competitive landscape. Each idea receives scores for opportunity potential, problem validation, and overall feasibility.",
-    },
-    {
-      question: "What's included in a PRO plan?",
-      answer: "PRO plan members get access to custom research reports (delivered in 24 hours), the Idea Builder tool for creating actionable plans, unlimited AI Chat conversations, and early access to new features.",
-    },
-    {
-      question: "Can I submit my own ideas?",
-      answer: "Yes! Authenticated users can submit ideas through the Create Idea page. All submissions go through our research and validation process before being added to the database.",
-    },
-    {
-      question: "How often is the database updated?",
-      answer: "We add new ideas weekly and continuously update existing ideas with fresh market data, trends, and community signals. The Idea of the Day is refreshed daily.",
-    },
-    {
-      question: "What is Founder Fit?",
-      answer: "Founder Fit is a tool that matches startup ideas to your skills, experience, and interests. It helps you identify which opportunities align best with your background and increases your chances of success.",
-    },
-    {
-      question: "How does the AI Chat work?",
-      answer: "The AI Chat allows you to have in-depth conversations about any idea in the database. You can ask questions about market size, competition, implementation details, and get strategic advice powered by AI.",
-    },
-    {
-      question: "What are Community Signals?",
-      answer: "Community Signals are real-time indicators we track from online communities (Reddit, Twitter, forums) showing genuine interest and discussion around specific problems and opportunities.",
-    },
-  ];
+  });
+
+  const filteredFaqs = faqQuestions?.filter((faq) =>
+    faq.question.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    faq.answer.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
+
+  const categories = ["all", "general", "features", "billing", "technical"];
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,28 +47,110 @@ export default function FAQ() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Frequently Asked Questions</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Common questions answered
+            Find answers to common questions
           </p>
         </div>
 
+        <div className="max-w-3xl mx-auto mb-8">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-5 h-5" />
+            <Input
+              type="text"
+              placeholder="Search questions..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+              data-testid="input-faq-search"
+            />
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto mb-8">
+          <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
+            <TabsList className="grid w-full grid-cols-5">
+              {categories.map((category) => (
+                <TabsTrigger
+                  key={category}
+                  value={category}
+                  data-testid={`tab-${category}`}
+                  className="capitalize"
+                >
+                  {category}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+        </div>
+
         <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
-            {faqs.map((faq, index) => (
-              <AccordionItem
-                key={index}
-                value={`item-${index}`}
-                className="border rounded-lg px-6"
-                data-testid={`faq-${index}`}
-              >
-                <AccordionTrigger className="text-left font-semibold hover:no-underline">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+          {isLoading ? (
+            <div className="text-center py-12 text-muted-foreground">
+              Loading FAQs...
+            </div>
+          ) : filteredFaqs.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              No questions found matching your search.
+            </div>
+          ) : (
+            <Accordion type="single" collapsible className="space-y-4">
+              {filteredFaqs.map((faq) => (
+                <AccordionItem
+                  key={faq.id}
+                  value={faq.id}
+                  className="border rounded-lg px-6"
+                  data-testid={`faq-${faq.id}`}
+                >
+                  <AccordionTrigger className="text-left font-semibold hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="text-muted-foreground mb-4">
+                      {faq.answer}
+                    </div>
+                    <div className="flex items-center gap-4 pt-4 border-t">
+                      <span className="text-sm text-muted-foreground">
+                        Was this helpful?
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => voteMutation.mutate({ id: faq.id, helpful: true })}
+                          disabled={voteMutation.isPending}
+                          data-testid={`button-helpful-${faq.id}`}
+                          className="gap-1"
+                        >
+                          <ThumbsUp className="w-4 h-4" />
+                          <span className="text-xs">{faq.helpful}</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => voteMutation.mutate({ id: faq.id, helpful: false })}
+                          disabled={voteMutation.isPending}
+                          data-testid={`button-not-helpful-${faq.id}`}
+                          className="gap-1"
+                        >
+                          <ThumbsDown className="w-4 h-4" />
+                          <span className="text-xs">{faq.notHelpful}</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          )}
+        </div>
+
+        <div className="max-w-3xl mx-auto mt-12 text-center border rounded-lg p-8">
+          <h2 className="text-2xl font-semibold mb-2">Still have questions?</h2>
+          <p className="text-muted-foreground mb-4">
+            Can't find the answer you're looking for? Get in touch with our support team.
+          </p>
+          <Button data-testid="button-contact-support">
+            <a href="/contact">Contact Support</a>
+          </Button>
         </div>
       </div>
     </div>
