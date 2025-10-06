@@ -32,7 +32,7 @@ export interface IStorage {
   createIdea(idea: InsertIdea): Promise<Idea>;
   updateIdea(id: string, idea: Partial<InsertIdea>): Promise<Idea>;
   deleteIdea(id: string): Promise<void>;
-  getFeaturedIdea(): Promise<Idea | undefined>;
+  getFeaturedIdea(date?: string): Promise<Idea | undefined>;
   getTopIdeas(limit: number): Promise<Idea[]>;
   incrementIdeaView(id: string): Promise<void>;
   
@@ -188,14 +188,31 @@ export class DatabaseStorage implements IStorage {
     await db.delete(ideas).where(eq(ideas.id, id));
   }
 
-  async getFeaturedIdea(): Promise<Idea | undefined> {
-    const [idea] = await db
+  async getFeaturedIdea(date?: string): Promise<Idea | undefined> {
+    // Get all published ideas
+    const allIdeas = await db
       .select()
       .from(ideas)
-      .where(and(eq(ideas.isFeatured, true), eq(ideas.isPublished, true)))
-      .orderBy(desc(ideas.createdAt))
-      .limit(1);
-    return idea;
+      .where(eq(ideas.isPublished, true))
+      .orderBy(asc(ideas.createdAt)); // Consistent ordering
+    
+    if (allIdeas.length === 0) {
+      return undefined;
+    }
+    
+    // Use date to deterministically select an idea
+    const dateStr = date || new Date().toISOString().split('T')[0];
+    
+    // Simple hash function to convert date string to a number
+    let hash = 0;
+    for (let i = 0; i < dateStr.length; i++) {
+      hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Use absolute value and modulo to get an index
+    const index = Math.abs(hash) % allIdeas.length;
+    return allIdeas[index];
   }
 
   async getTopIdeas(limit: number): Promise<Idea[]> {

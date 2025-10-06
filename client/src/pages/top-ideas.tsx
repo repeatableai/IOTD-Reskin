@@ -27,8 +27,15 @@ export default function TopIdeas() {
   const [showReminder, setShowReminder] = useState(false);
   const { toast } = useToast();
 
+  const dateString = format(selectedDate, 'yyyy-MM-dd');
+  
   const { data: featuredIdea, isLoading } = useQuery<any>({
-    queryKey: ["/api/ideas/featured"],
+    queryKey: ["/api/ideas/featured", dateString],
+    queryFn: async () => {
+      const response = await fetch(`/api/ideas/featured?date=${dateString}`);
+      if (!response.ok) throw new Error('Failed to fetch featured idea');
+      return response.json();
+    },
   });
 
   const handlePreviousDay = () => {

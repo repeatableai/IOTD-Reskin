@@ -38,7 +38,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/ideas/featured', async (req, res) => {
     try {
-      const idea = await storage.getFeaturedIdea();
+      const date = req.query.date as string | undefined;
+      const idea = await storage.getFeaturedIdea(date);
       if (!idea) {
         return res.status(404).json({ message: "No featured idea found" });
       }
