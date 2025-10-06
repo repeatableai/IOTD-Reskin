@@ -93,7 +93,9 @@ export class DatabaseStorage implements IStorage {
         ilike(ideas.description, `%${filters.search}%`),
         ilike(ideas.keyword, `%${filters.search}%`)
       );
-      conditions.push(searchCondition);
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
     }
 
     if (filters.market) {
@@ -283,49 +285,13 @@ export class DatabaseStorage implements IStorage {
 
   async getUserSavedIdeas(userId: string): Promise<Idea[]> {
     const result = await db
-      .select({
-        id: ideas.id,
-        title: ideas.title,
-        subtitle: ideas.subtitle,
-        slug: ideas.slug,
-        description: ideas.description,
-        content: ideas.content,
-        imageUrl: ideas.imageUrl,
-        type: ideas.type,
-        market: ideas.market,
-        targetAudience: ideas.targetAudience,
-        mainCompetitor: ideas.mainCompetitor,
-        keyword: ideas.keyword,
-        keywordVolume: ideas.keywordVolume,
-        keywordGrowth: ideas.keywordGrowth,
-        opportunityScore: ideas.opportunityScore,
-        opportunityLabel: ideas.opportunityLabel,
-        problemScore: ideas.problemScore,
-        problemLabel: ideas.problemLabel,
-        feasibilityScore: ideas.feasibilityScore,
-        feasibilityLabel: ideas.feasibilityLabel,
-        timingScore: ideas.timingScore,
-        timingLabel: ideas.timingLabel,
-        executionScore: ideas.executionScore,
-        gtmScore: ideas.gtmScore,
-        revenuePotential: ideas.revenuePotential,
-        revenuePotentialNum: ideas.revenuePotentialNum,
-        executionDifficulty: ideas.executionDifficulty,
-        gtmStrength: ideas.gtmStrength,
-        viewCount: ideas.viewCount,
-        saveCount: ideas.saveCount,
-        voteCount: ideas.voteCount,
-        isPublished: ideas.isPublished,
-        isFeatured: ideas.isFeatured,
-        createdAt: ideas.createdAt,
-        updatedAt: ideas.updatedAt,
-      })
+      .select()
       .from(ideas)
       .innerJoin(userSavedIdeas, eq(ideas.id, userSavedIdeas.ideaId))
       .where(eq(userSavedIdeas.userId, userId))
       .orderBy(desc(userSavedIdeas.createdAt));
     
-    return result;
+    return result.map(row => row.ideas);
   }
 
   async voteOnIdea(userId: string, ideaId: string, voteType: 'up' | 'down'): Promise<void> {
