@@ -13,15 +13,15 @@
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(222, 84%, 5%);
   --primary: hsl(262, 83%, 58%);
-  --primary-foreground: hsl(210, 40%, 98%);
+  --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(142, 76%, 36%);
-  --secondary-foreground: hsl(222, 84%, 5%);
+  --secondary-foreground: hsl(0, 0%, 100%);
   --muted: hsl(210, 40%, 96%);
-  --muted-foreground: hsl(215, 16%, 47%);
+  --muted-foreground: hsl(215, 20%, 35%);
   --accent: hsl(346, 87%, 70%);
   --accent-foreground: hsl(222, 84%, 5%);
   --destructive: hsl(0, 84%, 60%);
-  --destructive-foreground: hsl(210, 40%, 98%);
+  --destructive-foreground: hsl(0, 0%, 100%);
   --border: hsl(214, 32%, 91%);
   --input: hsl(214, 32%, 91%);
   --ring: hsl(262, 83%, 58%);
@@ -62,24 +62,24 @@
 }
 
 .dark {
-  --background: hsl(0, 0%, 0%);
-  --foreground: hsl(200, 6.6667%, 91.1765%);
-  --card: hsl(228, 9.8039%, 10%);
-  --card-foreground: hsl(0, 0%, 85.0980%);
-  --popover: hsl(0, 0%, 0%);
-  --popover-foreground: hsl(200, 6.6667%, 91.1765%);
+  --background: hsl(222, 47%, 11%);
+  --foreground: hsl(210, 40%, 98%);
+  --card: hsl(222, 47%, 14%);
+  --card-foreground: hsl(210, 40%, 98%);
+  --popover: hsl(222, 47%, 11%);
+  --popover-foreground: hsl(210, 40%, 98%);
   --primary: hsl(262, 83%, 58%);
   --primary-foreground: hsl(0, 0%, 100%);
-  --secondary: hsl(195, 15.3846%, 94.9020%);
-  --secondary-foreground: hsl(210, 25%, 7.8431%);
-  --muted: hsl(0, 0%, 9.4118%);
-  --muted-foreground: hsl(210, 3.3898%, 46.2745%);
-  --accent: hsl(205.7143, 70%, 7.8431%);
-  --accent-foreground: hsl(346, 87%, 70%);
+  --secondary: hsl(142, 76%, 36%);
+  --secondary-foreground: hsl(0, 0%, 100%);
+  --muted: hsl(217, 33%, 17%);
+  --muted-foreground: hsl(215, 20%, 65%);
+  --accent: hsl(346, 77%, 65%);
+  --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84%, 60%);
   --destructive-foreground: hsl(0, 0%, 100%);
-  --border: hsl(210, 5.2632%, 14.9020%);
-  --input: hsl(207.6923, 27.6596%, 18.4314%);
+  --border: hsl(217, 33%, 17%);
+  --input: hsl(217, 33%, 17%);
   --ring: hsl(262, 83%, 58%);
   --chart-1: hsl(346, 87%, 70%);
   --chart-2: hsl(262, 83%, 58%);
@@ -141,19 +141,19 @@
 
 /* Score Display Styles */
 .score-excellent { 
-  @apply bg-green-50 text-green-700 border-green-200; 
+  @apply bg-green-100 text-green-900 border-green-300; 
 }
 
 .score-good { 
-  @apply bg-blue-50 text-blue-700 border-blue-200; 
+  @apply bg-blue-100 text-blue-900 border-blue-300; 
 }
 
 .score-moderate { 
-  @apply bg-yellow-50 text-yellow-700 border-yellow-200; 
+  @apply bg-yellow-100 text-yellow-900 border-yellow-300; 
 }
 
 .score-challenging { 
-  @apply bg-orange-50 text-orange-700 border-orange-200; 
+  @apply bg-orange-100 text-orange-900 border-orange-300; 
 }
 
 /* Idea Card Animations */
