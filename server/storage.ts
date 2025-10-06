@@ -5,6 +5,7 @@ import {
   ideaTags,
   userSavedIdeas,
   userIdeaVotes,
+  userIdeaRatings,
   communitySignals,
   type User,
   type UpsertUser,
@@ -49,6 +50,11 @@ export interface IStorage {
   voteOnIdea(userId: string, ideaId: string, voteType: 'up' | 'down'): Promise<void>;
   removeVoteOnIdea(userId: string, ideaId: string): Promise<void>;
   getUserVoteOnIdea(userId: string, ideaId: string): Promise<'up' | 'down' | null>;
+  
+  // Claim and rating operations
+  claimIdea(ideaId: string, userId: string): Promise<void>;
+  rateIdea(userId: string, ideaId: string, rating: number): Promise<void>;
+  getUserRating(userId: string, ideaId: string): Promise<number | null>;
   
   // Community signals
   getCommunitySignalsForIdea(ideaId: string): Promise<CommunitySignal[]>;
@@ -116,35 +122,37 @@ export class DatabaseStorage implements IStorage {
 
     const whereCondition = and(...conditions);
 
-    // Build the main query
-    let query = db.select().from(ideas).where(whereCondition);
-
-    // Sorting
+    // Determine ordering based on sortBy
+    let orderByClause;
     switch (filters.sortBy) {
       case 'popular':
-        query = query.orderBy(desc(ideas.voteCount), desc(ideas.viewCount));
+        orderByClause = [desc(ideas.voteCount), desc(ideas.viewCount)];
         break;
       case 'opportunity':
-        query = query.orderBy(desc(ideas.opportunityScore), desc(ideas.createdAt));
+        orderByClause = [desc(ideas.opportunityScore), desc(ideas.createdAt)];
         break;
       case 'revenue':
-        query = query.orderBy(desc(ideas.revenuePotentialNum), desc(ideas.createdAt));
+        orderByClause = [desc(ideas.revenuePotentialNum), desc(ideas.createdAt)];
         break;
       default: // newest
-        query = query.orderBy(desc(ideas.createdAt));
+        orderByClause = [desc(ideas.createdAt)];
         break;
     }
 
-    // Pagination
-    query = query.limit(filters.limit).offset(filters.offset);
+    // Build and execute the main query with all clauses in one chain
+    const ideasResult = await db
+      .select()
+      .from(ideas)
+      .where(whereCondition)
+      .orderBy(...orderByClause)
+      .limit(filters.limit)
+      .offset(filters.offset);
 
     // Count query
-    const countQuery = db.select({ count: sql`count(*)` }).from(ideas).where(whereCondition);
-
-    const [ideasResult, countResult] = await Promise.all([
-      query,
-      countQuery
-    ]);
+    const countResult = await db
+      .select({ count: sql`count(*)` })
+      .from(ideas)
+      .where(whereCondition);
 
     return {
       ideas: ideasResult,
@@ -356,6 +364,51 @@ export class DatabaseStorage implements IStorage {
   async createCommunitySignal(signal: InsertCommunitySignal): Promise<CommunitySignal> {
     const [newSignal] = await db.insert(communitySignals).values(signal).returning();
     return newSignal;
+  }
+
+  // Claim and rating operations
+  async claimIdea(ideaId: string, userId: string): Promise<void> {
+    await db
+      .update(ideas)
+      .set({ claimedBy: userId })
+      .where(eq(ideas.id, ideaId));
+  }
+
+  async rateIdea(userId: string, ideaId: string, rating: number): Promise<void> {
+    // Upsert user rating
+    await db
+      .insert(userIdeaRatings)
+      .values({ userId, ideaId, rating })
+      .onConflictDoUpdate({
+        target: [userIdeaRatings.userId, userIdeaRatings.ideaId],
+        set: { rating }
+      });
+
+    // Recalculate average rating
+    const ratings = await db
+      .select({ rating: userIdeaRatings.rating })
+      .from(userIdeaRatings)
+      .where(eq(userIdeaRatings.ideaId, ideaId));
+
+    const averageRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+    const ratingCount = ratings.length;
+
+    await db
+      .update(ideas)
+      .set({ 
+        averageRating: averageRating.toFixed(2),
+        ratingCount 
+      })
+      .where(eq(ideas.id, ideaId));
+  }
+
+  async getUserRating(userId: string, ideaId: string): Promise<number | null> {
+    const [rating] = await db
+      .select({ rating: userIdeaRatings.rating })
+      .from(userIdeaRatings)
+      .where(and(eq(userIdeaRatings.userId, userId), eq(userIdeaRatings.ideaId, ideaId)));
+    
+    return rating ? rating.rating : null;
   }
 }
 

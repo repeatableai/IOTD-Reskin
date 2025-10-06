@@ -27,6 +27,35 @@ interface IdeaFormData {
   sourceType: 'user_import' | 'user_generated';
   sourceData: string;
   imageFile?: File;
+  
+  // AI-generated comprehensive fields
+  mainCompetitor?: string;
+  revenuePotential?: string;
+  executionDifficulty?: string;
+  gtmStrength?: string;
+  opportunityScore?: number;
+  problemScore?: number;
+  feasibilityScore?: number;
+  timingScore?: number;
+  executionScore?: number;
+  gtmScore?: number;
+  opportunityLabel?: string;
+  problemLabel?: string;
+  feasibilityLabel?: string;
+  timingLabel?: string;
+  keywordVolume?: number;
+  keywordGrowth?: number;
+  
+  // Detailed analysis sections
+  offerTiers?: any;
+  whyNowAnalysis?: string;
+  proofSignals?: string;
+  marketGap?: string;
+  executionPlan?: string;
+  frameworkData?: any;
+  trendAnalysis?: string;
+  keywordData?: any;
+  builderPrompts?: any;
 }
 
 export default function CreateIdea() {
@@ -229,7 +258,7 @@ export default function CreateIdea() {
       const response = await apiRequest('POST', '/api/ai/generate-idea', aiParams);
       const generatedIdea = await response.json();
       
-      // Map AI response to form data
+      // Map AI response to form data with all comprehensive fields
       setFormData(prev => ({
         ...prev,
         title: generatedIdea.title,
@@ -240,6 +269,31 @@ export default function CreateIdea() {
         market: generatedIdea.market,
         targetAudience: generatedIdea.targetAudience,
         keyword: generatedIdea.keyword,
+        mainCompetitor: generatedIdea.mainCompetitor,
+        revenuePotential: generatedIdea.revenuePotential,
+        executionDifficulty: generatedIdea.executionDifficulty,
+        gtmStrength: generatedIdea.gtmStrength,
+        opportunityScore: generatedIdea.opportunityScore,
+        problemScore: generatedIdea.problemScore,
+        feasibilityScore: generatedIdea.feasibilityScore,
+        timingScore: generatedIdea.timingScore,
+        executionScore: generatedIdea.executionScore,
+        gtmScore: generatedIdea.gtmScore,
+        opportunityLabel: generatedIdea.opportunityLabel,
+        problemLabel: generatedIdea.problemLabel,
+        feasibilityLabel: generatedIdea.feasibilityLabel,
+        timingLabel: generatedIdea.timingLabel,
+        keywordVolume: generatedIdea.keywordVolume,
+        keywordGrowth: generatedIdea.keywordGrowth,
+        offerTiers: generatedIdea.offerTiers,
+        whyNowAnalysis: generatedIdea.whyNowAnalysis,
+        proofSignals: generatedIdea.proofSignals,
+        marketGap: generatedIdea.marketGap,
+        executionPlan: generatedIdea.executionPlan,
+        frameworkData: generatedIdea.frameworkData,
+        trendAnalysis: generatedIdea.trendAnalysis,
+        keywordData: generatedIdea.keywordData,
+        builderPrompts: generatedIdea.builderPrompts,
         sourceType: 'user_generated',
         sourceData: 'AI Generated',
       }));

@@ -145,6 +145,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Claim idea route
+  app.post('/api/ideas/:id/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      await storage.claimIdea(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error claiming idea:", error);
+      res.status(500).json({ message: "Failed to claim idea" });
+    }
+  });
+
+  // Rate idea route
+  app.post('/api/ideas/:id/rate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { rating } = req.body;
+      
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+      
+      await storage.rateIdea(userId, id, rating);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error rating idea:", error);
+      res.status(500).json({ message: "Failed to rate idea" });
+    }
+  });
+
+  // Get user rating
+  app.get('/api/ideas/:id/rating', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const rating = await storage.getUserRating(userId, id);
+      res.json({ rating });
+    } catch (error) {
+      console.error("Error fetching user rating:", error);
+      res.status(500).json({ message: "Failed to fetch user rating" });
+    }
+  });
+
+  // Export idea data
+  app.get('/api/ideas/:id/export', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const idea = await storage.getIdeaById(id);
+      
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Return idea as downloadable JSON
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.json"`);
+      res.json(idea);
+    } catch (error) {
+      console.error("Error exporting idea:", error);
+      res.status(500).json({ message: "Failed to export idea" });
+    }
+  });
+
   app.get('/api/users/saved-ideas', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
