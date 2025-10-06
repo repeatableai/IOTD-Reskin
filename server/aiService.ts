@@ -369,6 +369,37 @@ Make the analysis realistic, data-driven, and actionable. Focus on practical ins
       throw new Error('Failed to parse AI-generated research report');
     }
   }
+
+  async generateChatResponse(idea: any, userMessage: string, history: Array<{ role: string; content: string }>): Promise<string> {
+    const context = `
+Idea: ${idea.title}
+Description: ${idea.description}
+Market: ${idea.market}
+Target Audience: ${idea.targetAudience}
+Opportunity Score: ${idea.opportunityScore}/10
+Problem Score: ${idea.problemScore}/10
+Execution Difficulty: ${idea.executionDifficulty}
+${idea.content ? `\nDetailed Analysis: ${idea.content}` : ''}
+    `;
+
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: `You are an expert startup advisor and business consultant. You're helping entrepreneurs understand and evaluate the following startup idea:\n\n${context}\n\nProvide helpful, practical, and insightful answers to questions about this idea. Be concise but thorough. Focus on actionable advice.`
+      },
+      ...history.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      })),
+      {
+        role: "user" as const,
+        content: userMessage
+      }
+    ];
+
+    const response = await this.callOpenAI(messages);
+    return response;
+  }
 }
 
 export const aiService = new AIService();

@@ -13,6 +13,8 @@ import TopIdeas from "@/pages/top-ideas";
 import Features from "@/pages/features";
 import Pricing from "@/pages/pricing";
 import CreateIdea from "@/pages/create-idea";
+import FounderFit from "@/pages/founder-fit";
+import AIChat from "@/pages/ai-chat";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -27,6 +29,8 @@ function Router() {
           <Route path="/top-ideas" component={TopIdeas} />
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
+          <Route path="/founder-fit" component={FounderFit} />
+          <Route path="/ai-chat/:slug" component={AIChat} />
         </>
       ) : (
         <>
@@ -37,6 +41,8 @@ function Router() {
           <Route path="/features" component={Features} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/create-idea" component={CreateIdea} />
+          <Route path="/founder-fit" component={FounderFit} />
+          <Route path="/ai-chat/:slug" component={AIChat} />
         </>
       )}
       <Route component={NotFound} />

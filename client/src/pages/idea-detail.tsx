@@ -1249,7 +1249,21 @@ export default function IdeaDetail() {
                     </>
                   )}
                 </Button>
-                <Button variant="outline" className="w-full" data-testid="button-founder-fit">
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => setLocation(`/ai-chat/${params?.slug}`)}
+                  data-testid="button-ai-chat"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  AI Chat
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full" 
+                  onClick={() => setLocation('/founder-fit')}
+                  data-testid="button-founder-fit"
+                >
                   <Users className="w-4 h-4 mr-2" />
                   Founder Fit Test
                 </Button>

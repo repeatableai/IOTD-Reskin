@@ -433,6 +433,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI chat for idea Q&A
+  app.post('/api/ai/chat', async (req, res) => {
+    try {
+      // Validate request body
+      const chatSchema = z.object({
+        ideaId: z.string(),
+        message: z.string().min(1),
+        history: z.array(z.object({
+          role: z.enum(['user', 'assistant']),
+          content: z.string(),
+        })).optional(),
+      });
+      
+      const { ideaId, message, history = [] } = chatSchema.parse(req.body);
+      
+      // Get idea details
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Generate chat response using AI service
+      const response = await aiService.generateChatResponse(idea, message, history);
+      
+      res.json({ response });
+    } catch (error) {
+      console.error("Error generating AI chat response:", error);
+      res.status(500).json({ 
+        message: "Failed to generate chat response",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
