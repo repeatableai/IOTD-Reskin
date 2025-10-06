@@ -148,7 +148,7 @@ export default function Tour() {
             Join thousands of entrepreneurs discovering their next opportunity
           </p>
           <div className="flex gap-4 justify-center">
-            <Link href="/ideas">
+            <Link href="/database">
               <Button size="lg" data-testid="button-browse-ideas">
                 Browse Ideas
                 <ArrowRight className="w-5 h-5 ml-2" />

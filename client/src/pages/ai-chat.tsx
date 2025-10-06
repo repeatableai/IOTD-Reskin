@@ -144,7 +144,7 @@ export default function AIChat() {
             variant="ghost" 
             size="sm" 
             className="mb-4"
-            onClick={() => setLocation(`/ideas/${params?.slug}`)}
+            onClick={() => setLocation(`/idea/${params?.slug}`)}
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

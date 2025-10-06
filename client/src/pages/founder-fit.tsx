@@ -233,7 +233,7 @@ export default function FounderFit() {
                   </div>
                   <div className="flex gap-2">
                     <Button 
-                      onClick={() => setLocation(`/ideas/${idea.id}`)}
+                      onClick={() => setLocation(`/idea/${idea.slug || idea.id}`)}
                       data-testid={`button-view-idea-${idea.id}`}
                     >
                       View Full Idea
@@ -254,7 +254,7 @@ export default function FounderFit() {
               <p className="text-muted-foreground mb-4">
                 Browse our full database of startup ideas and filter by your preferences
               </p>
-              <Button onClick={() => setLocation('/ideas')} data-testid="button-browse-all">
+              <Button onClick={() => setLocation('/database')} data-testid="button-browse-all">
                 Browse All Ideas
               </Button>
             </CardContent>
