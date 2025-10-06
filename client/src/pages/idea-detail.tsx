@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "wouter";
+import { useParams, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -11,6 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { 
   Bookmark, 
   BookmarkCheck, 
@@ -39,9 +46,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function IdeaDetail() {
   const { slug } = useParams();
+  const [, setLocation] = useLocation();
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showBuilderDialog, setShowBuilderDialog] = useState(false);
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", slug],
@@ -188,15 +197,11 @@ export default function IdeaDetail() {
 
   const buildIdeaMutation = useMutation({
     mutationFn: async () => {
-      const response = await apiRequest("POST", `/api/ideas/${idea.id}/build`);
-      return await response.json();
+      setShowBuilderDialog(true);
+      return { success: true };
     },
-    onSuccess: (data) => {
-      toast({
-        title: "Success!",
-        description: "Your no-code builder project has been created.",
-      });
-      window.open(data.builderUrl, '_blank');
+    onSuccess: () => {
+      // Dialog is shown via setShowBuilderDialog
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -1322,7 +1327,7 @@ export default function IdeaDetail() {
                 <Button 
                   variant="outline" 
                   className="w-full" 
-                  onClick={() => setLocation(`/ai-chat/${params?.slug}`)}
+                  onClick={() => setLocation(`/ai-chat/${slug}`)}
                   data-testid="button-ai-chat"
                 >
                   <Sparkles className="w-4 h-4 mr-2" />
@@ -1346,6 +1351,127 @@ export default function IdeaDetail() {
           </div>
         </div>
       </div>
+
+      {/* Builder Options Dialog */}
+      <Dialog open={showBuilderDialog} onOpenChange={setShowBuilderDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">Build This Idea</DialogTitle>
+            <DialogDescription>
+              Choose your preferred no-code builder platform to bring this idea to life
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            {/* Replit Builder */}
+            <Card className="cursor-pointer hover:border-primary transition-colors">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                    <Code className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Replit Agent</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Use AI to build your app with natural language. Great for any technical level.
+                    </p>
+                    <Button 
+                      onClick={() => {
+                        window.open(`https://replit.com/new?description=${encodeURIComponent(idea?.description || '')}`, '_blank');
+                        setShowBuilderDialog(false);
+                      }}
+                      data-testid="button-build-replit"
+                    >
+                      Build with Replit →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bolt.new */}
+            <Card className="cursor-pointer hover:border-primary transition-colors">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <Rocket className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Bolt.new</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      AI-powered full-stack development. Build and deploy web apps instantly.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        window.open(`https://bolt.new`, '_blank');
+                        setShowBuilderDialog(false);
+                      }}
+                      data-testid="button-build-bolt"
+                    >
+                      Build with Bolt →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* v0.dev */}
+            <Card className="cursor-pointer hover:border-primary transition-colors">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">v0 by Vercel</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Generate UI components with AI. Perfect for React and Next.js projects.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        window.open('https://v0.dev', '_blank');
+                        setShowBuilderDialog(false);
+                      }}
+                      data-testid="button-build-v0"
+                    >
+                      Build with v0 →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Cursor */}
+            <Card className="cursor-pointer hover:border-primary transition-colors">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">Cursor IDE</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      AI-first code editor. Build with intelligent code suggestions and pair programming.
+                    </p>
+                    <Button 
+                      variant="outline"
+                      onClick={() => {
+                        window.open('https://cursor.sh', '_blank');
+                        setShowBuilderDialog(false);
+                      }}
+                      data-testid="button-build-cursor"
+                    >
+                      Build with Cursor →
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
