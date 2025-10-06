@@ -7,6 +7,11 @@ import {
   userIdeaVotes,
   userIdeaRatings,
   communitySignals,
+  contactSubmissions,
+  researchRequests,
+  faqQuestions,
+  toolsLibrary,
+  userToolFavorites,
   type User,
   type UpsertUser,
   type Idea,
@@ -16,6 +21,12 @@ import {
   type CommunitySignal,
   type InsertCommunitySignal,
   type IdeaFilters,
+  type ContactSubmission,
+  type InsertContactSubmission,
+  type ResearchRequest,
+  type InsertResearchRequest,
+  type FaqQuestion,
+  type Tool,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
@@ -59,6 +70,22 @@ export interface IStorage {
   // Community signals
   getCommunitySignalsForIdea(ideaId: string): Promise<CommunitySignal[]>;
   createCommunitySignal(signal: InsertCommunitySignal): Promise<CommunitySignal>;
+  
+  // Contact submissions
+  createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission>;
+  
+  // Research requests
+  createResearchRequest(request: InsertResearchRequest): Promise<ResearchRequest>;
+  getUserResearchRequests(userId: string): Promise<ResearchRequest[]>;
+  
+  // FAQ questions
+  getFaqQuestions(category?: string): Promise<FaqQuestion[]>;
+  voteFaqQuestion(id: string, helpful: boolean): Promise<void>;
+  
+  // Tools library
+  getTools(category?: string, search?: string): Promise<Tool[]>;
+  toggleToolFavorite(userId: string, toolId: string): Promise<boolean>;
+  getUserFavoriteTools(userId: string): Promise<Tool[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -392,6 +419,125 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(userIdeaRatings.userId, userId), eq(userIdeaRatings.ideaId, ideaId)));
     
     return rating ? rating.rating : null;
+  }
+
+  // Contact submissions
+  async createContactSubmission(submission: InsertContactSubmission): Promise<ContactSubmission> {
+    const [newSubmission] = await db.insert(contactSubmissions).values(submission).returning();
+    return newSubmission;
+  }
+
+  // Research requests
+  async createResearchRequest(request: InsertResearchRequest): Promise<ResearchRequest> {
+    const [newRequest] = await db.insert(researchRequests).values(request).returning();
+    return newRequest;
+  }
+
+  async getUserResearchRequests(userId: string): Promise<ResearchRequest[]> {
+    return await db
+      .select()
+      .from(researchRequests)
+      .where(eq(researchRequests.userId, userId))
+      .orderBy(desc(researchRequests.createdAt));
+  }
+
+  // FAQ questions
+  async getFaqQuestions(category?: string): Promise<FaqQuestion[]> {
+    const conditions = [eq(faqQuestions.isPublished, true)];
+    
+    if (category) {
+      conditions.push(eq(faqQuestions.category, category));
+    }
+
+    return await db
+      .select()
+      .from(faqQuestions)
+      .where(and(...conditions))
+      .orderBy(asc(faqQuestions.order), desc(faqQuestions.createdAt));
+  }
+
+  async voteFaqQuestion(id: string, helpful: boolean): Promise<void> {
+    const field = helpful ? faqQuestions.helpful : faqQuestions.notHelpful;
+    
+    await db
+      .update(faqQuestions)
+      .set({
+        [helpful ? 'helpful' : 'notHelpful']: sql`${field} + 1`
+      })
+      .where(eq(faqQuestions.id, id));
+  }
+
+  // Tools library
+  async getTools(category?: string, search?: string): Promise<Tool[]> {
+    const conditions = [];
+    
+    if (category) {
+      conditions.push(eq(toolsLibrary.category, category));
+    }
+
+    if (search) {
+      const searchCondition = or(
+        ilike(toolsLibrary.name, `%${search}%`),
+        ilike(toolsLibrary.description, `%${search}%`)
+      );
+      if (searchCondition) {
+        conditions.push(searchCondition);
+      }
+    }
+
+    const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
+
+    return await db
+      .select()
+      .from(toolsLibrary)
+      .where(whereCondition)
+      .orderBy(
+        desc(toolsLibrary.isFeatured),
+        desc(toolsLibrary.isNew),
+        asc(toolsLibrary.name)
+      );
+  }
+
+  async toggleToolFavorite(userId: string, toolId: string): Promise<boolean> {
+    // Check if already favorited
+    const [existing] = await db
+      .select()
+      .from(userToolFavorites)
+      .where(and(eq(userToolFavorites.userId, userId), eq(userToolFavorites.toolId, toolId)));
+
+    if (existing) {
+      // Remove favorite
+      await db
+        .delete(userToolFavorites)
+        .where(and(eq(userToolFavorites.userId, userId), eq(userToolFavorites.toolId, toolId)));
+      return false;
+    } else {
+      // Add favorite
+      await db.insert(userToolFavorites).values({ userId, toolId });
+      return true;
+    }
+  }
+
+  async getUserFavoriteTools(userId: string): Promise<Tool[]> {
+    return await db
+      .select({
+        id: toolsLibrary.id,
+        name: toolsLibrary.name,
+        description: toolsLibrary.description,
+        category: toolsLibrary.category,
+        url: toolsLibrary.url,
+        imageUrl: toolsLibrary.imageUrl,
+        isPremium: toolsLibrary.isPremium,
+        isFeatured: toolsLibrary.isFeatured,
+        isNew: toolsLibrary.isNew,
+        tags: toolsLibrary.tags,
+        createdAt: toolsLibrary.createdAt,
+        updatedAt: toolsLibrary.updatedAt,
+      })
+      .from(userToolFavorites)
+      .innerJoin(toolsLibrary, eq(userToolFavorites.toolId, toolsLibrary.id))
+      .where(eq(userToolFavorites.userId, userId))
+      .orderBy(desc(userToolFavorites.createdAt));
   }
 }
 

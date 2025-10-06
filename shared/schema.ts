@@ -171,6 +171,72 @@ export const userIdeaRatings = pgTable("user_idea_ratings", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Contact submissions table
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  email: varchar("email").notNull(),
+  subject: varchar("subject").notNull(),
+  message: text("message").notNull(),
+  status: varchar("status").default('new'), // new, in_progress, resolved
+  userId: varchar("user_id").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Research requests table
+export const researchRequests = pgTable("research_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  ideaId: varchar("idea_id").references(() => ideas.id),
+  title: varchar("title").notNull(),
+  description: text("description").notNull(),
+  industry: varchar("industry"),
+  targetMarket: varchar("target_market"),
+  status: varchar("status").default('pending'), // pending, in_progress, completed, cancelled
+  priority: varchar("priority").default('normal'), // low, normal, high
+  createdAt: timestamp("created_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+});
+
+// FAQ questions table
+export const faqQuestions = pgTable("faq_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  category: varchar("category").default('general'), // general, billing, features, technical
+  order: integer("order").default(0),
+  helpful: integer("helpful").default(0), // Count of helpful votes
+  notHelpful: integer("not_helpful").default(0), // Count of not helpful votes
+  isPublished: boolean("is_published").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Tools library table
+export const toolsLibrary = pgTable("tools_library", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description").notNull(),
+  category: varchar("category").notNull(), // fundraising, finance, marketing, legal, research, development
+  url: varchar("url"),
+  imageUrl: varchar("image_url"),
+  isPremium: boolean("is_premium").default(false),
+  isFeatured: boolean("is_featured").default(false),
+  isNew: boolean("is_new").default(false),
+  tags: text("tags").array(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User tool favorites
+export const userToolFavorites = pgTable("user_tool_favorites", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  toolId: varchar("tool_id").references(() => toolsLibrary.id, { onDelete: 'cascade' }),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   savedIdeas: many(userSavedIdeas),
@@ -266,6 +332,18 @@ export type CommunitySignal = typeof communitySignals.$inferSelect;
 export type InsertUserIdeaRating = typeof userIdeaRatings.$inferInsert;
 export type UserIdeaRating = typeof userIdeaRatings.$inferSelect;
 
+export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+
+export type InsertResearchRequest = typeof researchRequests.$inferInsert;
+export type ResearchRequest = typeof researchRequests.$inferSelect;
+
+export type InsertFaqQuestion = typeof faqQuestions.$inferInsert;
+export type FaqQuestion = typeof faqQuestions.$inferSelect;
+
+export type InsertTool = typeof toolsLibrary.$inferInsert;
+export type Tool = typeof toolsLibrary.$inferSelect;
+
 // Input schemas
 export const insertIdeaSchema = createInsertSchema(ideas).omit({
   id: true,
@@ -281,6 +359,24 @@ export const insertTagSchema = createInsertSchema(tags).omit({
 export const insertCommunitySignalSchema = createInsertSchema(communitySignals).omit({
   id: true,
   createdAt: true,
+});
+
+export const insertContactSubmissionSchema = createInsertSchema(contactSubmissions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertResearchRequestSchema = createInsertSchema(researchRequests).omit({
+  id: true,
+  createdAt: true,
+  completedAt: true,
+});
+
+export const insertToolSchema = createInsertSchema(toolsLibrary).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
 });
 
 // Search and filter schemas

@@ -468,6 +468,154 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Contact submission
+  app.post('/api/contact', async (req, res) => {
+    try {
+      const contactSchema = z.object({
+        name: z.string().min(1, "Name is required"),
+        email: z.string().email("Valid email is required"),
+        subject: z.string().min(1, "Subject is required"),
+        message: z.string().min(10, "Message must be at least 10 characters"),
+      });
+
+      const data = contactSchema.parse(req.body);
+      const userId = (req as any).user?.claims?.sub;
+
+      const submission = await storage.createContactSubmission({
+        ...data,
+        userId,
+      });
+
+      res.json({ 
+        success: true,
+        message: "Your message has been received! We'll get back to you within 24 hours.",
+        id: submission.id 
+      });
+    } catch (error) {
+      console.error("Error creating contact submission:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to submit contact form" });
+    }
+  });
+
+  // Research request submission
+  app.post('/api/research/request', isAuthenticated, async (req, res) => {
+    try {
+      const researchSchema = z.object({
+        ideaId: z.string().optional(),
+        title: z.string().min(1, "Title is required"),
+        description: z.string().min(20, "Description must be at least 20 characters"),
+        industry: z.string().optional(),
+        targetMarket: z.string().optional(),
+      });
+
+      const data = researchSchema.parse(req.body);
+      const userId = (req as any).user.claims.sub;
+
+      const request = await storage.createResearchRequest({
+        ...data,
+        userId,
+      });
+
+      res.json({ 
+        success: true,
+        message: "Research request submitted! We'll begin work within 24 hours.",
+        request 
+      });
+    } catch (error) {
+      console.error("Error creating research request:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to submit research request" });
+    }
+  });
+
+  // Get user's research requests
+  app.get('/api/research/requests', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const requests = await storage.getUserResearchRequests(userId);
+      res.json(requests);
+    } catch (error) {
+      console.error("Error fetching research requests:", error);
+      res.status(500).json({ message: "Failed to fetch research requests" });
+    }
+  });
+
+  // Get FAQ questions
+  app.get('/api/faq', async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const questions = await storage.getFaqQuestions(category);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching FAQ questions:", error);
+      res.status(500).json({ message: "Failed to fetch FAQ questions" });
+    }
+  });
+
+  // Vote on FAQ helpfulness
+  app.post('/api/faq/:id/vote', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { helpful } = z.object({ helpful: z.boolean() }).parse(req.body);
+      
+      await storage.voteFaqQuestion(id, helpful);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error voting on FAQ:", error);
+      res.status(500).json({ message: "Failed to submit vote" });
+    }
+  });
+
+  // Get tools library
+  app.get('/api/tools', async (req, res) => {
+    try {
+      const category = req.query.category as string | undefined;
+      const search = req.query.search as string | undefined;
+      const tools = await storage.getTools(category, search);
+      res.json(tools);
+    } catch (error) {
+      console.error("Error fetching tools:", error);
+      res.status(500).json({ message: "Failed to fetch tools" });
+    }
+  });
+
+  // Toggle tool favorite
+  app.post('/api/tools/:id/favorite', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const userId = (req as any).user.claims.sub;
+      
+      const isFavorite = await storage.toggleToolFavorite(userId, id);
+      res.json({ success: true, isFavorite });
+    } catch (error) {
+      console.error("Error toggling tool favorite:", error);
+      res.status(500).json({ message: "Failed to update favorite" });
+    }
+  });
+
+  // Get user's favorite tools
+  app.get('/api/tools/favorites', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req as any).user.claims.sub;
+      const tools = await storage.getUserFavoriteTools(userId);
+      res.json(tools);
+    } catch (error) {
+      console.error("Error fetching favorite tools:", error);
+      res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
