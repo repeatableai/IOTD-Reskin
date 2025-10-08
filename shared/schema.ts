@@ -139,6 +139,16 @@ export const userSavedIdeas = pgTable("user_saved_ideas", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// User idea interactions (interested, not interested, building status)
+export const userIdeaInteractions = pgTable("user_idea_interactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  status: varchar("status").notNull(), // 'interested', 'not_interested', 'building', 'saved'
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // User votes on ideas
 export const userIdeaVotes = pgTable("user_idea_votes", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -378,6 +388,9 @@ export const insertToolSchema = createInsertSchema(toolsLibrary).omit({
   createdAt: true,
   updatedAt: true,
 });
+
+export type InsertUserIdeaInteraction = typeof userIdeaInteractions.$inferInsert;
+export type UserIdeaInteraction = typeof userIdeaInteractions.$inferSelect;
 
 // Search and filter schemas
 export const ideaFiltersSchema = z.object({

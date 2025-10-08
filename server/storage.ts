@@ -6,6 +6,7 @@ import {
   userSavedIdeas,
   userIdeaVotes,
   userIdeaRatings,
+  userIdeaInteractions,
   communitySignals,
   contactSubmissions,
   researchRequests,
@@ -27,6 +28,7 @@ import {
   type InsertResearchRequest,
   type FaqQuestion,
   type Tool,
+  type UserIdeaInteraction,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
@@ -86,6 +88,12 @@ export interface IStorage {
   getTools(category?: string, search?: string): Promise<Tool[]>;
   toggleToolFavorite(userId: string, toolId: string): Promise<boolean>;
   getUserFavoriteTools(userId: string): Promise<Tool[]>;
+  
+  // User idea interactions (interested, not interested, building, saved)
+  setIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void>;
+  removeIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void>;
+  getUserIdeaInteraction(userId: string, ideaId: string): Promise<string | null>;
+  getIdeasByInteraction(userId: string, status: string): Promise<Idea[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -538,6 +546,117 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(toolsLibrary, eq(userToolFavorites.toolId, toolsLibrary.id))
       .where(eq(userToolFavorites.userId, userId))
       .orderBy(desc(userToolFavorites.createdAt));
+  }
+
+  // User idea interactions
+  async setIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void> {
+    // First check if interaction exists
+    const [existing] = await db
+      .select()
+      .from(userIdeaInteractions)
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.ideaId, ideaId),
+        eq(userIdeaInteractions.status, status)
+      ));
+
+    if (!existing) {
+      await db.insert(userIdeaInteractions).values({
+        userId,
+        ideaId,
+        status,
+      });
+    }
+  }
+
+  async removeIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void> {
+    await db
+      .delete(userIdeaInteractions)
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.ideaId, ideaId),
+        eq(userIdeaInteractions.status, status)
+      ));
+  }
+
+  async getUserIdeaInteraction(userId: string, ideaId: string): Promise<string | null> {
+    const [interaction] = await db
+      .select()
+      .from(userIdeaInteractions)
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.ideaId, ideaId)
+      ))
+      .orderBy(desc(userIdeaInteractions.updatedAt))
+      .limit(1);
+
+    return interaction?.status || null;
+  }
+
+  async getIdeasByInteraction(userId: string, status: string): Promise<Idea[]> {
+    return await db
+      .select({
+        id: ideas.id,
+        title: ideas.title,
+        subtitle: ideas.subtitle,
+        slug: ideas.slug,
+        description: ideas.description,
+        content: ideas.content,
+        imageUrl: ideas.imageUrl,
+        type: ideas.type,
+        market: ideas.market,
+        targetAudience: ideas.targetAudience,
+        mainCompetitor: ideas.mainCompetitor,
+        keyword: ideas.keyword,
+        keywordVolume: ideas.keywordVolume,
+        keywordGrowth: ideas.keywordGrowth,
+        opportunityScore: ideas.opportunityScore,
+        opportunityLabel: ideas.opportunityLabel,
+        problemScore: ideas.problemScore,
+        problemLabel: ideas.problemLabel,
+        feasibilityScore: ideas.feasibilityScore,
+        feasibilityLabel: ideas.feasibilityLabel,
+        timingScore: ideas.timingScore,
+        timingLabel: ideas.timingLabel,
+        executionScore: ideas.executionScore,
+        gtmScore: ideas.gtmScore,
+        revenuePotential: ideas.revenuePotential,
+        revenuePotentialNum: ideas.revenuePotentialNum,
+        executionDifficulty: ideas.executionDifficulty,
+        gtmStrength: ideas.gtmStrength,
+        viewCount: ideas.viewCount,
+        saveCount: ideas.saveCount,
+        voteCount: ideas.voteCount,
+        isPublished: ideas.isPublished,
+        isFeatured: ideas.isFeatured,
+        createdBy: ideas.createdBy,
+        sourceType: ideas.sourceType,
+        sourceData: ideas.sourceData,
+        builderUrl: ideas.builderUrl,
+        offerTiers: ideas.offerTiers,
+        whyNowAnalysis: ideas.whyNowAnalysis,
+        proofSignals: ideas.proofSignals,
+        marketGap: ideas.marketGap,
+        executionPlan: ideas.executionPlan,
+        frameworkData: ideas.frameworkData,
+        trendAnalysis: ideas.trendAnalysis,
+        keywordData: ideas.keywordData,
+        builderPrompts: ideas.builderPrompts,
+        communitySignals: ideas.communitySignals,
+        signalBadges: ideas.signalBadges,
+        claimedBy: ideas.claimedBy,
+        averageRating: ideas.averageRating,
+        ratingCount: ideas.ratingCount,
+        createdAt: ideas.createdAt,
+        updatedAt: ideas.updatedAt,
+      })
+      .from(userIdeaInteractions)
+      .innerJoin(ideas, eq(userIdeaInteractions.ideaId, ideas.id))
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.status, status)
+      ))
+      .orderBy(desc(userIdeaInteractions.createdAt));
   }
 }
 
