@@ -25,10 +25,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Ideas routes
-  app.get('/api/ideas', async (req, res) => {
+  app.get('/api/ideas', async (req: any, res) => {
     try {
       const filters = ideaFiltersSchema.parse(req.query);
-      const result = await storage.getIdeas(filters);
+      const userId = req.user?.claims?.sub; // Get userId if authenticated
+      const result = await storage.getIdeas(filters, userId);
       res.json(result);
     } catch (error) {
       console.error("Error fetching ideas:", error);

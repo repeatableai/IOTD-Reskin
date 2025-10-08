@@ -83,6 +83,7 @@ export const ideas = pgTable("ideas", {
   // Status and visibility
   isPublished: boolean("is_published").default(true),
   isFeatured: boolean("is_featured").default(false),
+  isGregsPick: boolean("is_gregs_pick").default(false), // Premium: Greg's personally picked ideas
   
   // User creation tracking
   createdBy: varchar("created_by").references(() => users.id),
@@ -402,6 +403,12 @@ export const ideaFiltersSchema = z.object({
   minRevenueNum: z.coerce.number().optional(),
   maxRevenueNum: z.coerce.number().optional(),
   tags: z.array(z.string()).optional(),
+  
+  // Premium filters
+  isGregsPick: z.coerce.boolean().optional(), // Show only Greg's picks
+  userStatus: z.enum(['interested', 'not_interested', 'building', 'saved']).optional(), // Filter by user interaction
+  forYou: z.coerce.boolean().optional(), // AI-powered recommendations based on user history
+  
   sortBy: z.enum(['newest', 'popular', 'opportunity', 'revenue']).default('newest'),
   limit: z.coerce.number().min(1).max(100).default(20),
   offset: z.coerce.number().min(0).default(0),

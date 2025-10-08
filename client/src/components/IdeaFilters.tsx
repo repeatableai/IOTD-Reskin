@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Search, Filter } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Search, Filter, Star, Sparkles, ThumbsUp, Bookmark, Rocket } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import type { IdeaFilters as IdeaFiltersType } from "@shared/schema";
 
 interface IdeaFiltersProps {
@@ -15,6 +17,7 @@ interface IdeaFiltersProps {
 
 export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersProps) {
   const [searchValue, setSearchValue] = useState(filters.search || '');
+  const { isAuthenticated } = useAuth();
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +35,9 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
       minRevenueNum: undefined,
       maxRevenueNum: undefined,
       sortBy: 'newest',
+      isGregsPick: undefined,
+      userStatus: undefined,
+      forYou: undefined,
     });
   };
 
@@ -44,6 +50,65 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Premium Quick Filters */}
+        {isAuthenticated && (
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Premium Filters</Label>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant={filters.isGregsPick ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFiltersChange({ isGregsPick: !filters.isGregsPick })}
+                className="justify-start"
+                data-testid="button-gregs-pick"
+              >
+                <Star className="w-4 h-4 mr-2" />
+                Greg's Pick
+                {filters.isGregsPick && <Badge className="ml-auto" variant="secondary">Active</Badge>}
+              </Button>
+              
+              <Button
+                variant={filters.userStatus === 'interested' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFiltersChange({ 
+                  userStatus: filters.userStatus === 'interested' ? undefined : 'interested' 
+                })}
+                className="justify-start"
+                data-testid="button-status-interested"
+              >
+                <ThumbsUp className="w-4 h-4 mr-2" />
+                Interested
+              </Button>
+              
+              <Button
+                variant={filters.userStatus === 'saved' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFiltersChange({ 
+                  userStatus: filters.userStatus === 'saved' ? undefined : 'saved' 
+                })}
+                className="justify-start"
+                data-testid="button-status-saved"
+              >
+                <Bookmark className="w-4 h-4 mr-2" />
+                Saved
+              </Button>
+              
+              <Button
+                variant={filters.userStatus === 'building' ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFiltersChange({ 
+                  userStatus: filters.userStatus === 'building' ? undefined : 'building' 
+                })}
+                className="justify-start"
+                data-testid="button-status-building"
+              >
+                <Rocket className="w-4 h-4 mr-2" />
+                Building
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Search */}
         <div>
           <Label htmlFor="search" className="text-sm font-medium mb-2 block">

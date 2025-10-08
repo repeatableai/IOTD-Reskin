@@ -39,7 +39,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
   
   // Ideas operations
-  getIdeas(filters: IdeaFilters): Promise<{ ideas: Idea[]; total: number }>;
+  getIdeas(filters: IdeaFilters, userId?: string): Promise<{ ideas: Idea[]; total: number }>;
   getIdeaBySlug(slug: string): Promise<Idea | undefined>;
   getIdeaById(id: string): Promise<Idea | undefined>;
   createIdea(idea: InsertIdea): Promise<Idea>;
@@ -119,7 +119,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Ideas operations
-  async getIdeas(filters: IdeaFilters): Promise<{ ideas: Idea[]; total: number }> {
+  async getIdeas(filters: IdeaFilters, userId?: string): Promise<{ ideas: Idea[]; total: number }> {
     const conditions = [eq(ideas.isPublished, true)];
 
     if (filters.search) {
@@ -155,6 +155,32 @@ export class DatabaseStorage implements IStorage {
 
     if (filters.maxRevenueNum) {
       conditions.push(sql`${ideas.revenuePotentialNum} <= ${filters.maxRevenueNum}`);
+    }
+
+    // Premium filters
+    if (filters.isGregsPick) {
+      conditions.push(eq(ideas.isGregsPick, true));
+    }
+
+    // User status filtering - requires userId and userStatus filter
+    if (filters.userStatus && userId) {
+      const userInteractions = await db
+        .select({ ideaId: userIdeaInteractions.ideaId })
+        .from(userIdeaInteractions)
+        .where(
+          and(
+            eq(userIdeaInteractions.userId, userId),
+            eq(userIdeaInteractions.status, filters.userStatus)
+          )
+        );
+      
+      const ideaIds = userInteractions.map(i => i.ideaId);
+      if (ideaIds.length > 0) {
+        conditions.push(inArray(ideas.id, ideaIds));
+      } else {
+        // No ideas match this status, return empty result
+        return { ideas: [], total: 0 };
+      }
     }
 
     const whereCondition = and(...conditions);

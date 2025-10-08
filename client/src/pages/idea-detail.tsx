@@ -675,7 +675,15 @@ export default function IdeaDetail() {
                         
                         {idea.frameworkData.valueEquation && (
                           <div className="border rounded-lg p-4">
-                            <h4 className="font-semibold mb-3">Value Equation</h4>
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-semibold">Value Equation</h4>
+                              <Link href={`/idea/${idea.slug}/value-equation`}>
+                                <Button variant="outline" size="sm" data-testid="button-view-value-equation">
+                                  View Full Analysis
+                                  <ExternalLink className="w-3 h-3 ml-2" />
+                                </Button>
+                              </Link>
+                            </div>
                             <div className="grid gap-3">
                               <div>
                                 <p className="text-sm font-medium">Dream Outcome</p>
@@ -691,7 +699,7 @@ export default function IdeaDetail() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium">Effort & Sacrifice</p>
-                                <p className="text-sm text-muted-foreground">{idea.frameworkData.valueEquation.effortSacrifice}</p>
+                                <p className="text-sm text-muted-foreground">{idea.frameworkData.valueEquation.effortAndSacrifice}</p>
                               </div>
                             </div>
                           </div>
