@@ -571,21 +571,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Research request submission
-  app.post('/api/research/request', isAuthenticated, async (req, res) => {
+  app.post('/api/research', isAuthenticated, async (req, res) => {
     try {
       const researchSchema = z.object({
         ideaId: z.string().optional(),
         title: z.string().min(1, "Title is required"),
         description: z.string().min(20, "Description must be at least 20 characters"),
-        industry: z.string().optional(),
-        targetMarket: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+        researchType: z.string().optional(),
+        urgency: z.string().optional(),
+        additionalNotes: z.string().optional(),
       });
 
       const data = researchSchema.parse(req.body);
       const userId = (req as any).user.claims.sub;
 
       const request = await storage.createResearchRequest({
-        ...data,
+        ideaId: data.ideaId,
+        title: data.title,
+        description: data.description,
+        industry: data.market,
+        targetMarket: data.targetAudience,
         userId,
       });
 
@@ -607,7 +614,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get user's research requests
-  app.get('/api/research/requests', isAuthenticated, async (req, res) => {
+  app.get('/api/research/my-requests', isAuthenticated, async (req, res) => {
     try {
       const userId = (req as any).user.claims.sub;
       const requests = await storage.getUserResearchRequests(userId);
