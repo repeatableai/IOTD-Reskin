@@ -15,6 +15,7 @@ import Pricing from "@/pages/pricing";
 import CreateIdea from "@/pages/create-idea";
 import FounderFit from "@/pages/founder-fit";
 import AIChat from "@/pages/ai-chat";
+import AIChatLanding from "@/pages/ai-chat-landing";
 import Trends from "@/pages/trends";
 import MarketInsights from "@/pages/market-insights";
 import Research from "@/pages/research";
@@ -48,7 +49,7 @@ function Router() {
       <Route path="/pricing" component={Pricing} />
       <Route path="/founder-fit" component={FounderFit} />
       <Route path="/ai-chat/:slug" component={AIChat} />
-      <Route path="/ai-chat" component={AIChat} />
+      <Route path="/ai-chat" component={AIChatLanding} />
       <Route path="/tour" component={Tour} />
       <Route path="/tools-library" component={ToolsLibrary} />
       <Route path="/whats-new" component={WhatsNew} />
