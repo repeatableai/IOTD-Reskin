@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import ScoreDisplay from "@/components/ScoreDisplay";
+import IdeaActionButtons from "@/components/IdeaActionButtons";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -411,7 +412,7 @@ export default function IdeaDetail() {
           {/* Signal Badges */}
           {idea.signalBadges && idea.signalBadges.length > 0 && (
             <div className="flex flex-wrap gap-2 mb-4">
-              {idea.signalBadges.slice(0, 3).map((badge, index) => (
+              {idea.signalBadges.slice(0, 3).map((badge: string, index: number) => (
                 <Badge 
                   key={index}
                   variant="outline" 
@@ -461,40 +462,12 @@ export default function IdeaDetail() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            {isAuthenticated && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => saveIdeaMutation.mutate()}
-                  disabled={saveIdeaMutation.isPending}
-                  data-testid="button-save-idea"
-                >
-                  <Bookmark className="w-4 h-4 mr-2" />
-                  Save Idea
-                </Button>
-                
-                <Button
-                  variant={(userVote as any)?.vote === 'up' ? 'default' : 'outline'}
-                  onClick={() => handleVote('up')}
-                  disabled={voteMutation.isPending || removeVoteMutation.isPending}
-                  data-testid="button-vote-up"
-                >
-                  <ThumbsUp className="w-4 h-4 mr-2" />
-                  Vote Up
-                </Button>
-                
-                <Button
-                  variant={(userVote as any)?.vote === 'down' ? 'default' : 'outline'}
-                  onClick={() => handleVote('down')}
-                  disabled={voteMutation.isPending || removeVoteMutation.isPending}
-                  data-testid="button-vote-down"
-                >
-                  <ThumbsDown className="w-4 h-4 mr-2" />
-                  Vote Down
-                </Button>
-              </>
+          <div className="flex flex-wrap gap-3 items-center">
+            {isAuthenticated && idea?.id && (
+              <IdeaActionButtons ideaId={idea.id} />
             )}
+            
+            <Separator orientation="vertical" className="h-8 mx-2" />
             
             <Button 
               variant="outline" 
