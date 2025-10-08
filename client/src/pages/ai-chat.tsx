@@ -150,11 +150,11 @@ export default function AIChat() {
             variant="ghost" 
             size="sm" 
             className="mb-4"
-            onClick={() => setLocation(`/idea/${params?.slug}`)}
+            onClick={() => setLocation('/ai-chat')}
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Idea
+            Back to Ideas
           </Button>
           
           <div className="flex items-start gap-4">
