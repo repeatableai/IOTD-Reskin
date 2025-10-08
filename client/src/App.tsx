@@ -52,6 +52,7 @@ function Router() {
       <Route path="/ai-chat" component={AIChatLanding} />
       <Route path="/tour" component={Tour} />
       <Route path="/tools-library" component={ToolsLibrary} />
+      <Route path="/tools" component={ToolsLibrary} />
       <Route path="/whats-new" component={WhatsNew} />
       <Route path="/about" component={About} />
       <Route path="/faq" component={FAQ} />
