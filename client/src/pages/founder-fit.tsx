@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import Header from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import type { Idea } from '@shared/schema';
 import { 
   CheckCircle, 
   Award, 
@@ -122,55 +124,69 @@ export default function FounderFit() {
   const currentAnswers = answers[currentQ.id] || [];
   const canProceed = currentAnswers.length > 0;
 
-  const calculateFitScore = (ideaType: string): number => {
+  // Fetch real ideas from the database
+  const { data: ideasData } = useQuery({
+    queryKey: ['/api/ideas'],
+    queryFn: async () => {
+      const response = await fetch('/api/ideas?limit=50');
+      if (!response.ok) throw new Error('Failed to fetch ideas');
+      return response.json();
+    },
+  });
+
+  const calculateFitScore = (idea: Idea): number => {
     let score = 50;
     
     const experience = answers.experience?.[0];
     const skills = answers.skills || [];
     const time = answers.time?.[0];
     const budget = answers.budget?.[0];
+    const interests = answers.interests || [];
     
-    if (ideaType === 'saas' && experience === 'technical') score += 20;
-    if (ideaType === 'saas' && skills.includes('coding')) score += 15;
-    if (ideaType === 'ecommerce' && skills.includes('marketing')) score += 15;
+    // Match by type
+    if (idea.type === 'saas' && experience === 'technical') score += 20;
+    if (idea.type === 'saas' && skills.includes('coding')) score += 15;
+    if (idea.type === 'marketplace' && skills.includes('marketing')) score += 15;
+    
+    // Match by skills
+    if (skills.includes('coding') && idea.executionScore <= 5) score += 10;
+    if (skills.includes('marketing') && idea.gtmScore >= 7) score += 10;
+    
+    // Match by time commitment
     if (time === '40+') score += 10;
-    if (budget === 'funded') score += 5;
+    else if (time === '5-10' && idea.executionScore <= 4) score += 10;
+    
+    // Match by budget
+    if (budget === 'funded' && idea.revenuePotentialNum && idea.revenuePotentialNum >= 10000000) score += 10;
+    if (budget === 'bootstrap' && idea.executionScore <= 5) score += 10;
+    
+    // Match by interests
+    interests.forEach(interest => {
+      if (idea.type.toLowerCase().includes(interest)) score += 5;
+    });
+    
+    // Bonus for high opportunity score
+    if (idea.opportunityScore >= 8) score += 5;
     
     return Math.min(score, 100);
   };
 
-  const mockIdeas = [
-    {
-      id: 1,
-      title: 'AI-Powered Recipe Generator',
-      type: 'saas',
-      description: 'Create personalized recipes using AI based on dietary preferences and available ingredients.',
-      fitScore: calculateFitScore('saas'),
-      difficulty: 'Medium',
-      timeToMarket: '3-6 months',
-    },
-    {
-      id: 2,
-      title: 'Sustainable Fashion Marketplace',
-      type: 'ecommerce',
-      description: 'Connect eco-conscious consumers with sustainable fashion brands.',
-      fitScore: calculateFitScore('ecommerce'),
-      difficulty: 'Medium-High',
-      timeToMarket: '6-12 months',
-    },
-    {
-      id: 3,
-      title: 'Freelance Developer Platform',
-      type: 'marketplace',
-      description: 'Match developers with short-term projects and gigs.',
-      fitScore: calculateFitScore('marketplace'),
-      difficulty: 'High',
-      timeToMarket: '6-12 months',
-    },
-  ];
+  const getMatchedIdeas = () => {
+    if (!ideasData?.ideas) return [];
+    
+    return ideasData.ideas
+      .map((idea: Idea) => ({
+        ...idea,
+        fitScore: calculateFitScore(idea),
+        difficulty: idea.executionDifficulty || 'Medium',
+        timeToMarket: idea.executionScore <= 4 ? '1-3 months' : idea.executionScore <= 7 ? '3-6 months' : '6-12 months',
+      }))
+      .sort((a: any, b: any) => b.fitScore - a.fitScore)
+      .slice(0, 5); // Top 5 matches
+  };
 
   if (showResults) {
-    const sortedIdeas = [...mockIdeas].sort((a, b) => b.fitScore - a.fitScore);
+    const sortedIdeas = getMatchedIdeas();
 
     return (
       <div className="min-h-screen bg-background">
@@ -233,13 +249,13 @@ export default function FounderFit() {
                   </div>
                   <div className="flex gap-2">
                     <Button 
-                      onClick={() => setLocation(`/idea/${idea.slug || idea.id}`)}
+                      onClick={() => setLocation(`/idea/${idea.slug}`)}
                       data-testid={`button-view-idea-${idea.id}`}
                     >
                       View Full Idea
                     </Button>
-                    <Button variant="outline" data-testid={`button-save-${idea.id}`}>
-                      Save for Later
+                    <Button variant="outline" onClick={() => setLocation(`/idea/${idea.slug}`)} data-testid={`button-save-${idea.id}`}>
+                      View Details
                     </Button>
                   </div>
                 </CardContent>
