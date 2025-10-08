@@ -20,7 +20,7 @@ export default function AIChatLanding() {
   const [searchQuery, setSearchQuery] = useState('');
 
   const { data: ideasData, isLoading } = useQuery({
-    queryKey: ['/api/ideas'],
+    queryKey: ['/api/ideas', { limit: 100 }],
     queryFn: async () => {
       const response = await fetch('/api/ideas?limit=100');
       if (!response.ok) throw new Error('Failed to fetch ideas');

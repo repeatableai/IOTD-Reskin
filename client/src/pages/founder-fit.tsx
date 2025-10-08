@@ -126,7 +126,7 @@ export default function FounderFit() {
 
   // Fetch real ideas from the database
   const { data: ideasData } = useQuery({
-    queryKey: ['/api/ideas'],
+    queryKey: ['/api/ideas', { limit: 50 }],
     queryFn: async () => {
       const response = await fetch('/api/ideas?limit=50');
       if (!response.ok) throw new Error('Failed to fetch ideas');
