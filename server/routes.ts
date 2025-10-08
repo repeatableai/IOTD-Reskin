@@ -222,6 +222,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User idea interactions routes
+  app.post('/api/ideas/:id/interaction', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!['interested', 'not_interested', 'building', 'saved'].includes(status)) {
+        return res.status(400).json({ message: "Invalid interaction status" });
+      }
+      
+      await storage.setIdeaInteraction(userId, id, status);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error setting idea interaction:", error);
+      res.status(500).json({ message: "Failed to set idea interaction" });
+    }
+  });
+
+  app.delete('/api/ideas/:id/interaction', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!['interested', 'not_interested', 'building', 'saved'].includes(status)) {
+        return res.status(400).json({ message: "Invalid interaction status" });
+      }
+      
+      await storage.removeIdeaInteraction(userId, id, status);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error removing idea interaction:", error);
+      res.status(500).json({ message: "Failed to remove idea interaction" });
+    }
+  });
+
+  app.get('/api/ideas/:id/interaction', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const status = await storage.getUserIdeaInteraction(userId, id);
+      res.json({ status });
+    } catch (error) {
+      console.error("Error fetching user interaction:", error);
+      res.status(500).json({ message: "Failed to fetch user interaction" });
+    }
+  });
+
+  app.get('/api/users/ideas/:status', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { status } = req.params;
+      
+      if (!['interested', 'not_interested', 'building', 'saved'].includes(status)) {
+        return res.status(400).json({ message: "Invalid interaction status" });
+      }
+      
+      const ideas = await storage.getIdeasByInteraction(userId, status);
+      res.json(ideas);
+    } catch (error) {
+      console.error("Error fetching ideas by interaction:", error);
+      res.status(500).json({ message: "Failed to fetch ideas by interaction" });
+    }
+  });
+
   // Tags routes
   app.get('/api/tags', async (req, res) => {
     try {
