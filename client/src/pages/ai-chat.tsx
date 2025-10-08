@@ -28,6 +28,12 @@ export default function AIChat() {
 
   const { data: idea, isLoading: isLoadingIdea } = useQuery<any>({
     queryKey: ['/api/ideas', params?.slug],
+    queryFn: async () => {
+      if (!params?.slug) throw new Error('No slug provided');
+      const response = await fetch(`/api/ideas/${params.slug}`);
+      if (!response.ok) throw new Error('Failed to fetch idea');
+      return response.json();
+    },
     enabled: !!params?.slug,
   });
 
