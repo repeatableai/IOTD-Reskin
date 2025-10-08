@@ -141,14 +141,23 @@ export const userSavedIdeas = pgTable("user_saved_ideas", {
 });
 
 // User idea interactions (interested, not interested, building status)
+// Redesigned to support multiple independent statuses per idea
 export const userIdeaInteractions = pgTable("user_idea_interactions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
-  status: varchar("status").notNull(), // 'interested', 'not_interested', 'building', 'saved'
+  
+  // Independent boolean flags - users can have multiple states active
+  isInterested: boolean("is_interested").default(false),
+  isNotInterested: boolean("is_not_interested").default(false),
+  isBuilding: boolean("is_building").default(false),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Unique constraint to ensure one row per user-idea pair
+  sql`UNIQUE (user_id, idea_id)`,
+]);
 
 // User votes on ideas
 export const userIdeaVotes = pgTable("user_idea_votes", {
