@@ -29,6 +29,7 @@ import Contact from "@/pages/contact";
 import PlanDetails from "@/pages/plan-details";
 import IdeaOfTheDay from "@/pages/idea-of-the-day";
 import ValueEquation from "@/pages/value-equation";
+import BuildPrompt from "@/pages/build-prompt";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -39,6 +40,7 @@ function Router() {
       <Route path="/database" component={Database} />
       <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
       <Route path="/idea/:slug/value-equation" component={ValueEquation} />
+      <Route path="/idea/:slug/build/:builder" component={BuildPrompt} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
       <Route path="/trends" component={Trends} />

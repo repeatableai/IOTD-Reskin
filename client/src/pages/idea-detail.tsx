@@ -1358,12 +1358,12 @@ export default function IdeaDetail() {
                     </p>
                     <Button 
                       onClick={() => {
-                        window.open(`https://replit.com/new?description=${encodeURIComponent(idea?.description || '')}`, '_blank');
+                        setLocation(`/idea/${slug}/build/replit`);
                         setShowBuilderDialog(false);
                       }}
                       data-testid="button-build-replit"
                     >
-                      Build with Replit →
+                      Get Build Prompt →
                     </Button>
                   </div>
                 </div>
@@ -1385,12 +1385,12 @@ export default function IdeaDetail() {
                     <Button 
                       variant="outline"
                       onClick={() => {
-                        window.open(`https://bolt.new`, '_blank');
+                        setLocation(`/idea/${slug}/build/bolt`);
                         setShowBuilderDialog(false);
                       }}
                       data-testid="button-build-bolt"
                     >
-                      Build with Bolt →
+                      Get Build Prompt →
                     </Button>
                   </div>
                 </div>
@@ -1412,12 +1412,12 @@ export default function IdeaDetail() {
                     <Button 
                       variant="outline"
                       onClick={() => {
-                        window.open('https://v0.dev', '_blank');
+                        setLocation(`/idea/${slug}/build/v0`);
                         setShowBuilderDialog(false);
                       }}
                       data-testid="button-build-v0"
                     >
-                      Build with v0 →
+                      Get Build Prompt →
                     </Button>
                   </div>
                 </div>
@@ -1439,12 +1439,12 @@ export default function IdeaDetail() {
                     <Button 
                       variant="outline"
                       onClick={() => {
-                        window.open('https://cursor.sh', '_blank');
+                        setLocation(`/idea/${slug}/build/cursor`);
                         setShowBuilderDialog(false);
                       }}
                       data-testid="button-build-cursor"
                     >
-                      Build with Cursor →
+                      Get Build Prompt →
                     </Button>
                   </div>
                 </div>
