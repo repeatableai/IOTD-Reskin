@@ -34,6 +34,7 @@ import WhyNow from "@/pages/why-now";
 import ProofSignals from "@/pages/proof-signals";
 import MarketGap from "@/pages/market-gap";
 import ExecutionPlan from "@/pages/execution-plan";
+import IdeaAgent from "@/pages/idea-agent";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,6 +44,7 @@ function Router() {
       <Route path="/" component={TopIdeas} />
       <Route path="/database" component={Database} />
       <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
+      <Route path="/idea-agent" component={IdeaAgent} />
       <Route path="/idea/:slug/value-equation" component={ValueEquation} />
       <Route path="/idea/:slug/why-now" component={WhyNow} />
       <Route path="/idea/:slug/proof-signals" component={ProofSignals} />

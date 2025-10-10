@@ -400,6 +400,135 @@ ${idea.content ? `\nDetailed Analysis: ${idea.content}` : ''}
     const response = await this.callOpenAI(messages);
     return response;
   }
+
+  async performComprehensiveResearch(params: {
+    idea: string;
+    targetMarket?: string;
+    skills?: string;
+    budget?: string;
+  }): Promise<{
+    idea: string;
+    analysis: {
+      marketOpportunity: string;
+      competitorAnalysis: string;
+      communityInsights: string;
+      businessStrategy: string;
+      financialProjections: string;
+      actionableRecommendations: string;
+      validationScore: number;
+      problemSeverity: number;
+      feasibilityScore: number;
+      timingScore: number;
+    };
+  }> {
+    const prompt = `You are an expert market researcher conducting a comprehensive 40-step analysis for a startup idea.
+
+STARTUP IDEA:
+${params.idea}
+
+${params.targetMarket ? `TARGET MARKET: ${params.targetMarket}` : ''}
+${params.skills ? `FOUNDER SKILLS: ${params.skills}` : ''}
+${params.budget ? `AVAILABLE BUDGET: ${params.budget}` : ''}
+
+Perform a comprehensive analysis covering:
+
+1. MARKET OPPORTUNITY (300-400 words):
+   - Market size and growth potential
+   - Current market trends and dynamics
+   - Timing factors (why now?)
+   - Regulatory/technology drivers
+   - Market gaps and underserved segments
+
+2. COMPETITOR ANALYSIS (300-400 words):
+   - Existing players and their offerings
+   - Competitive landscape mapping
+   - Differentiation opportunities
+   - Barriers to entry
+   - Competitive advantages
+
+3. COMMUNITY INSIGHTS (250-350 words):
+   - Reddit sentiment and discussions (estimate)
+   - Social media engagement patterns (estimate)
+   - Customer pain points validation
+   - Community size and growth
+   - Problem severity assessment
+
+4. BUSINESS STRATEGY (300-400 words):
+   - Go-to-market approach
+   - Revenue model recommendations
+   - Customer acquisition strategy
+   - MVP definition and scope
+   - Key partnerships needed
+
+5. FINANCIAL PROJECTIONS (250-350 words):
+   - Revenue potential (Year 1-3)
+   - Pricing strategy recommendations
+   - Cost structure analysis
+   - Break-even timeline
+   - Required investment
+
+6. ACTIONABLE RECOMMENDATIONS (300-400 words):
+   - Immediate next steps (first 30 days)
+   - 6-month roadmap
+   - Resource requirements
+   - Risk mitigation strategies
+   - Success metrics to track
+
+7. VALIDATION SCORES (provide scores 1-10):
+   - Overall Validation Score
+   - Problem Severity Score
+   - Technical Feasibility Score
+   - Market Timing Score
+
+Provide detailed, data-driven analysis for each section. Use concrete examples and specific recommendations.
+
+Format the response as JSON with this structure:
+{
+  "marketOpportunity": "...",
+  "competitorAnalysis": "...",
+  "communityInsights": "...",
+  "businessStrategy": "...",
+  "financialProjections": "...",
+  "actionableRecommendations": "...",
+  "validationScore": 8,
+  "problemSeverity": 7,
+  "feasibilityScore": 8,
+  "timingScore": 9
+}`;
+
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: "You are an expert market researcher and startup advisor. Provide comprehensive, data-driven analysis."
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 4000,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || '{}';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : responseText;
+      const analysis = JSON.parse(jsonText);
+
+      return {
+        idea: params.idea,
+        analysis
+      };
+    } catch (error) {
+      console.error('Error performing comprehensive research:', error);
+      throw new Error('Failed to complete research analysis');
+    }
+  }
 }
 
 export const aiService = new AIService();

@@ -625,6 +625,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Research Agent - 40-step comprehensive analysis
+  app.post('/api/ai-research', async (req, res) => {
+    try {
+      const researchSchema = z.object({
+        idea: z.string().min(20, "Idea description must be at least 20 characters"),
+        targetMarket: z.string().optional(),
+        skills: z.string().optional(),
+        budget: z.string().optional(),
+      });
+
+      const data = researchSchema.parse(req.body);
+      
+      // Perform comprehensive AI research
+      const result = await aiService.performComprehensiveResearch(data);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error performing AI research:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to complete research analysis" });
+    }
+  });
+
   // Get FAQ questions
   app.get('/api/faq', async (req, res) => {
     try {
