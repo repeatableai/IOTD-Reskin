@@ -2,6 +2,15 @@
 
 This is a startup idea discovery platform that helps entrepreneurs find data-driven business opportunities. The application provides a curated database of startup ideas with comprehensive scoring, market analysis, and community engagement features. Users can browse ideas, view detailed analysis including opportunity scores and market validation data, save favorites, and interact with the community through voting and signals.
 
+## Recent Updates (October 10, 2025)
+
+**New Idea Detail Sub-Pages**: Added dedicated deep-dive pages for comprehensive analysis:
+- `/idea/:slug/why-now` - Market timing analysis with growth projections and technology enablers
+- `/idea/:slug/proof-signals` - Market validation evidence with customer pain points and demand signals
+- `/idea/:slug/market-gap` - Underserved market segments and competitive landscape gaps
+- `/idea/:slug/execution-plan` - Step-by-step roadmap with MVP definition, resource requirements, and success metrics
+- Navigation links added from idea detail tabs to dedicated sub-pages for seamless user experience
+
 # User Preferences
 
 Preferred communication style: Simple, everyday language.

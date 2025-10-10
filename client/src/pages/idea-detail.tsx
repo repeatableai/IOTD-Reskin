@@ -628,9 +628,17 @@ export default function IdeaDetail() {
 
                     {idea.whyNowAnalysis && (
                       <TabsContent value="whynow" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <Clock className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">Why Now Analysis</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <Clock className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">Why Now Analysis</h3>
+                          </div>
+                          <Link href={`/idea/${idea.slug}/why-now`}>
+                            <Button variant="outline" size="sm" data-testid="button-view-why-now">
+                              View Full Analysis
+                              <ExternalLink className="w-3 h-3 ml-2" />
+                            </Button>
+                          </Link>
                         </div>
                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{idea.whyNowAnalysis}</p>
                       </TabsContent>
@@ -638,9 +646,17 @@ export default function IdeaDetail() {
 
                     {idea.proofSignals && (
                       <TabsContent value="proof" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <Activity className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">Proof & Signals</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <Activity className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">Proof & Signals</h3>
+                          </div>
+                          <Link href={`/idea/${idea.slug}/proof-signals`}>
+                            <Button variant="outline" size="sm" data-testid="button-view-proof-signals">
+                              View Full Analysis
+                              <ExternalLink className="w-3 h-3 ml-2" />
+                            </Button>
+                          </Link>
                         </div>
                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{idea.proofSignals}</p>
                       </TabsContent>
@@ -648,9 +664,17 @@ export default function IdeaDetail() {
 
                     {idea.marketGap && (
                       <TabsContent value="gap" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <Target className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">Market Gap</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <Target className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">Market Gap</h3>
+                          </div>
+                          <Link href={`/idea/${idea.slug}/market-gap`}>
+                            <Button variant="outline" size="sm" data-testid="button-view-market-gap">
+                              View Full Analysis
+                              <ExternalLink className="w-3 h-3 ml-2" />
+                            </Button>
+                          </Link>
                         </div>
                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{idea.marketGap}</p>
                       </TabsContent>
@@ -658,9 +682,17 @@ export default function IdeaDetail() {
 
                     {idea.executionPlan && (
                       <TabsContent value="execution" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <Rocket className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">Execution Plan</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <Rocket className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">Execution Plan</h3>
+                          </div>
+                          <Link href={`/idea/${idea.slug}/execution-plan`}>
+                            <Button variant="outline" size="sm" data-testid="button-view-execution-plan">
+                              View Full Analysis
+                              <ExternalLink className="w-3 h-3 ml-2" />
+                            </Button>
+                          </Link>
                         </div>
                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{idea.executionPlan}</p>
                       </TabsContent>
