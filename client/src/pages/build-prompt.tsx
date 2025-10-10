@@ -50,6 +50,18 @@ const BUILDER_CONFIG = {
     color: "green",
     url: () => "https://cursor.sh",
     description: "AI-first code editor with intelligent suggestions"
+  },
+  "ad-creatives": {
+    name: "Ad Creatives Generator",
+    icon: Megaphone,
+    color: "pink",
+    description: "Platform-specific ad copy and creative concepts"
+  },
+  "brand-package": {
+    name: "Brand Package Builder",
+    icon: Briefcase,
+    color: "indigo",
+    description: "Complete brand identity and messaging framework"
   }
 };
 
@@ -222,6 +234,436 @@ ${idea.keyFeatures?.map((f: string, i: number) => `   ${i + 1}. ${f} - Implement
 ${idea.executionPlan ? `\nExecution Plan:\n${idea.executionPlan}` : ''}
 
 Priority: Build MVP first, iterate based on user feedback.`;
+
+        case 'ad-creatives':
+          return `Ad Creatives Package for: ${idea.title}
+
+Product: ${idea.description}
+Target Audience: ${idea.targetAudience || 'General users'}
+Market: ${idea.market}
+
+Generate comprehensive ad creatives across all major platforms:
+
+═══════════════════════════════════════════════
+1. FACEBOOK & INSTAGRAM ADS
+═══════════════════════════════════════════════
+
+Primary Image Ad:
+Headline (40 chars): [Problem-solution hook]
+Primary Text (125 chars): [Emotional appeal + key benefit]
+Description (30 chars): [CTA-focused]
+CTA Button: ${idea.market === 'B2B' ? 'Learn More / Request Demo' : 'Sign Up / Learn More'}
+
+Carousel Ad (5 slides):
+Slide 1: Problem statement with relatable visual
+Slide 2: Your solution (${idea.title}) introduction
+Slide 3: Key Feature #1 - ${idea.keyFeatures?.[0] || 'Main feature'}
+Slide 4: Key Feature #2 - ${idea.keyFeatures?.[1] || 'Secondary feature'}
+Slide 5: CTA with special offer
+
+Video Ad Script (30 sec):
+0-3s: Hook - "Are you tired of [pain point]?"
+3-10s: Problem amplification
+10-20s: Solution reveal (${idea.title})
+20-27s: Key benefits showcase
+27-30s: Strong CTA
+
+Stories Ad:
+Frame 1: Attention-grabbing question
+Frame 2: Pain point visualization
+Frame 3: Solution (${idea.title})
+Frame 4: Swipe up CTA
+
+A/B Testing Variations:
+- Variant A: Problem-focused ("Struggling with [pain]?")
+- Variant B: Benefit-focused ("Get [result] in [timeframe]")
+- Variant C: Social proof ("Join [X] ${idea.market === 'B2B' ? 'companies' : 'users'}")
+
+═══════════════════════════════════════════════
+2. GOOGLE ADS (Search & Display)
+═══════════════════════════════════════════════
+
+Search Ads:
+Headline 1: ${idea.title} - ${idea.subtitle || 'Best Solution'}
+Headline 2: ${idea.market === 'B2B' ? 'Enterprise Grade' : 'Easy to Use'}
+Headline 3: ${idea.market === 'B2B' ? 'Free Trial Available' : 'Get Started Free'}
+Description 1: ${idea.description?.substring(0, 90) || 'Transform your workflow'}
+Description 2: ${idea.market === 'B2B' ? 'Trusted by industry leaders. Book demo today.' : 'Join thousands of happy users. Try free.'}
+
+Responsive Display Ads:
+Short Headline: ${idea.title}
+Long Headline: ${idea.subtitle || idea.title}
+Description: ${idea.description?.substring(0, 90) || 'The modern solution for [problem]'}
+Business Name: ${idea.title}
+
+Call Assets:
+- ${idea.market === 'B2B' ? 'Schedule a demo call' : 'Try it free today'}
+- ${idea.market === 'B2B' ? 'Speak with our team' : 'Get started now'}
+
+Sitelink Extensions:
+1. Features | See what makes us different
+2. Pricing | ${idea.market === 'B2B' ? 'Custom enterprise plans' : 'Flexible plans starting at $X'}
+3. ${idea.market === 'B2B' ? 'Case Studies | Real results from clients' : 'Success Stories | How users win'}
+4. FAQ | Common questions answered
+
+═══════════════════════════════════════════════
+3. LINKEDIN ADS (B2B Focus)
+═══════════════════════════════════════════════
+
+Sponsored Content:
+Intro Text: [Industry trend or pain point]
+"In 2024, ${idea.targetAudience || 'businesses'} face a critical challenge: [specific problem]. ${idea.title} solves this with [unique approach]."
+
+Key messaging:
+- ROI-focused: "${idea.market === 'B2B' ? 'Save [X] hours/week' : 'Increase productivity by [X]%'}"
+- Authority: "Trusted by ${idea.market === 'B2B' ? 'Fortune 500 companies' : 'industry leaders'}"
+- Proof: "Proven results: [specific metric or case study]"
+
+Lead Gen Form:
+Question 1: Company size / Role
+Question 2: Current solution / Pain level
+Question 3: Timeline for implementation
+Offer: ${idea.market === 'B2B' ? 'Free consultation / Demo' : 'Free trial / Guide'}
+
+Message Ads:
+Subject: Quick question about [pain point]
+Message: "Hi [Name], noticed you work in [industry]. Many [job title]s struggle with [problem]. ${idea.title} helps [solution]. Worth a 15-min chat?"
+
+═══════════════════════════════════════════════
+4. TIKTOK ADS
+═══════════════════════════════════════════════
+
+In-Feed Video (9-15 sec):
+0-2s: Pattern interrupt (unexpected visual/statement)
+2-6s: Problem → Solution reveal
+6-12s: Quick demo or benefit showcase
+12-15s: CTA with urgency
+
+Creative Concepts:
+1. "POV: You finally found [solution]" format
+2. Before/After transformation
+3. "Things [target audience] wish they knew about [problem]"
+4. "How to [achieve outcome] without [common pain]"
+5. Behind-the-scenes of ${idea.title}
+
+Hashtags:
+#${idea.type} #${idea.market} #productivity #growth #business
+
+Text Overlay Templates:
+- "This changed everything for ${idea.targetAudience || 'us'}"
+- "${idea.market === 'B2B' ? 'Productivity hack' : 'Life hack'} you need to try"
+- "Why everyone's switching to ${idea.title}"
+
+═══════════════════════════════════════════════
+5. UNIVERSAL AD FRAMEWORKS
+═══════════════════════════════════════════════
+
+CTA Variations:
+Primary: ${idea.market === 'B2B' ? 'Request Demo / Start Free Trial' : 'Get Started Free / Try Now'}
+Urgency: "Limited spots / Ends soon / Join waiting list"
+Value: "No credit card / 14-day trial / Money-back guarantee"
+
+Headline Formulas:
+1. [Do X] Without [Pain Point]
+   → "Grow revenue without hiring more sales reps"
+2. [Target Audience] Trust ${idea.title} to [Outcome]
+   → "${idea.targetAudience} trust ${idea.title} to ${idea.keyFeatures?.[0] || 'solve [problem]'}"
+3. The [Adjective] Way to [Outcome]
+   → "The fastest way to ${idea.keyFeatures?.[0] || '[achieve goal]'}"
+
+A/B Testing Strategy:
+Test 1: Emotional vs. Rational appeal
+Test 2: Long-form vs. Short-form copy
+Test 3: Feature-focused vs. Benefit-focused
+Test 4: Urgency vs. Value proposition
+Test 5: Different visual styles (minimal vs. bold)
+
+Platform Budget Allocation:
+- Facebook/Instagram: ${idea.market === 'B2B' ? '30%' : '40%'} (broad reach)
+- Google Search: ${idea.market === 'B2B' ? '40%' : '35%'} (intent)
+- LinkedIn: ${idea.market === 'B2B' ? '25%' : '10%'} (B2B targeting)
+- TikTok: ${idea.market === 'B2B' ? '5%' : '15%'} (viral potential)
+
+Creative Refresh Schedule:
+- Week 1-2: Initial testing (5-10 variations)
+- Week 3-4: Double down on winners
+- Month 2+: Refresh creative every 2 weeks
+- Monitor: CTR drop >20% = time to refresh
+
+Success Metrics:
+- CTR Target: ${idea.market === 'B2B' ? '1.5-3%' : '2-5%'}
+- CPC Target: ${idea.market === 'B2B' ? '<$5' : '<$2'}
+- Conversion Rate: ${idea.market === 'B2B' ? '10-15%' : '5-10%'}
+- ROAS: ${idea.market === 'B2B' ? '3:1+' : '4:1+'}`;
+
+        case 'brand-package':
+          return `Complete Brand Package for: ${idea.title}
+
+Product: ${idea.description}
+Market: ${idea.market}
+Target Audience: ${idea.targetAudience || 'General users'}
+
+═══════════════════════════════════════════════
+1. BRAND IDENTITY & POSITIONING
+═══════════════════════════════════════════════
+
+Brand Mission:
+"${idea.title} empowers ${idea.targetAudience || 'users'} to [achieve outcome] by [unique approach]."
+
+Brand Vision:
+"To become the ${idea.market === 'B2B' ? 'industry-standard' : 'go-to'} solution for ${idea.targetAudience || 'our audience'} who want to [achieve big vision]."
+
+Core Values:
+1. [Value 1] - ${idea.market === 'B2B' ? 'Reliability & Trust' : 'User Empowerment'}
+2. [Value 2] - Innovation & Simplicity
+3. [Value 3] - ${idea.market === 'B2B' ? 'Results-Driven' : 'Accessibility'}
+4. [Value 4] - Continuous Improvement
+5. [Value 5] - Customer Success
+
+Brand Personality:
+- Archetype: ${idea.market === 'B2B' ? 'The Expert / The Leader' : 'The Hero / The Sage'}
+- Tone: ${idea.market === 'B2B' ? 'Professional yet approachable' : 'Friendly and empowering'}
+- Character Traits: ${idea.market === 'B2B' ? 'Knowledgeable, Reliable, Strategic' : 'Helpful, Innovative, Trustworthy'}
+
+Unique Value Proposition (UVP):
+"${idea.title} is the ${idea.market === 'B2B' ? 'only enterprise-grade' : 'simplest way to'} [solve problem] that [unique differentiator] for [target audience]."
+
+Positioning Statement:
+"For [target audience] who [need/want], ${idea.title} is the [category] that [key benefit]. Unlike [competitors], we [unique approach]."
+
+═══════════════════════════════════════════════
+2. VISUAL IDENTITY
+═══════════════════════════════════════════════
+
+Logo Concepts:
+
+Concept A - Wordmark:
+- Style: Clean, modern typography
+- Font: ${idea.market === 'B2B' ? 'Bold, professional sans-serif (like Inter, Poppins)' : 'Friendly, rounded sans-serif (like Nunito, Outfit)'}
+- Treatment: ${idea.market === 'B2B' ? 'Strong, geometric letterforms' : 'Approachable, slightly playful'}
+- Icon: Optional symbol representing ${idea.keyFeatures?.[0] || 'core value'}
+
+Concept B - Combination Mark:
+- Icon: [Abstract symbol related to ${idea.type}]
+- Style: ${idea.market === 'B2B' ? 'Geometric, structured' : 'Organic, friendly'}
+- Placement: Icon left of wordmark
+- Versatility: Works at small sizes, single color
+
+Concept C - Emblem:
+- Format: Text within or around contained shape
+- Feel: ${idea.market === 'B2B' ? 'Badge of trust and authority' : 'Memorable and distinctive'}
+- Use case: ${idea.market === 'B2B' ? 'Enterprise confidence' : 'Community belonging'}
+
+Logo Variations:
+- Primary: Full color combination mark
+- Secondary: Wordmark only
+- Icon: Standalone symbol for app icons
+- Monochrome: Black, white versions
+- Reversed: For dark backgrounds
+
+═══════════════════════════════════════════════
+3. COLOR PALETTE
+═══════════════════════════════════════════════
+
+Primary Colors:
+${idea.market === 'B2B' ? 
+`- Primary: Deep Blue (#1e40af) - Trust, professionalism
+- Secondary: Teal (#0d9488) - Innovation, growth
+- Accent: Orange (#f97316) - Energy, action` :
+`- Primary: Vibrant Purple (#8b5cf6) - Creativity, modern
+- Secondary: Bright Cyan (#06b6d4) - Fresh, innovative
+- Accent: Warm Coral (#fb7185) - Friendly, approachable`}
+
+Neutral Colors:
+- Dark: #1e293b (text, headers)
+- Medium: #64748b (body text)
+- Light: #f1f5f9 (backgrounds)
+- Pure: #ffffff (cards, containers)
+
+Semantic Colors:
+- Success: #10b981 (confirmations, success states)
+- Warning: #f59e0b (alerts, cautions)
+- Error: #ef4444 (errors, destructive actions)
+- Info: #3b82f6 (tips, information)
+
+Color Usage:
+- Headlines: Primary color
+- CTAs: Accent color
+- Backgrounds: Neutral light tones
+- Text: Dark neutral for body, medium for secondary
+- ${idea.market === 'B2B' ? '70% neutral, 25% primary, 5% accent' : '60% neutral, 30% primary, 10% accent'}
+
+═══════════════════════════════════════════════
+4. TYPOGRAPHY
+═══════════════════════════════════════════════
+
+Font Families:
+
+Headings: ${idea.market === 'B2B' ? 'Inter' : 'Poppins'}
+- Weights: Bold (700), Semibold (600)
+- Use: H1-H6, section titles, CTAs
+- Pairing: Strong, impactful statements
+
+Body: ${idea.market === 'B2B' ? 'Open Sans' : 'Nunito'}
+- Weights: Regular (400), Medium (500)
+- Use: Paragraphs, descriptions, UI text
+- Pairing: Highly readable, professional
+
+Monospace: JetBrains Mono (for code/technical)
+- Weight: Regular (400)
+- Use: Code snippets, technical data, metrics
+
+Type Scale:
+- Display (60px/72px): Hero headlines
+- H1 (48px/58px): Page titles
+- H2 (36px/44px): Section headers
+- H3 (24px/32px): Sub-sections
+- H4 (20px/28px): Card titles
+- Body (16px/24px): Paragraphs
+- Small (14px/20px): Captions, labels
+- Tiny (12px/16px): Footnotes
+
+Typography Rules:
+- Line height: 1.5x for body, 1.2x for headings
+- Letter spacing: -0.02em for headings, normal for body
+- Max width: 65-75 characters per line
+- Hierarchy: Size, weight, color for clear structure
+
+═══════════════════════════════════════════════
+5. VOICE & TONE
+═══════════════════════════════════════════════
+
+Brand Voice Attributes:
+
+${idea.market === 'B2B' ? 
+`1. Professional yet Personable
+   - Use industry terminology appropriately
+   - Avoid jargon when simpler words work
+   - Be authoritative without being cold
+
+2. Results-Focused
+   - Lead with outcomes and metrics
+   - Use concrete examples and data
+   - Emphasize ROI and business impact
+
+3. Trustworthy & Reliable
+   - Back claims with evidence
+   - Be transparent about capabilities
+   - Admit limitations when necessary
+
+4. Strategic & Insightful
+   - Provide thought leadership
+   - Share industry knowledge
+   - Guide decision-making` :
+`1. Friendly & Approachable
+   - Use conversational language
+   - Be warm without being overly casual
+   - Make users feel supported
+
+2. Empowering & Encouraging
+   - Focus on user capabilities
+   - Celebrate wins and progress
+   - Be positive and motivating
+
+3. Clear & Helpful
+   - Use simple, direct language
+   - Avoid unnecessary complexity
+   - Prioritize understanding
+
+4. Authentic & Relatable
+   - Be genuine and human
+   - Show empathy for user challenges
+   - Build emotional connections`}
+
+Tone Variations:
+
+Marketing Copy: ${idea.market === 'B2B' ? 'Confident, benefit-driven, professional' : 'Exciting, aspirational, friendly'}
+Product UI: ${idea.market === 'B2B' ? 'Clear, efficient, supportive' : 'Helpful, encouraging, simple'}
+Help Docs: ${idea.market === 'B2B' ? 'Detailed, technical when needed, structured' : 'Patient, step-by-step, reassuring'}
+Error Messages: ${idea.market === 'B2B' ? 'Professional, solution-oriented, calm' : 'Apologetic, helpful, reassuring'}
+Success Messages: ${idea.market === 'B2B' ? 'Affirmative, encouraging next steps' : 'Celebratory, motivating'}
+
+Writing Guidelines:
+✓ DO: Use active voice, short sentences, specific examples
+✗ DON'T: Use passive voice, run-on sentences, vague claims
+
+Word Bank:
+Encouraged: ${idea.market === 'B2B' ? 'Streamline, Optimize, Enterprise, Strategic, Proven, Efficient' : 'Simple, Easy, Amazing, Helpful, Smart, Better'}
+Avoid: ${idea.market === 'B2B' ? 'Cheap, Basic, Simple (use Streamlined)' : 'Complex, Difficult, Enterprise, Complicated'}
+
+═══════════════════════════════════════════════
+6. MESSAGING FRAMEWORK
+═══════════════════════════════════════════════
+
+Value Proposition Hierarchy:
+
+Primary Message:
+"${idea.title} helps ${idea.targetAudience || 'you'} ${idea.keyFeatures?.[0] || '[achieve key outcome]'} ${idea.market === 'B2B' ? 'so you can drive measurable business results' : 'so you can focus on what matters'}."
+
+Supporting Messages:
+1. ${idea.keyFeatures?.[0] || 'Feature 1'} → [Specific benefit for user]
+2. ${idea.keyFeatures?.[1] || 'Feature 2'} → [How it makes life easier]
+3. ${idea.keyFeatures?.[2] || 'Feature 3'} → [Unique advantage]
+
+Proof Points:
+- ${idea.market === 'B2B' ? 'Trusted by [X] enterprise customers' : 'Used by [X]+ happy users'}
+- ${idea.market === 'B2B' ? '[X]% increase in [metric]' : '[X]% of users see results in [timeframe]'}
+- ${idea.market === 'B2B' ? 'Enterprise-grade security & compliance' : 'Rated [X] stars by users'}
+
+Objection Handling:
+Q: "Is this different from [competitor]?"
+A: "Yes - ${idea.title} uniquely [differentiator]. Unlike others, we [unique approach]."
+
+Q: ${idea.market === 'B2B' ? '"What\'s the ROI?"' : '"Is it worth the price?"'}
+A: ${idea.market === 'B2B' ? '"Most customers see [X] return within [timeframe] through [specific outcomes]."' : '"Most users save [X hours/dollars] per [timeframe], making it pay for itself quickly."'}
+
+Q: "How long to get started?"
+A: "${idea.market === 'B2B' ? 'Implementation takes [X] weeks with full support. Start seeing value in the first sprint.' : 'You can get started in under [X] minutes. No technical knowledge required.'}"
+
+Call-to-Action Framework:
+- Primary: ${idea.market === 'B2B' ? '"Request a Demo"' : '"Get Started Free"'}
+- Secondary: ${idea.market === 'B2B' ? '"See Pricing" / "View Case Studies"' : '"Learn More" / "See How It Works"'}
+- Urgency: ${idea.market === 'B2B' ? '"Limited partner slots"' : '"Join [X]+ users today"'}
+
+Brand Story Arc:
+1. Problem: ${idea.targetAudience || 'Users'} struggle with [pain point]
+2. Insight: We discovered [key insight about problem]
+3. Solution: We built ${idea.title} to [unique approach]
+4. Impact: Now ${idea.targetAudience || 'users'} can [transformation]
+5. Vision: We're building toward [future state]
+
+═══════════════════════════════════════════════
+7. BRAND APPLICATION GUIDELINES
+═══════════════════════════════════════════════
+
+Digital Applications:
+- Website: Hero section with primary color, clear CTAs with accent
+- Product UI: Neutral backgrounds, primary for key actions
+- Email: Brand colors in header, clean layouts, clear CTAs
+- Social Media: Consistent templates with brand colors
+
+Print Applications (if needed):
+- Business Cards: Clean, ${idea.market === 'B2B' ? 'professional' : 'memorable'}
+- Letterhead: Minimal branding, professional
+- Presentations: ${idea.market === 'B2B' ? 'Corporate template' : 'Modern slides'} with brand colors
+
+Do's and Don'ts:
+✓ Use logo on clean backgrounds
+✓ Maintain minimum spacing around logo
+✓ Use approved color combinations
+✓ Follow typography hierarchy
+✗ Don't distort or rotate logo
+✗ Don't use unapproved colors
+✗ Don't use more than 3 fonts
+✗ Don't create visual clutter
+
+Brand Consistency Checklist:
+□ Logo used correctly
+□ Colors from approved palette
+□ Typography follows hierarchy
+□ Voice matches brand guidelines
+□ Message aligns with positioning
+□ Design feels cohesive with other materials`;
 
         default:
           return baseContext;
@@ -1020,7 +1462,9 @@ export default function BuildPrompt() {
       orange: { bg: 'bg-orange-50 dark:bg-orange-950', iconBg: 'bg-orange-100 dark:bg-orange-900', iconText: 'text-orange-600 dark:text-orange-400' },
       blue: { bg: 'bg-blue-50 dark:bg-blue-950', iconBg: 'bg-blue-100 dark:bg-blue-900', iconText: 'text-blue-600 dark:text-blue-400' },
       purple: { bg: 'bg-purple-50 dark:bg-purple-950', iconBg: 'bg-purple-100 dark:bg-purple-900', iconText: 'text-purple-600 dark:text-purple-400' },
-      green: { bg: 'bg-green-50 dark:bg-green-950', iconBg: 'bg-green-100 dark:bg-green-900', iconText: 'text-green-600 dark:text-green-400' }
+      green: { bg: 'bg-green-50 dark:bg-green-950', iconBg: 'bg-green-100 dark:bg-green-900', iconText: 'text-green-600 dark:text-green-400' },
+      pink: { bg: 'bg-pink-50 dark:bg-pink-950', iconBg: 'bg-pink-100 dark:bg-pink-900', iconText: 'text-pink-600 dark:text-pink-400' },
+      indigo: { bg: 'bg-indigo-50 dark:bg-indigo-950', iconBg: 'bg-indigo-100 dark:bg-indigo-900', iconText: 'text-indigo-600 dark:text-indigo-400' }
     };
     return colorMap[color] || colorMap.orange;
   };
@@ -1046,7 +1490,7 @@ export default function BuildPrompt() {
   };
 
   const openBuilder = (prompt: string) => {
-    if (builderConfig) {
+    if (builderConfig && 'url' in builderConfig && builderConfig.url) {
       const url = builderConfig.url(prompt);
       window.open(url, '_blank');
     }
@@ -1198,7 +1642,7 @@ export default function BuildPrompt() {
                           </>
                         )}
                       </Button>
-                      {category.id === 'build' && (
+                      {category.id === 'build' && builderConfig && 'url' in builderConfig && builderConfig.url && (
                         <Button
                           size="sm"
                           onClick={() => openBuilder(prompt)}

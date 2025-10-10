@@ -4,6 +4,12 @@ This is a startup idea discovery platform that helps entrepreneurs find data-dri
 
 ## Recent Updates (October 10, 2025)
 
+**Latest Enhancements (Just Completed)**:
+- **Community Signals Platform Pages** - Platform-specific signal breakdowns for Reddit, Facebook, YouTube with proper JSONB null safety checks, trend analysis, and engagement metrics
+- **Multi-Format Download Data** - Dialog-based format selector (JSON/TXT) for exporting idea data with proper serializers, MIME types, and filenames
+- **Claim Idea Reactivity** - Fixed immediate UI updates using refetchQueries for instant claimed ideas visibility
+- **Greg's Picks Filter** - Fixed toggle logic to use undefined instead of false when deactivating, ensuring proper filter removal and result updates
+
 **Major AI-Powered Features (Completed & Tested)**:
 - **AI Research Agent** (`/idea-agent`) - Flagship feature performing 40-step comprehensive startup analysis using GPT-4o. Users input an idea description (+ optional context) and receive detailed analysis across 6 sections: Market Opportunity, Competitor Analysis, Community Insights, Business Strategy, Financial Projections, Actionable Recommendations. Includes 4 validation scores (1-10). Features download report (.txt) and copy functionality.
 
