@@ -41,6 +41,7 @@ import ValueMatrix from "@/pages/value-matrix";
 import ValueLadder from "@/pages/value-ladder";
 import Keywords from "@/pages/keywords";
 import FounderFitIdea from "@/pages/founder-fit-idea";
+import CommunitySignalsDetail from "@/pages/community-signals-detail";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -62,6 +63,7 @@ function Router() {
       <Route path="/idea/:slug/value-ladder" component={ValueLadder} />
       <Route path="/idea/:slug/keywords" component={Keywords} />
       <Route path="/idea/:slug/founder-fit" component={FounderFitIdea} />
+      <Route path="/idea/:slug/community-signals" component={CommunitySignalsDetail} />
       <Route path="/idea/:slug/build/:builder" component={BuildPrompt} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
