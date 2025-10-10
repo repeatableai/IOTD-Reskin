@@ -44,6 +44,8 @@ import {
   Check
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 export default function IdeaDetail() {
   const { slug } = useParams();
@@ -83,6 +85,8 @@ export default function IdeaDetail() {
 
   const [researchReport, setResearchReport] = useState<any>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedExportFormat, setSelectedExportFormat] = useState<'json' | 'txt'>('json');
 
   const saveIdeaMutation = useMutation({
     mutationFn: async () => {
@@ -281,20 +285,30 @@ export default function IdeaDetail() {
     },
   });
 
-  const handleExportData = async () => {
+  const handleExportData = () => {
+    setShowExportDialog(true);
+  };
+
+  const handleDownloadExport = async () => {
     try {
-      const response = await fetch(`/api/ideas/${idea.id}/export`);
-      const data = await response.json();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const response = await fetch(`/api/ideas/${idea.id}/export?format=${selectedExportFormat}`);
+      
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${idea.slug}.json`;
+      a.download = `${idea.slug}.${selectedExportFormat}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast({ title: "Data exported successfully!" });
+      
+      setShowExportDialog(false);
+      toast({ title: `Data exported successfully as ${selectedExportFormat.toUpperCase()}!` });
     } catch (error) {
       toast({
         title: "Error",
@@ -1482,6 +1496,65 @@ export default function IdeaDetail() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Export Format Selection Dialog */}
+      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Export Idea Data</DialogTitle>
+            <DialogDescription>
+              Choose your preferred export format
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            <RadioGroup value={selectedExportFormat} onValueChange={(value: 'json' | 'txt') => setSelectedExportFormat(value)}>
+              <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedExportFormat('json')}>
+                <RadioGroupItem value="json" id="format-json" />
+                <div className="flex-1">
+                  <Label htmlFor="format-json" className="font-semibold cursor-pointer">
+                    JSON Format
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Complete structured data export. Perfect for importing into other applications or databases.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedExportFormat('txt')}>
+                <RadioGroupItem value="txt" id="format-txt" />
+                <div className="flex-1">
+                  <Label htmlFor="format-txt" className="font-semibold cursor-pointer">
+                    Text Format
+                  </Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Human-readable report with organized sections. Great for reading, printing, or sharing.
+                  </p>
+                </div>
+              </div>
+            </RadioGroup>
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowExportDialog(false)}
+                className="flex-1"
+                data-testid="button-cancel-export"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleDownloadExport}
+                className="flex-1"
+                data-testid="button-download-export"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

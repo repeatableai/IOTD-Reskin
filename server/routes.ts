@@ -192,20 +192,144 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to generate TXT report
+  function generateTxtReport(idea: any): string {
+    const sections: string[] = [];
+    
+    // Title and Overview
+    sections.push('='.repeat(80));
+    sections.push(`${idea.title}`);
+    sections.push('='.repeat(80));
+    sections.push('');
+    
+    if (idea.subtitle) {
+      sections.push(idea.subtitle);
+      sections.push('');
+    }
+    
+    // Basic Info
+    sections.push('--- OVERVIEW ---');
+    sections.push(`Market: ${idea.market}`);
+    sections.push(`Type: ${idea.type}`);
+    if (idea.targetAudience) {
+      sections.push(`Target Audience: ${idea.targetAudience}`);
+    }
+    sections.push('');
+    
+    // Description
+    sections.push('--- DESCRIPTION ---');
+    sections.push(idea.description);
+    sections.push('');
+    
+    // Key Metrics
+    sections.push('--- KEY METRICS ---');
+    if (idea.opportunityScore) {
+      sections.push(`• Opportunity Score: ${idea.opportunityScore}/10`);
+    }
+    if (idea.problemScore) {
+      sections.push(`• Problem Score: ${idea.problemScore}/10`);
+    }
+    if (idea.executionDifficulty) {
+      sections.push(`• Execution Difficulty: ${idea.executionDifficulty}/10`);
+    }
+    if (idea.marketSize) {
+      sections.push(`• Market Size: ${idea.marketSize}`);
+    }
+    if (idea.timeToMarket) {
+      sections.push(`• Time to Market: ${idea.timeToMarket}`);
+    }
+    if (idea.estimatedRevenue) {
+      sections.push(`• Estimated Revenue: ${idea.estimatedRevenue}`);
+    }
+    sections.push('');
+    
+    // Community Stats
+    sections.push('--- COMMUNITY ENGAGEMENT ---');
+    sections.push(`• Views: ${idea.viewCount || 0}`);
+    sections.push(`• Saves: ${idea.saveCount || 0}`);
+    sections.push(`• Votes: ${idea.voteCount || 0}`);
+    if (idea.averageRating) {
+      sections.push(`• Average Rating: ${idea.averageRating}/5 (${idea.ratingCount} ratings)`);
+    }
+    sections.push('');
+    
+    // Signal Badges
+    if (idea.signalBadges && idea.signalBadges.length > 0) {
+      sections.push('--- SIGNALS & INDICATORS ---');
+      idea.signalBadges.forEach((badge: string) => {
+        sections.push(`• ${badge}`);
+      });
+      sections.push('');
+    }
+    
+    // Tags
+    if (idea.tags && idea.tags.length > 0) {
+      sections.push('--- TAGS ---');
+      sections.push(idea.tags.join(', '));
+      sections.push('');
+    }
+    
+    // Detailed Content
+    if (idea.content) {
+      sections.push('--- DETAILED ANALYSIS ---');
+      sections.push(idea.content);
+      sections.push('');
+    }
+    
+    // Next Steps
+    if (idea.keyPoints && idea.keyPoints.length > 0) {
+      sections.push('--- KEY POINTS ---');
+      idea.keyPoints.forEach((point: string) => {
+        sections.push(`• ${point}`);
+      });
+      sections.push('');
+    }
+    
+    if (idea.nextSteps && idea.nextSteps.length > 0) {
+      sections.push('--- SUGGESTED NEXT STEPS ---');
+      idea.nextSteps.forEach((step: string, index: number) => {
+        sections.push(`${index + 1}. ${step}`);
+      });
+      sections.push('');
+    }
+    
+    // Footer
+    sections.push('='.repeat(80));
+    sections.push(`Generated: ${new Date().toISOString()}`);
+    sections.push(`Slug: ${idea.slug}`);
+    sections.push('='.repeat(80));
+    
+    return sections.join('\n');
+  }
+
   // Export idea data
   app.get('/api/ideas/:id/export', async (req, res) => {
     try {
       const { id } = req.params;
+      const { format = 'json' } = req.query;
       const idea = await storage.getIdeaById(id);
       
       if (!idea) {
         return res.status(404).json({ message: "Idea not found" });
       }
 
-      // Return idea as downloadable JSON
-      res.setHeader('Content-Type', 'application/json');
-      res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.json"`);
-      res.json(idea);
+      // Validate format parameter
+      if (!['json', 'txt'].includes(format as string)) {
+        return res.status(400).json({ message: "Invalid format. Supported formats: json, txt" });
+      }
+
+      if (format === 'json') {
+        // Return idea as downloadable JSON
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.json"`);
+        res.json(idea);
+      } else if (format === 'txt') {
+        // Generate human-readable TXT report
+        const txtContent = generateTxtReport(idea);
+        res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.txt"`);
+        res.send(txtContent);
+      }
     } catch (error) {
       console.error("Error exporting idea:", error);
       res.status(500).json({ message: "Failed to export idea" });
