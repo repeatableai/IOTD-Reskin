@@ -1,11 +1,16 @@
+import { useState } from "react";
 import Header from "@/components/Header";
 import { TrendingUp, ArrowUpRight, ArrowDownRight, Lightbulb, Users, DollarSign } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import type { Idea } from "@shared/schema";
 import { Link } from "wouter";
+import { TrendDetailDialog } from "@/components/TrendDetailDialog";
 
 export default function Trends() {
+  const [selectedTrend, setSelectedTrend] = useState<string | null>(null);
+  const [trendDialogOpen, setTrendDialogOpen] = useState(false);
   const { data: response, isLoading } = useQuery<{ ideas: Idea[]; total: number }>({
     queryKey: ["/api/ideas"],
   });
@@ -27,7 +32,7 @@ export default function Trends() {
       }
       acc[market].count++;
       if (idea.opportunityScore) {
-        acc[market].totalScore += parseFloat(idea.opportunityScore);
+        acc[market].totalScore += (typeof idea.opportunityScore === 'number' ? idea.opportunityScore : parseInt(idea.opportunityScore));
       }
       return acc;
     }, {} as Record<string, { name: string; count: number; avgScore: number; totalScore: number }>);
@@ -44,14 +49,22 @@ export default function Trends() {
   const getTopIdeasByScore = () => {
     if (!ideas) return [];
     return [...ideas]
-      .sort((a, b) => parseFloat(b.opportunityScore || "0") - parseFloat(a.opportunityScore || "0"))
+      .sort((a, b) => {
+        const aScore = typeof a.opportunityScore === 'number' ? a.opportunityScore : parseInt(a.opportunityScore || '0');
+        const bScore = typeof b.opportunityScore === 'number' ? b.opportunityScore : parseInt(b.opportunityScore || '0');
+        return bScore - aScore;
+      })
       .slice(0, 5);
   };
 
   const getRecentIdeas = () => {
     if (!ideas) return [];
     return [...ideas]
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      })
       .slice(0, 5);
   };
 
@@ -92,33 +105,52 @@ export default function Trends() {
               <h2 className="text-2xl font-bold mb-6">Trending Markets</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {trendingMarkets.map((market, index) => (
-                  <Link key={market.name} href={`/database?market=${encodeURIComponent(market.name)}`}>
-                    <div
-                      className="border rounded-lg p-6 hover:shadow-lg transition-shadow cursor-pointer"
-                      data-testid={`card-trend-${market.name.toLowerCase().replace(/\s+/g, '-')}`}
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className={`w-12 h-12 ${marketColors[index % marketColors.length]} rounded-lg flex items-center justify-center`}>
-                          <Lightbulb className="w-6 h-6 text-white" />
-                        </div>
-                        <div className="flex items-center text-green-600 font-semibold">
-                          <ArrowUpRight className="w-4 h-4 mr-1" />
-                          {market.avgScore.toFixed(1)}
-                        </div>
+                  <div
+                    key={market.name}
+                    className="border rounded-lg p-6 hover:shadow-lg transition-shadow"
+                    data-testid={`card-trend-${market.name.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <div className={`w-12 h-12 ${marketColors[index % marketColors.length]} rounded-lg flex items-center justify-center`}>
+                        <Lightbulb className="w-6 h-6 text-white" />
                       </div>
-                      <h3 className="text-lg font-semibold mb-2">{market.name}</h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Lightbulb className="w-4 h-4" />
-                          {market.count} ideas
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <DollarSign className="w-4 h-4" />
-                          Avg score: {market.avgScore.toFixed(1)}
-                        </span>
+                      <div className="flex items-center text-green-600 font-semibold">
+                        <ArrowUpRight className="w-4 h-4 mr-1" />
+                        {market.avgScore.toFixed(1)}
                       </div>
                     </div>
-                  </Link>
+                    <h3 className="text-lg font-semibold mb-2">{market.name}</h3>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
+                      <span className="flex items-center gap-1">
+                        <Lightbulb className="w-4 h-4" />
+                        {market.count} ideas
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="w-4 h-4" />
+                        Avg score: {market.avgScore.toFixed(1)}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedTrend(market.name);
+                          setTrendDialogOpen(true);
+                        }}
+                        data-testid={`button-view-trend-${index}`}
+                      >
+                        <TrendingUp className="w-4 h-4 mr-1" />
+                        View Trends
+                      </Button>
+                      <Link href={`/database?market=${encodeURIComponent(market.name)}`} className="flex-1">
+                        <Button variant="default" size="sm" className="w-full" data-testid={`button-browse-${index}`}>
+                          Browse Ideas
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -199,7 +231,7 @@ export default function Trends() {
                           {idea.description}
                         </p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Added: {new Date(idea.createdAt).toLocaleDateString()}</span>
+                          <span>Added: {idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : 'Recently'}</span>
                           {idea.viewCount && (
                             <span className="flex items-center gap-1">
                               <Users className="w-3 h-3" />
@@ -216,6 +248,15 @@ export default function Trends() {
           </>
         )}
       </div>
+
+      {/* Trend Detail Dialog */}
+      {selectedTrend && (
+        <TrendDetailDialog
+          keyword={selectedTrend}
+          open={trendDialogOpen}
+          onOpenChange={setTrendDialogOpen}
+        />
+      )}
     </div>
   );
 }

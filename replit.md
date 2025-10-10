@@ -5,12 +5,16 @@ This is a startup idea discovery platform that helps entrepreneurs find data-dri
 ## Recent Updates (October 10, 2025)
 
 **Latest Enhancements (Just Completed)**:
-- **Ad Creatives Builder** (`/idea/:slug/build/ad-creatives`) - Comprehensive ad copy generator for Facebook/Instagram, Google Ads, LinkedIn, TikTok with A/B testing strategies, CTAs, budget allocation, and success metrics tailored to market type
-- **Brand Package Builder** (`/idea/:slug/build/brand-package`) - Complete brand identity framework including positioning, visual identity, logo concepts, color palette, typography, voice/tone, messaging framework, and application guidelines
+- **Real-Time Data Integration** - External data service integrating with Reddit, Google Trends, news APIs, and academic journals for genuine market research and validation
+- **Claude 4.5 AI Building Assistant** - Interactive chat interface powered by Claude Sonnet 4.5 for expert startup building guidance with context-aware responses
+- **Interactive Trend Pop-ups** (`TrendDetailDialog`) - Clickable market trends showing why trending, search volume, growth rates, trending industries, related apps, and research sources
+- **Opportunity Score Explanations** (`ScoreDetailDialog`) - Clickable score boxes displaying detailed breakdowns, contributing factors, calculations, and improvement tips for all 6 score types
+- **Market Insights Dialog** (`MarketInsightDialog`) - Platform-specific insights from Reddit, Google, industry forums with academic research citations and DOI links
+- **Enhanced Trends Page** - Interactive buttons for "View Trends" and "Browse Ideas" with real-time data integration
+- **Ad Creatives Builder** (`/idea/:slug/build/ad-creatives`) - Comprehensive ad copy generator for Facebook/Instagram, Google Ads, LinkedIn, TikTok with A/B testing strategies, CTAs, budget allocation, and success metrics
+- **Brand Package Builder** (`/idea/:slug/build/brand-package`) - Complete brand identity framework including positioning, visual identity, logo concepts, color palette, typography, voice/tone, messaging framework
 - **Community Signals Platform Pages** - Platform-specific signal breakdowns for Reddit, Facebook, YouTube with proper JSONB null safety checks, trend analysis, and engagement metrics
 - **Multi-Format Download Data** - Dialog-based format selector (JSON/TXT) for exporting idea data with proper serializers, MIME types, and filenames
-- **Claim Idea Reactivity** - Fixed immediate UI updates using refetchQueries for instant claimed ideas visibility
-- **Greg's Picks Filter** - Fixed toggle logic to use undefined instead of false when deactivating, ensuring proper filter removal and result updates
 
 **Major AI-Powered Features (Completed & Tested)**:
 - **AI Research Agent** (`/idea-agent`) - Flagship feature performing 40-step comprehensive startup analysis using GPT-4o. Users input an idea description (+ optional context) and receive detailed analysis across 6 sections: Market Opportunity, Competitor Analysis, Community Insights, Business Strategy, Financial Projections, Actionable Recommendations. Includes 4 validation scores (1-10). Features download report (.txt) and copy functionality.
