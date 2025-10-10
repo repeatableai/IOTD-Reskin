@@ -30,6 +30,10 @@ import PlanDetails from "@/pages/plan-details";
 import IdeaOfTheDay from "@/pages/idea-of-the-day";
 import ValueEquation from "@/pages/value-equation";
 import BuildPrompt from "@/pages/build-prompt";
+import WhyNow from "@/pages/why-now";
+import ProofSignals from "@/pages/proof-signals";
+import MarketGap from "@/pages/market-gap";
+import ExecutionPlan from "@/pages/execution-plan";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -40,6 +44,10 @@ function Router() {
       <Route path="/database" component={Database} />
       <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
       <Route path="/idea/:slug/value-equation" component={ValueEquation} />
+      <Route path="/idea/:slug/why-now" component={WhyNow} />
+      <Route path="/idea/:slug/proof-signals" component={ProofSignals} />
+      <Route path="/idea/:slug/market-gap" component={MarketGap} />
+      <Route path="/idea/:slug/execution-plan" component={ExecutionPlan} />
       <Route path="/idea/:slug/build/:builder" component={BuildPrompt} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
