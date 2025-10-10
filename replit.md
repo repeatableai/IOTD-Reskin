@@ -5,6 +5,8 @@ This is a startup idea discovery platform that helps entrepreneurs find data-dri
 ## Recent Updates (October 10, 2025)
 
 **Latest Enhancements (Just Completed)**:
+- **Ad Creatives Builder** (`/idea/:slug/build/ad-creatives`) - Comprehensive ad copy generator for Facebook/Instagram, Google Ads, LinkedIn, TikTok with A/B testing strategies, CTAs, budget allocation, and success metrics tailored to market type
+- **Brand Package Builder** (`/idea/:slug/build/brand-package`) - Complete brand identity framework including positioning, visual identity, logo concepts, color palette, typography, voice/tone, messaging framework, and application guidelines
 - **Community Signals Platform Pages** - Platform-specific signal breakdowns for Reddit, Facebook, YouTube with proper JSONB null safety checks, trend analysis, and engagement metrics
 - **Multi-Format Download Data** - Dialog-based format selector (JSON/TXT) for exporting idea data with proper serializers, MIME types, and filenames
 - **Claim Idea Reactivity** - Fixed immediate UI updates using refetchQueries for instant claimed ideas visibility
