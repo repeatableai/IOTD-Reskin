@@ -58,7 +58,7 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
               <Button
                 variant={filters.isGregsPick ? "default" : "outline"}
                 size="sm"
-                onClick={() => onFiltersChange({ isGregsPick: !filters.isGregsPick })}
+                onClick={() => onFiltersChange({ isGregsPick: filters.isGregsPick ? undefined : true })}
                 className="justify-start"
                 data-testid="button-gregs-pick"
               >
