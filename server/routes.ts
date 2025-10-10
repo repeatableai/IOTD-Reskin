@@ -7,6 +7,14 @@ import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { aiService, type IdeaGenerationParams } from "./aiService";
+import { externalDataService } from "./externalDataService";
+import Anthropic from '@anthropic-ai/sdk';
+
+// Initialize Claude AI client for building prompts
+// Note: Using claude-sonnet-4-20250514 (latest model)
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -868,6 +876,103 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching favorite tools:", error);
       res.status(500).json({ message: "Failed to fetch favorites" });
+    }
+  });
+
+  // External data integration routes
+
+  // Get real trend data for a keyword
+  app.get('/api/external/trend/:keyword', async (req, res) => {
+    try {
+      const { keyword } = req.params;
+      const trendData = await externalDataService.getTrendData(keyword);
+      res.json(trendData);
+    } catch (error) {
+      console.error("Error fetching trend data:", error);
+      res.status(500).json({ message: "Failed to fetch trend data" });
+    }
+  });
+
+  // Get market insights for a topic
+  app.get('/api/external/insights/:topic', async (req, res) => {
+    try {
+      const { topic } = req.params;
+      const insights = await externalDataService.getMarketInsights(topic);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching market insights:", error);
+      res.status(500).json({ message: "Failed to fetch market insights" });
+    }
+  });
+
+  // Get detailed explanation for opportunity scores
+  app.get('/api/external/score-details/:scoreType', async (req, res) => {
+    try {
+      const { scoreType } = req.params;
+      const { score, context } = req.query;
+      
+      const scoreNum = parseInt(score as string);
+      if (isNaN(scoreNum) || scoreNum < 1 || scoreNum > 10) {
+        return res.status(400).json({ message: "Invalid score value" });
+      }
+
+      const details = await externalDataService.getOpportunityScoreDetails(
+        scoreType as any,
+        scoreNum,
+        context as string
+      );
+      res.json(details);
+    } catch (error) {
+      console.error("Error fetching score details:", error);
+      res.status(500).json({ message: "Failed to fetch score details" });
+    }
+  });
+
+  // Claude AI building prompts - Interactive chat
+  app.post('/api/ai/build-chat', isAuthenticated, async (req, res) => {
+    try {
+      const { messages, ideaContext } = req.body;
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: "Anthropic API key not configured" });
+      }
+
+      // System prompt for building assistance
+      const systemPrompt = `You are an expert startup builder and technical architect. Help the user build their startup idea with practical, actionable guidance.
+
+${ideaContext ? `Context: The user is working on the following idea:
+${JSON.stringify(ideaContext, null, 2)}
+
+Use this context to provide specific, tailored advice.` : ''}
+
+Provide:
+- Concrete technical recommendations
+- Step-by-step implementation guidance
+- Best practices and common pitfalls
+- Tool and framework suggestions
+- Code examples when relevant
+- Resource recommendations
+
+Be practical, encouraging, and focus on helping them make real progress.`;
+
+      const response = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514", // Latest Claude model
+        max_tokens: 4000,
+        system: systemPrompt,
+        messages: messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      });
+
+      const assistantMessage = response.content[0];
+      res.json({
+        role: 'assistant',
+        content: assistantMessage.type === 'text' ? assistantMessage.text : ''
+      });
+    } catch (error) {
+      console.error("Error in Claude chat:", error);
+      res.status(500).json({ message: "Failed to get AI response" });
     }
   });
 
