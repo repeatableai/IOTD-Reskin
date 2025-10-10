@@ -529,6 +529,98 @@ Format the response as JSON with this structure:
       throw new Error('Failed to complete research analysis');
     }
   }
+
+  async generatePersonalizedIdeas(params: {
+    skills: string;
+    budget?: string;
+    timeCommitment?: string;
+    industryInterests?: string;
+    experience?: string;
+  }): Promise<{ ideas: Array<any> }> {
+    const prompt = `You are an expert startup advisor helping entrepreneurs find the perfect business idea.
+
+USER PROFILE:
+Skills & Expertise: ${params.skills}
+Budget: ${params.budget || 'Not specified'}
+Time Commitment: ${params.timeCommitment || 'Not specified'}
+Industry Interests: ${params.industryInterests || 'Open to all industries'}
+Experience Level: ${params.experience || 'Not specified'}
+
+Generate 3 personalized startup ideas that are perfectly matched to this person's profile.
+
+For each idea, provide:
+
+1. TITLE: A compelling, descriptive title
+2. SUBTITLE: A one-sentence value proposition
+3. DESCRIPTION: A 150-200 word detailed description of the idea
+4. MARKET: The market/industry (e.g., "SaaS", "E-commerce", "Healthcare")
+5. TARGET AUDIENCE: Who this serves
+6. OPPORTUNITY SCORE: 1-10 rating
+7. PROBLEM SCORE: 1-10 rating of problem severity
+8. FEASIBILITY SCORE: 1-10 rating based on their skills/budget
+9. WHY THIS IDEA MATCHES YOU: 100-150 words explaining why this is perfect for them based on their skills, budget, time, and experience
+10. NEXT STEPS: 100-150 words of actionable first steps they should take
+11. ESTIMATED REVENUE: First year revenue estimate (e.g., "$50k-$100k", "$200k+")
+12. TIME TO LAUNCH: Realistic timeline (e.g., "3-4 months", "6-9 months")
+
+Focus on:
+- Ideas that match their specific skill set
+- Realistic based on their budget and time commitment
+- Current market opportunities (2025 trends)
+- Proven business models with clear monetization
+- Ideas they can actually execute
+
+Format as JSON:
+{
+  "ideas": [
+    {
+      "title": "...",
+      "subtitle": "...",
+      "description": "...",
+      "market": "...",
+      "targetAudience": "...",
+      "opportunityScore": 8,
+      "problemScore": 7,
+      "feasibilityScore": 9,
+      "whyThisIdea": "...",
+      "nextSteps": "...",
+      "estimatedRevenue": "$75k-$150k",
+      "timeToLaunch": "4-6 months"
+    },
+    ... (3 ideas total)
+  ]
+}`;
+
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: "system",
+        content: "You are an expert startup advisor who excels at matching people with perfect business opportunities based on their unique situation."
+      },
+      {
+        role: "user",
+        content: prompt
+      }
+    ];
+
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: messages,
+        temperature: 0.8,
+        max_tokens: 4000,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || '{"ideas":[]}';
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : responseText;
+      const result = JSON.parse(jsonText);
+
+      return result;
+    } catch (error) {
+      console.error('Error generating personalized ideas:', error);
+      throw new Error('Failed to generate ideas');
+    }
+  }
 }
 
 export const aiService = new AIService();

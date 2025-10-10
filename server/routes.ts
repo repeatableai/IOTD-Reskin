@@ -653,6 +653,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Idea Generator - Personalized idea generation
+  app.post('/api/generate-ideas', async (req, res) => {
+    try {
+      const generatorSchema = z.object({
+        skills: z.string().min(10, "Please describe your skills"),
+        budget: z.string().optional(),
+        timeCommitment: z.string().optional(),
+        industryInterests: z.string().optional(),
+        experience: z.string().optional(),
+      });
+
+      const data = generatorSchema.parse(req.body);
+      
+      // Generate personalized ideas
+      const result = await aiService.generatePersonalizedIdeas(data);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error generating ideas:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error",
+          errors: error.errors 
+        });
+      }
+      res.status(500).json({ message: "Failed to generate ideas" });
+    }
+  });
+
   // Get FAQ questions
   app.get('/api/faq', async (req, res) => {
     try {
