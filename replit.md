@@ -4,14 +4,28 @@ This is a startup idea discovery platform that helps entrepreneurs find data-dri
 
 ## Recent Updates (October 10, 2025)
 
-**New Idea Detail Sub-Pages (Completed & Tested)**: Added dedicated deep-dive pages for comprehensive analysis:
-- `/idea/:slug/why-now` - Market timing analysis displaying whyNowAnalysis content
-- `/idea/:slug/proof-signals` - Market validation evidence displaying proofSignals content  
-- `/idea/:slug/market-gap` - Market opportunity analysis displaying marketGap content
-- `/idea/:slug/execution-plan` - Implementation roadmap displaying executionPlan content
-- All pages include TypeScript slug guards, loading states, and graceful fallback messages for missing data
-- Navigation buttons flow: Overview → Why Now → Proof & Signals → Market Gap → Execution Plan → Build
-- End-to-end playwright tests passing for all navigation flows
+**Major AI-Powered Features (Completed & Tested)**:
+- **AI Research Agent** (`/idea-agent`) - Flagship feature performing 40-step comprehensive startup analysis using GPT-4o. Users input an idea description (+ optional context) and receive detailed analysis across 6 sections: Market Opportunity, Competitor Analysis, Community Insights, Business Strategy, Financial Projections, Actionable Recommendations. Includes 4 validation scores (1-10). Features download report (.txt) and copy functionality.
+
+- **AI Idea Generator** (`/idea-generator`) - Personalized startup idea generation based on user profile (skills, budget, time commitment, industry interests, experience level). Uses GPT-4o to generate 3 tailored ideas, each with scores, target audience, personalization explanation, next steps, revenue estimates, and time to launch.
+
+**Framework Analysis Pages (Completed & Tested)**: Four dedicated deep-dive analytical frameworks:
+- `/idea/:slug/acp-framework` - A.C.P. (Awareness-Consideration-Purchase) Framework analyzing customer journey through 3 phases with channels, strategies, and conversion optimization
+- `/idea/:slug/value-matrix` - 4-quadrant value analysis (Dream Come True, Expensive But Worth It, Status Quo, Major Hassle) with strategic recommendations
+- `/idea/:slug/value-ladder` - 5-tier pricing strategy (Lead Magnet → Frontend → Core → Backend → Continuity) with LTV/CAC metrics
+- `/idea/:slug/keywords` - Comprehensive SEO keyword research with primary keyword analysis, related keywords, long-tail opportunities, competitor analysis, and SEO strategy
+
+**Founder Fit Analysis (Completed & Tested)**:
+- `/idea/:slug/founder-fit` - Comprehensive founder-idea matching with overall fit score (0-100%), skill requirements analysis (5 skills with match scores), ideal founder profile, critical success factors, time/budget requirements, challenges, and competitive advantages
+
+**Idea Detail Sub-Pages (Completed & Tested)**: Market analysis deep-dive pages:
+- `/idea/:slug/why-now` - Market timing analysis
+- `/idea/:slug/proof-signals` - Market validation evidence  
+- `/idea/:slug/market-gap` - Market opportunity analysis
+- `/idea/:slug/execution-plan` - Implementation roadmap
+- All pages include TypeScript slug guards, loading states, and graceful fallback messages
+- Navigation flow maintained across all analysis pages
+- All features tested end-to-end with Playwright
 
 # User Preferences
 
