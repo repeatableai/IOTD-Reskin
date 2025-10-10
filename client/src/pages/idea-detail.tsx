@@ -232,9 +232,9 @@ export default function IdeaDetail() {
     mutationFn: async () => {
       await apiRequest("POST", `/api/ideas/${idea.id}/claim`);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({ title: "Idea claimed successfully!" });
-      queryClient.invalidateQueries({ queryKey: ["/api/ideas", idea.slug] });
+      await queryClient.refetchQueries({ queryKey: ["/api/ideas", idea.slug] });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
