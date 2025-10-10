@@ -4,12 +4,14 @@ This is a startup idea discovery platform that helps entrepreneurs find data-dri
 
 ## Recent Updates (October 10, 2025)
 
-**New Idea Detail Sub-Pages**: Added dedicated deep-dive pages for comprehensive analysis:
-- `/idea/:slug/why-now` - Market timing analysis with growth projections and technology enablers
-- `/idea/:slug/proof-signals` - Market validation evidence with customer pain points and demand signals
-- `/idea/:slug/market-gap` - Underserved market segments and competitive landscape gaps
-- `/idea/:slug/execution-plan` - Step-by-step roadmap with MVP definition, resource requirements, and success metrics
-- Navigation links added from idea detail tabs to dedicated sub-pages for seamless user experience
+**New Idea Detail Sub-Pages (Completed & Tested)**: Added dedicated deep-dive pages for comprehensive analysis:
+- `/idea/:slug/why-now` - Market timing analysis displaying whyNowAnalysis content
+- `/idea/:slug/proof-signals` - Market validation evidence displaying proofSignals content  
+- `/idea/:slug/market-gap` - Market opportunity analysis displaying marketGap content
+- `/idea/:slug/execution-plan` - Implementation roadmap displaying executionPlan content
+- All pages include TypeScript slug guards, loading states, and graceful fallback messages for missing data
+- Navigation buttons flow: Overview → Why Now → Proof & Signals → Market Gap → Execution Plan → Build
+- End-to-end playwright tests passing for all navigation flows
 
 # User Preferences
 
