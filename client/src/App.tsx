@@ -40,6 +40,7 @@ import ACPFramework from "@/pages/acp-framework";
 import ValueMatrix from "@/pages/value-matrix";
 import ValueLadder from "@/pages/value-ladder";
 import Keywords from "@/pages/keywords";
+import FounderFitIdea from "@/pages/founder-fit-idea";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -60,6 +61,7 @@ function Router() {
       <Route path="/idea/:slug/value-matrix" component={ValueMatrix} />
       <Route path="/idea/:slug/value-ladder" component={ValueLadder} />
       <Route path="/idea/:slug/keywords" component={Keywords} />
+      <Route path="/idea/:slug/founder-fit" component={FounderFitIdea} />
       <Route path="/idea/:slug/build/:builder" component={BuildPrompt} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
