@@ -32,7 +32,7 @@ export default function Home() {
             Welcome back, {user?.firstName || 'Explorer'}! 👋
           </h1>
           <p className="text-muted-foreground">
-            Discover your next big opportunity with data-driven startup ideas.
+            Discover your next big opportunity with data-driven startup solutions.
           </p>
         </div>
 
@@ -43,7 +43,7 @@ export default function Home() {
               <div className="flex items-center">
                 <Bookmark className="h-8 w-8 text-primary" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Saved Ideas</p>
+                  <p className="text-sm font-medium text-muted-foreground">Saved Solutions</p>
                   <p className="text-2xl font-bold" data-testid="text-saved-count">
                     {savedIdeas?.length || 0}
                   </p>
@@ -57,7 +57,7 @@ export default function Home() {
               <div className="flex items-center">
                 <TrendingUp className="h-8 w-8 text-secondary" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Total Ideas</p>
+                  <p className="text-sm font-medium text-muted-foreground">Total Solutions</p>
                   <p className="text-2xl font-bold">400+</p>
                 </div>
               </div>
@@ -69,7 +69,7 @@ export default function Home() {
               <div className="flex items-center">
                 <Eye className="h-8 w-8 text-accent" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Ideas Viewed</p>
+                  <p className="text-sm font-medium text-muted-foreground">Solutions Viewed</p>
                   <p className="text-2xl font-bold">-</p>
                 </div>
               </div>
@@ -81,7 +81,7 @@ export default function Home() {
               <div className="flex items-center">
                 <Heart className="h-8 w-8 text-chart-5" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-muted-foreground">Voted Ideas</p>
+                  <p className="text-sm font-medium text-muted-foreground">Voted Solutions</p>
                   <p className="text-2xl font-bold">-</p>
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default function Home() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <TrendingUp className="w-5 h-5 mr-2" />
-                    Idea of the Day
+                    Solution of the Day
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -110,7 +110,7 @@ export default function Home() {
             {/* Trending Ideas */}
             <Card>
               <CardHeader>
-                <CardTitle>Trending Ideas</CardTitle>
+                <CardTitle>Trending Solutions</CardTitle>
               </CardHeader>
               <CardContent>
                 {topLoading ? (
@@ -131,13 +131,13 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="text-center text-muted-foreground py-8">
-                    No trending ideas available.
+                    No trending solutions available.
                   </div>
                 )}
                 
                 <div className="mt-6 text-center">
                   <Button data-testid="button-view-all-trending">
-                    View All Trending Ideas
+                    View All Trending Solutions
                   </Button>
                 </div>
               </CardContent>
@@ -151,7 +151,7 @@ export default function Home() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Bookmark className="w-5 h-5 mr-2" />
-                  Your Saved Ideas
+                  Your Saved Solutions
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -181,7 +181,7 @@ export default function Home() {
                 ) : (
                   <div className="text-center text-muted-foreground py-4">
                     <Bookmark className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">No saved ideas yet</p>
+                    <p className="text-sm">No saved solutions yet</p>
                     <Button variant="outline" size="sm" className="mt-2" data-testid="button-browse-database">
                       Browse Database
                     </Button>
@@ -198,7 +198,7 @@ export default function Home() {
               <CardContent className="space-y-3">
                 <Button className="w-full" data-testid="button-browse-ideas">
                   <TrendingUp className="w-4 h-4 mr-2" />
-                  Browse All Ideas
+                  Browse All Solutions
                 </Button>
                 <Button variant="outline" className="w-full" data-testid="button-ai-research">
                   <Eye className="w-4 h-4 mr-2" />

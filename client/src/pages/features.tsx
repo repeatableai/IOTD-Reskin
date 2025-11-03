@@ -22,14 +22,14 @@ const features = [
   {
     icon: Search,
     title: "Advanced Search & Discovery",
-    description: "Find the perfect startup idea with our intelligent search engine that filters by market, opportunity score, execution difficulty, and revenue potential.",
+    description: "Find the perfect startup solution with our intelligent search engine that filters by market, opportunity score, execution difficulty, and revenue potential.",
     benefits: ["Smart keyword matching", "Multi-criteria filtering", "Personalized recommendations"],
     status: "live"
   },
   {
     icon: Brain,
     title: "AI-Powered Analysis",
-    description: "Every idea is analyzed using advanced algorithms to provide opportunity scores, market validation data, and competitive landscape insights.",
+    description: "Every solution is analyzed using advanced algorithms to provide opportunity scores, market validation data, and competitive landscape insights.",
     benefits: ["Opportunity scoring (1-10)", "Market size analysis", "Competition assessment"],
     status: "live"
   },
@@ -50,28 +50,28 @@ const features = [
   {
     icon: Heart,
     title: "Personal Favorites",
-    description: "Save ideas that resonate with you and build your personal collection of potential business opportunities for future reference.",
-    benefits: ["Save favorite ideas", "Personal collections", "Quick access dashboard"],
+    description: "Save solutions that resonate with you and build your personal collection of potential business opportunities for future reference.",
+    benefits: ["Save favorite solutions", "Personal collections", "Quick access dashboard"],
     status: "live"
   },
   {
     icon: Target,
     title: "Market Validation Data",
-    description: "Access real market data including search volumes, growth trends, and competitive analysis to validate idea potential.",
+    description: "Access real market data including search volumes, growth trends, and competitive analysis to validate solution potential.",
     benefits: ["Keyword search volume", "Growth trend analysis", "Market size estimates"],
     status: "live"
   },
   {
     icon: Zap,
     title: "Real-time Trending",
-    description: "Stay ahead of the curve with real-time tracking of trending ideas, emerging markets, and hot opportunities.",
-    benefits: ["Trending idea alerts", "Market emergence tracking", "Opportunity notifications"],
+    description: "Stay ahead of the curve with real-time tracking of trending solutions, emerging markets, and hot opportunities.",
+    benefits: ["Trending solution alerts", "Market emergence tracking", "Opportunity notifications"],
     status: "coming-soon"
   },
   {
     icon: Shield,
     title: "Risk Assessment",
-    description: "Understand potential risks and challenges with detailed risk assessments and mitigation strategies for each idea.",
+    description: "Understand potential risks and challenges with detailed risk assessments and mitigation strategies for each solution.",
     benefits: ["Risk factor analysis", "Mitigation strategies", "Success probability"],
     status: "coming-soon"
   },
@@ -103,7 +103,7 @@ export default function Features() {
           <div className="flex justify-center">
             <Link href="/database">
               <Button size="lg" data-testid="button-explore-ideas">
-                Explore Ideas Now
+                Explore Solutions Now
               </Button>
             </Link>
           </div>
@@ -176,7 +176,7 @@ export default function Features() {
         {/* CTA Section */}
         <div className="bg-primary/5 rounded-2xl p-8 text-center border">
           <h2 className="text-3xl font-bold text-foreground mb-4">
-            Ready to Find Your Next Big Idea?
+            Ready to Find Your Next Big Solution?
           </h2>
           <p className="text-xl text-muted-foreground mb-6 max-w-2xl mx-auto">
             Join thousands of entrepreneurs who are using our platform to discover and validate their next startup opportunity.
@@ -184,7 +184,7 @@ export default function Features() {
           <div className="flex justify-center space-x-4">
             <Link href="/database">
               <Button size="lg" data-testid="button-browse-ideas">
-                Browse Ideas
+                Browse Solutions
               </Button>
             </Link>
             <Link href="/pricing">

@@ -112,7 +112,7 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
         {/* Search */}
         <div>
           <Label htmlFor="search" className="text-sm font-medium mb-2 block">
-            Search Ideas
+            Search Solutions
           </Label>
           <form onSubmit={handleSearchSubmit} className="relative">
             <Input

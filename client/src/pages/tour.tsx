@@ -7,15 +7,15 @@ export default function Tour() {
   const features = [
     {
       icon: Lightbulb,
-      title: "Idea Discovery",
-      description: "Browse 400+ curated startup ideas with comprehensive market analysis and opportunity scoring",
+      title: "Solution Discovery",
+      description: "Browse 400+ curated startup solutions with comprehensive market analysis and opportunity scoring",
       steps: ["Filter by market and category", "View detailed metrics", "Save favorites for later"],
     },
     {
       icon: Database,
       title: "Research Database",
       description: "Access validated opportunities with real market data, community signals, and competitive analysis",
-      steps: ["Search and filter ideas", "Read detailed research", "Compare opportunities"],
+      steps: ["Search and filter solutions", "Read detailed research", "Compare opportunities"],
     },
     {
       icon: TrendingUp,
@@ -26,7 +26,7 @@ export default function Tour() {
     {
       icon: MessageSquare,
       title: "AI Chat",
-      description: "Have deep conversations about any idea with AI-powered insights and strategic advice",
+      description: "Have deep conversations about any solution with AI-powered insights and strategic advice",
       steps: ["Ask detailed questions", "Get market analysis", "Receive strategic recommendations"],
     },
   ];
@@ -35,7 +35,7 @@ export default function Tour() {
     {
       step: 1,
       title: "Browse & Discover",
-      description: "Explore curated startup ideas filtered by market, score, and interest",
+      description: "Explore curated startup solutions filtered by market, score, and interest",
     },
     {
       step: 2,
@@ -50,7 +50,7 @@ export default function Tour() {
     {
       step: 4,
       title: "Build & Launch",
-      description: "Use Idea Builder to create actionable plans and start building",
+      description: "Use Solution Builder to create actionable plans and start building",
     },
   ];
 
@@ -64,7 +64,7 @@ export default function Tour() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Platform Tour</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover how we help entrepreneurs find and validate their next big idea
+            Discover how we help entrepreneurs find and validate their next big solution
           </p>
         </div>
 
@@ -106,7 +106,7 @@ export default function Tour() {
         <div className="max-w-6xl mx-auto mb-16">
           <h2 className="text-3xl font-bold mb-2 text-center">Key Features</h2>
           <p className="text-center text-muted-foreground mb-10">
-            Everything you need to find and validate startup ideas
+            Everything you need to find and validate startup solutions
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {features.map((feature, index) => {

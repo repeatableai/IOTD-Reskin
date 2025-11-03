@@ -31,10 +31,10 @@ export default function IdeaOfTheDay() {
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="text-center">
-            <h1 className="text-3xl font-bold mb-4">No Idea of the Day Available</h1>
-            <p className="text-muted-foreground mb-6">Check back later for today's featured idea.</p>
+            <h1 className="text-3xl font-bold mb-4">No Solution of the Day Available</h1>
+            <p className="text-muted-foreground mb-6">Check back later for today's featured solution.</p>
             <Link href="/database">
-              <Button>Browse All Ideas</Button>
+              <Button>Browse All Solutions</Button>
             </Link>
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function IdeaOfTheDay() {
         <div className="text-center mb-12">
           <Badge className="mb-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0" data-testid="badge-idea-of-day">
             <Sparkles className="w-4 h-4 mr-1" />
-            Idea of the Day
+            Solution of the Day
           </Badge>
           <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-idea-title">
             {idea.title}

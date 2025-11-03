@@ -24,7 +24,7 @@ export default function IdeaBuilder() {
     {
       icon: Code,
       title: "Technical Stack",
-      description: "Recommended technologies, frameworks, and tools specifically suited for your idea",
+      description: "Recommended technologies, frameworks, and tools specifically suited for your solution",
       benefits: [
         "Technology recommendations based on requirements",
         "Architecture patterns and best practices",
@@ -59,8 +59,8 @@ export default function IdeaBuilder() {
   const process = [
     {
       step: 1,
-      title: "Select Your Idea",
-      description: "Choose an idea from your saved list or browse the database",
+      title: "Select Your Solution",
+      description: "Choose a solution from your saved list or browse the database",
     },
     {
       step: 2,
@@ -88,7 +88,7 @@ export default function IdeaBuilder() {
             <Wrench className="w-8 h-8 text-primary" />
           </div>
           <div className="inline-flex items-center gap-2 mb-4">
-            <h1 className="text-4xl font-bold">Idea Builder</h1>
+            <h1 className="text-4xl font-bold">Solution Builder</h1>
             <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">PRO</span>
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
@@ -101,7 +101,7 @@ export default function IdeaBuilder() {
             <Alert>
               <Sparkles className="h-4 w-4" />
               <AlertDescription>
-                Sign in to access Idea Builder and start creating your custom build plan
+                Sign in to access Solution Builder and start creating your custom build plan
               </AlertDescription>
             </Alert>
           </div>
@@ -112,7 +112,7 @@ export default function IdeaBuilder() {
             <Alert className="border-primary/50 bg-primary/5">
               <Sparkles className="h-4 w-4 text-primary" />
               <AlertDescription>
-                Upgrade to PRO to unlock Idea Builder and get personalized build plans for your ideas
+                Upgrade to PRO to unlock Solution Builder and get personalized build plans for your solutions
               </AlertDescription>
             </Alert>
           </div>
@@ -182,7 +182,7 @@ export default function IdeaBuilder() {
               <div>
                 <h3 className="font-semibold text-lg mb-2">Plans Generated in Minutes</h3>
                 <p className="text-muted-foreground mb-4">
-                  Our AI analyzes your idea, skills, resources, and goals to create a customized plan
+                  Our AI analyzes your solution, skills, resources, and goals to create a customized plan
                   tailored specifically for you. Most plans are generated in under 5 minutes.
                 </p>
                 <ul className="space-y-2">
@@ -220,7 +220,7 @@ export default function IdeaBuilder() {
           ) : (
             <div>
               <Button size="lg" data-testid="button-start-building">
-                Start Building Your Idea
+                Start Building Your Solution
               </Button>
               <p className="text-sm text-muted-foreground mt-4">
                 Create your first build plan now

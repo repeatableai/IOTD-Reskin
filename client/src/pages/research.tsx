@@ -202,7 +202,7 @@ export default function Research() {
 
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                       <div>
-                        <Label htmlFor="title">Idea Title *</Label>
+                        <Label htmlFor="title">Solution Title *</Label>
                         <Input
                           id="title"
                           {...register("title")}
@@ -220,7 +220,7 @@ export default function Research() {
                         <Textarea
                           id="description"
                           {...register("description")}
-                          placeholder="Describe your idea in detail..."
+                          placeholder="Describe your solution in detail..."
                           rows={4}
                           data-testid="input-research-description"
                           className={errors.description ? "border-red-500" : ""}

@@ -27,7 +27,7 @@ export default function Landing() {
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
               The <span className="infinity-logo">#1 Software</span> to Spot Trends and 
               <br className="hidden md:block" />
-              Startup Ideas Worth Building
+              Startup Solutions Worth Building
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto mb-8">
               Discover profitable startup opportunities backed by comprehensive data analysis. 
@@ -35,7 +35,7 @@ export default function Landing() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <Button size="lg" className="text-lg px-8 py-3" data-testid="button-browse-ideas">
-                Browse 400+ Ideas
+                Browse 400+ Solutions
               </Button>
               <Button variant="outline" size="lg" className="text-lg px-8 py-3" data-testid="button-watch-demo">
                 <i className="fas fa-play mr-2"></i>
@@ -50,7 +50,7 @@ export default function Landing() {
       <section className="py-16 bg-background">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Idea of the Day</h2>
+            <h2 className="text-3xl font-bold mb-4">Solution of the Day</h2>
             <p className="text-muted-foreground">Fully researched business opportunity delivered daily</p>
           </div>
           
@@ -126,7 +126,7 @@ export default function Landing() {
                       </Button>
                       <Button variant="outline" data-testid="button-build-idea">
                         <i className="fas fa-code mr-2"></i>
-                        Build This Idea
+                        Build This Solution
                       </Button>
                       <Button variant="outline" data-testid="button-export-data">
                         <Download className="w-4 h-4 mr-2" />
@@ -139,7 +139,7 @@ export default function Landing() {
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
-              No featured idea available at the moment.
+              No featured solution available at the moment.
             </div>
           )}
         </div>
@@ -149,7 +149,7 @@ export default function Landing() {
       <section className="py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold mb-4">Trending Ideas</h2>
+            <h2 className="text-3xl font-bold mb-4">Trending Solutions</h2>
             <p className="text-muted-foreground">Most popular startup opportunities this week</p>
           </div>
           
@@ -182,13 +182,13 @@ export default function Landing() {
             </div>
           ) : (
             <div className="text-center text-muted-foreground">
-              No ideas available at the moment.
+              No solutions available at the moment.
             </div>
           )}
           
           <div className="text-center mt-12">
             <Button size="lg" data-testid="button-view-all-ideas">
-              View All Ideas
+              View All Solutions
             </Button>
           </div>
         </div>
@@ -229,7 +229,7 @@ export default function Landing() {
               </div>
               <h3 className="font-semibold text-lg mb-2">Founder-Fit Assessment</h3>
               <p className="text-muted-foreground">
-                Personalized matching based on your skills, capital, and time commitment to find ideas perfect for you.
+                Personalized matching based on your skills, capital, and time commitment to find solutions perfect for you.
               </p>
             </Card>
             
@@ -239,7 +239,7 @@ export default function Landing() {
               </div>
               <h3 className="font-semibold text-lg mb-2">Go-to-Market Plans</h3>
               <p className="text-muted-foreground">
-                Detailed execution strategies, revenue models, and step-by-step launch plans for every validated idea.
+                Detailed execution strategies, revenue models, and step-by-step launch plans for every validated solution.
               </p>
             </Card>
             
@@ -271,7 +271,7 @@ export default function Landing() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold mb-4">Ready to Find Your Next Venture?</h2>
           <p className="text-xl text-muted-foreground mb-8">
-            Join thousands of entrepreneurs discovering profitable startup ideas backed by data
+            Join thousands of entrepreneurs discovering profitable startup solutions backed by data
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-lg px-8 py-3" data-testid="button-start-trial">
@@ -297,7 +297,7 @@ export default function Landing() {
                 <span className="text-xl font-bold text-foreground">Ai</span>
               </div>
               <p className="text-muted-foreground">
-                The #1 software to spot trends and startup ideas worth building.
+                The #1 software to spot trends and startup solutions worth building.
               </p>
               <div className="flex space-x-4">
                 <button className="text-muted-foreground hover:text-foreground transition-colors">

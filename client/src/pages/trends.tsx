@@ -91,7 +91,7 @@ export default function Trends() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Market Trends</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Discover emerging market categories and high-opportunity ideas
+            Discover emerging market categories and high-opportunity solutions
           </p>
         </div>
 
@@ -123,7 +123,7 @@ export default function Trends() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground mb-4">
                       <span className="flex items-center gap-1">
                         <Lightbulb className="w-4 h-4" />
-                        {market.count} ideas
+                        {market.count} solutions
                       </span>
                       <span className="flex items-center gap-1">
                         <DollarSign className="w-4 h-4" />
@@ -146,7 +146,7 @@ export default function Trends() {
                       </Button>
                       <Link href={`/database?market=${encodeURIComponent(market.name)}`} className="flex-1">
                         <Button variant="default" size="sm" className="w-full" data-testid={`button-browse-${index}`}>
-                          Browse Ideas
+                          Browse Solutions
                         </Button>
                       </Link>
                     </div>
@@ -156,7 +156,7 @@ export default function Trends() {
             </div>
 
             <div>
-              <h2 className="text-2xl font-bold mb-6">Explore Ideas</h2>
+              <h2 className="text-2xl font-bold mb-6">Explore Solutions</h2>
               <Tabs defaultValue="top-scored" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="top-scored" data-testid="tab-top-scored">

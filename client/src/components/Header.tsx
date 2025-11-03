@@ -53,14 +53,14 @@ export default function Header() {
                   className="text-primary hover:text-primary hover:bg-primary/10"
                   data-testid="dropdown-browse-ideas"
                 >
-                  Browse Ideas
+                  Browse Solutions
                   <ChevronDown className="ml-1 h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[600px] p-6">
                 <div className="grid grid-cols-2 gap-6">
                   <div>
-                    <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Idea Discovery</h3>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Solution Discovery</h3>
                     <div className="space-y-4">
                       <button
                         onClick={() => setLocation('/')}
@@ -69,8 +69,8 @@ export default function Header() {
                       >
                         <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Idea of the Day</div>
-                          <div className="text-sm text-muted-foreground">Get daily curated startup ideas tailored to current trends</div>
+                          <div className="font-semibold">Solution of the Day</div>
+                          <div className="text-sm text-muted-foreground">Get daily curated startup solutions tailored to current trends</div>
                         </div>
                       </button>
                       <button
@@ -80,7 +80,7 @@ export default function Header() {
                       >
                         <Database className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Idea Database</div>
+                          <div className="font-semibold">Solution Database</div>
                           <div className="text-sm text-muted-foreground">Explore 400+ validated business opportunities with research</div>
                         </div>
                       </button>
@@ -91,8 +91,8 @@ export default function Header() {
                       >
                         <Trophy className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Idea Leaderboard</div>
-                          <div className="text-sm text-muted-foreground">Most popular ideas right now</div>
+                          <div className="font-semibold">Solution Leaderboard</div>
+                          <div className="text-sm text-muted-foreground">Most popular solutions right now</div>
                         </div>
                       </button>
                     </div>
@@ -141,7 +141,7 @@ export default function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-[600px] p-6">
-                <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Research & Build Your Ideas</h3>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Research & Build Your Solutions</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <button
                     onClick={() => setLocation('/research')}
@@ -168,7 +168,7 @@ export default function Header() {
                         Founder Fit
                         <span className="text-xs bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded">Starter</span>
                       </div>
-                      <div className="text-sm text-muted-foreground">Discover which ideas match your skills</div>
+                      <div className="text-sm text-muted-foreground">Discover which solutions match your skills</div>
                     </div>
                   </button>
                   <button
@@ -179,7 +179,7 @@ export default function Header() {
                     <Wrench className="w-5 h-5 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-semibold inline-flex items-center gap-2">
-                        Idea Builder
+                        Solution Builder
                         <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">PRO</span>
                       </div>
                       <div className="text-sm text-muted-foreground">Transform research into actionable build plans</div>
@@ -364,7 +364,7 @@ export default function Header() {
                     className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors"
                     data-testid="link-create-idea"
                   >
-                    Create Idea
+                    Create Solution
                   </button>
                   <div className="border-t my-2"></div>
                   <button

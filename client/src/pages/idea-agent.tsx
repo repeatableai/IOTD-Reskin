@@ -77,8 +77,8 @@ export default function IdeaAgent() {
     e.preventDefault();
     if (!ideaDescription.trim()) {
       toast({
-        title: "Idea Required",
-        description: "Please describe your startup idea.",
+        title: "Solution Required",
+        description: "Please describe your startup solution.",
         variant: "destructive",
       });
       return;
@@ -97,7 +97,7 @@ export default function IdeaAgent() {
 AI Research Agent Report
 ========================
 
-Idea: ${result.idea}
+Solution: ${result.idea}
 
 Market Opportunity
 ------------------
@@ -181,8 +181,8 @@ Timing: ${result.analysis.timingScore}/10
             AI Research Agent
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Get a comprehensive 40-step analysis of any startup idea in minutes. 
-            Our AI research agent validates your idea with market data, competitor insights, 
+            Get a comprehensive 40-step analysis of any startup solution in minutes. 
+            Our AI research agent validates your solution with market data, competitor insights, 
             and actionable recommendations.
           </p>
         </div>
@@ -224,7 +224,7 @@ Timing: ${result.analysis.timingScore}/10
         {!result && (
           <Card className="mb-12">
             <CardHeader>
-              <CardTitle>Submit Your Idea for Research</CardTitle>
+              <CardTitle>Submit Your Solution for Research</CardTitle>
               <CardDescription>
                 Provide as much detail as possible for the most accurate analysis
               </CardDescription>
@@ -233,12 +233,12 @@ Timing: ${result.analysis.timingScore}/10
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="idea-description">
-                    Idea Description *
+                    Solution Description *
                   </Label>
                   <Textarea
                     id="idea-description"
                     data-testid="input-idea-description"
-                    placeholder="Describe your startup idea in detail. What problem does it solve? Who is it for? How does it work?"
+                    placeholder="Describe your startup solution in detail. What problem does it solve? Who is it for? How does it work?"
                     value={ideaDescription}
                     onChange={(e) => setIdeaDescription(e.target.value)}
                     rows={6}
@@ -291,7 +291,7 @@ Timing: ${result.analysis.timingScore}/10
                   {researchMutation.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Analyzing Your Idea...
+                      Analyzing Your Solution...
                     </>
                   ) : (
                     <>

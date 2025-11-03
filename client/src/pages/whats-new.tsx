@@ -7,7 +7,7 @@ export default function WhatsNew() {
     {
       date: "October 2025",
       title: "Enhanced AI Chat Interface",
-      description: "Improved conversation flow and better research capabilities for deeper idea analysis.",
+      description: "Improved conversation flow and better research capabilities for deeper solution analysis.",
       features: [
         "Faster response times with GPT-4 integration",
         "Better context understanding across conversations",
@@ -31,7 +31,7 @@ export default function WhatsNew() {
     {
       date: "August 2025",
       title: "Founder Fit Assessment",
-      description: "Match your skills and interests with the best startup ideas for you using our proprietary algorithm.",
+      description: "Match your skills and interests with the best startup solutions for you using our proprietary algorithm.",
       features: [
         "Skills matching algorithm with 50+ parameters",
         "Personalized recommendations based on experience",
@@ -69,7 +69,7 @@ export default function WhatsNew() {
       title: "Community Features",
       description: "Connect with other entrepreneurs and share insights.",
       features: [
-        "Vote and comment on ideas",
+        "Vote and comment on solutions",
         "Signal interest in problems you've encountered",
         "Join discussions on market trends",
         "Follow users and get updates on their activity",

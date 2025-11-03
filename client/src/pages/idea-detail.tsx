@@ -93,7 +93,7 @@ export default function IdeaDetail() {
       await apiRequest("POST", `/api/ideas/${idea.id}/save`);
     },
     onSuccess: () => {
-      toast({ title: "Idea saved successfully!" });
+      toast({ title: "Solution saved successfully!" });
       queryClient.invalidateQueries({ queryKey: ["/api/users/saved-ideas"] });
     },
     onError: (error) => {
@@ -110,7 +110,7 @@ export default function IdeaDetail() {
       }
       toast({ 
         title: "Error", 
-        description: "Failed to save idea. Please try again.",
+        description: "Failed to save solution. Please try again.",
         variant: "destructive" 
       });
     },
@@ -121,7 +121,7 @@ export default function IdeaDetail() {
       await apiRequest("DELETE", `/api/ideas/${idea.id}/save`);
     },
     onSuccess: () => {
-      toast({ title: "Idea unsaved successfully!" });
+      toast({ title: "Solution unsaved successfully!" });
       queryClient.invalidateQueries({ queryKey: ["/api/users/saved-ideas"] });
     },
     onError: (error) => {
@@ -138,7 +138,7 @@ export default function IdeaDetail() {
       }
       toast({ 
         title: "Error", 
-        description: "Failed to unsave idea. Please try again.",
+        description: "Failed to unsave solution. Please try again.",
         variant: "destructive" 
       });
     },
@@ -233,7 +233,7 @@ export default function IdeaDetail() {
       await apiRequest("POST", `/api/ideas/${idea.id}/claim`);
     },
     onSuccess: async () => {
-      toast({ title: "Idea claimed successfully!" });
+      toast({ title: "Solution claimed successfully!" });
       await queryClient.refetchQueries({ queryKey: ["/api/ideas", idea.slug] });
     },
     onError: (error) => {
@@ -250,7 +250,7 @@ export default function IdeaDetail() {
       }
       toast({ 
         title: "Error", 
-        description: "Failed to claim idea. Please try again.",
+        description: "Failed to claim solution. Please try again.",
         variant: "destructive" 
       });
     },
@@ -395,9 +395,9 @@ export default function IdeaDetail() {
         <Header />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold mb-4">Idea Not Found</h1>
+            <h1 className="text-2xl font-bold mb-4">Solution Not Found</h1>
             <p className="text-muted-foreground mb-6">
-              The idea you're looking for doesn't exist or has been removed.
+              The solution you're looking for doesn't exist or has been removed.
             </p>
             <Button data-testid="button-back-to-database">
               Back to Database
@@ -490,7 +490,7 @@ export default function IdeaDetail() {
               data-testid="button-build-idea"
             >
               <Code className="w-4 h-4 mr-2" />
-              {buildIdeaMutation.isPending ? 'Creating...' : 'Build This Idea'}
+              {buildIdeaMutation.isPending ? 'Creating...' : 'Build This Solution'}
             </Button>
             
             <Button 
@@ -510,7 +510,7 @@ export default function IdeaDetail() {
                 data-testid="button-claim-idea"
               >
                 <Award className="w-4 h-4 mr-2" />
-                {claimIdeaMutation.isPending ? 'Claiming...' : 'Claim This Idea'}
+                {claimIdeaMutation.isPending ? 'Claiming...' : 'Claim This Solution'}
               </Button>
             )}
             
@@ -1034,7 +1034,7 @@ export default function IdeaDetail() {
                     <div className="flex-1">
                       <h3 className="text-2xl font-bold mb-2">Get AI-Powered Market Research</h3>
                       <p className="text-muted-foreground mb-4">
-                        Generate a comprehensive market analysis report for this idea in seconds. Our AI analyzes market size, competition, customer segments, revenue potential, and provides actionable next steps.
+                        Generate a comprehensive market analysis report for this solution in seconds. Our AI analyzes market size, competition, customer segments, revenue potential, and provides actionable next steps.
                       </p>
                       <ul className="space-y-2 mb-6">
                         <li className="flex items-center gap-2 text-sm">
@@ -1203,7 +1203,7 @@ export default function IdeaDetail() {
             {isAuthenticated && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Rate This Idea</CardTitle>
+                  <CardTitle>Rate This Solution</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex justify-center gap-2 mb-4">
@@ -1371,7 +1371,7 @@ export default function IdeaDetail() {
                 </Button>
                 <Button variant="outline" className="w-full" data-testid="button-similar-ideas">
                   <ExternalLink className="w-4 h-4 mr-2" />
-                  Similar Ideas
+                  Similar Solutions
                 </Button>
               </CardContent>
             </Card>
@@ -1383,9 +1383,9 @@ export default function IdeaDetail() {
       <Dialog open={showBuilderDialog} onOpenChange={setShowBuilderDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Build This Idea</DialogTitle>
+            <DialogTitle className="text-2xl">Build This Solution</DialogTitle>
             <DialogDescription>
-              Choose your preferred no-code builder platform to bring this idea to life
+              Choose your preferred no-code builder platform to bring this solution to life
             </DialogDescription>
           </DialogHeader>
           
@@ -1504,7 +1504,7 @@ export default function IdeaDetail() {
       <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Export Idea Data</DialogTitle>
+            <DialogTitle>Export Solution Data</DialogTitle>
             <DialogDescription>
               Choose your preferred export format
             </DialogDescription>

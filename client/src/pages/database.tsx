@@ -49,8 +49,8 @@ export default function Database() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">The Idea Database</h1>
-          <p className="text-muted-foreground">Dive into deep research and analysis on 400+ business ideas</p>
+          <h1 className="text-3xl font-bold mb-4">The Solution Database</h1>
+          <p className="text-muted-foreground">Dive into deep research and analysis on 400+ business solutions</p>
         </div>
         
         <div className="flex flex-col lg:flex-row gap-8">
@@ -63,7 +63,7 @@ export default function Database() {
           <div className="lg:w-3/4">
             {error ? (
               <div className="text-center py-12">
-                <p className="text-destructive">Failed to load ideas. Please try again.</p>
+                <p className="text-destructive">Failed to load solutions. Please try again.</p>
                 <Button 
                   variant="outline" 
                   className="mt-4" 
@@ -110,7 +110,7 @@ export default function Database() {
               <>
                 <div className="mb-6 flex justify-between items-center">
                   <p className="text-muted-foreground" data-testid="text-results-count">
-                    Showing {filters.offset + 1}-{Math.min(filters.offset + filters.limit, result.total)} of {result.total} ideas
+                    Showing {filters.offset + 1}-{Math.min(filters.offset + filters.limit, result.total)} of {result.total} solutions
                   </p>
                 </div>
                 
@@ -127,14 +127,14 @@ export default function Database() {
                       disabled={isLoading}
                       data-testid="button-load-more"
                     >
-                      {isLoading ? 'Loading...' : 'Load More Ideas'}
+                      {isLoading ? 'Loading...' : 'Load More Solutions'}
                     </Button>
                   </div>
                 )}
               </>
             ) : (
               <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">No ideas found matching your criteria.</p>
+                <p className="text-muted-foreground mb-4">No solutions found matching your criteria.</p>
                 <Button 
                   variant="outline" 
                   onClick={() => setFilters({ sortBy: 'newest', limit: 20, offset: 0 })}

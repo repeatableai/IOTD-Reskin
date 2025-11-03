@@ -9,16 +9,16 @@ const plans = [
     name: "Explorer",
     icon: Star,
     price: "Free",
-    description: "Perfect for getting started with idea discovery",
+    description: "Perfect for getting started with solution discovery",
     features: [
-      "Access to 50+ curated startup ideas",
+      "Access to 50+ curated startup solutions",
       "Basic opportunity scoring",
       "Community voting access",
       "Standard search and filters",
-      "Save up to 5 favorite ideas"
+      "Save up to 5 favorite solutions"
     ],
     limitations: [
-      "Limited to 10 ideas per day",
+      "Limited to 10 solutions per day",
       "Basic analytics only",
       "Community features only"
     ],
@@ -33,13 +33,13 @@ const plans = [
     period: "/month",
     description: "For serious entrepreneurs validating opportunities",
     features: [
-      "Access to entire idea database (500+)",
+      "Access to entire solution database (500+)",
       "Advanced AI-powered analysis",
       "Detailed market validation data",
       "Advanced search with all filters",
-      "Unlimited saved ideas",
+      "Unlimited saved solutions",
       "Trending alerts and notifications",
-      "Export ideas to PDF/CSV",
+      "Export solutions to PDF/CSV",
       "Priority community features"
     ],
     limitations: [],
@@ -56,7 +56,7 @@ const plans = [
     features: [
       "Everything in Pro",
       "Team collaboration tools",
-      "Custom idea submissions",
+      "Custom solution submissions",
       "API access for integrations",
       "White-label options",
       "Dedicated account manager",
@@ -81,8 +81,8 @@ const faqs = [
     answer: "Yes! All paid plans come with a 14-day free trial. No credit card required to start."
   },
   {
-    question: "How often is the idea database updated?",
-    answer: "We add new ideas weekly and update existing ones based on market changes and community feedback."
+    question: "How often is the solution database updated?",
+    answer: "We add new solutions weekly and update existing ones based on market changes and community feedback."
   },
   {
     question: "Can I upgrade or downgrade my plan?",

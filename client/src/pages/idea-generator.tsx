@@ -62,8 +62,8 @@ export default function IdeaGenerator() {
     onSuccess: (data) => {
       setIdeas(data.ideas || []);
       toast({
-        title: "Ideas Generated!",
-        description: `We've created ${data.ideas?.length || 3} personalized startup ideas for you.`,
+        title: "Solutions Generated!",
+        description: `We've created ${data.ideas?.length || 3} personalized startup solutions for you.`,
       });
     },
     onError: () => {
@@ -115,10 +115,10 @@ export default function IdeaGenerator() {
             AI-Powered Generation
           </Badge>
           <h1 className="text-5xl font-bold mb-4" data-testid="text-page-title">
-            AI Idea Generator
+            AI Solution Generator
           </h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Get personalized startup ideas tailored to your unique skills, budget, and interests. 
+            Get personalized startup solutions tailored to your unique skills, budget, and interests. 
             Our AI analyzes your profile and generates opportunities perfectly matched to your situation.
           </p>
         </div>
@@ -128,9 +128,9 @@ export default function IdeaGenerator() {
           <Card>
             <CardHeader>
               <Lightbulb className="w-8 h-8 text-primary mb-2" />
-              <CardTitle>Personalized Ideas</CardTitle>
+              <CardTitle>Personalized Solutions</CardTitle>
               <CardDescription>
-                Ideas matched to your skills, budget, time, and industry interests
+                Solutions matched to your skills, budget, time, and industry interests
               </CardDescription>
             </CardHeader>
           </Card>
@@ -140,7 +140,7 @@ export default function IdeaGenerator() {
               <Target className="w-8 h-8 text-primary mb-2" />
               <CardTitle>Validated Opportunities</CardTitle>
               <CardDescription>
-                Each idea comes with opportunity scores and market validation data
+                Each solution comes with opportunity scores and market validation data
               </CardDescription>
             </CardHeader>
           </Card>
@@ -150,7 +150,7 @@ export default function IdeaGenerator() {
               <TrendingUp className="w-8 h-8 text-primary mb-2" />
               <CardTitle>Actionable Plans</CardTitle>
               <CardDescription>
-                Revenue estimates, timeline, and next steps included with every idea
+                Revenue estimates, timeline, and next steps included with every solution
               </CardDescription>
             </CardHeader>
           </Card>
@@ -162,7 +162,7 @@ export default function IdeaGenerator() {
             <CardHeader>
               <CardTitle>Tell Us About Yourself</CardTitle>
               <CardDescription>
-                The more details you provide, the better matched your ideas will be
+                The more details you provide, the better matched your solutions will be
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -248,12 +248,12 @@ export default function IdeaGenerator() {
                   {generateMutation.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Generating Your Ideas...
+                      Generating Your Solutions...
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4 mr-2" />
-                      Generate Ideas
+                      Generate Solutions
                     </>
                   )}
                 </Button>
@@ -262,7 +262,7 @@ export default function IdeaGenerator() {
                   <Alert>
                     <Loader2 className="w-4 h-4 animate-spin" />
                     <AlertDescription>
-                      Creating personalized ideas based on your profile... This may take 30-60 seconds.
+                      Creating personalized solutions based on your profile... This may take 30-60 seconds.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -276,10 +276,10 @@ export default function IdeaGenerator() {
           <div className="space-y-6">
             {/* Header with Actions */}
             <div className="flex items-center justify-between">
-              <h2 className="text-3xl font-bold">Your Personalized Ideas</h2>
+              <h2 className="text-3xl font-bold">Your Personalized Solutions</h2>
               <Button onClick={handleNewGeneration} data-testid="button-new-generation">
                 <Sparkles className="w-4 h-4 mr-2" />
-                Generate New Ideas
+                Generate New Solutions
               </Button>
             </div>
 
@@ -340,7 +340,7 @@ export default function IdeaGenerator() {
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <Lightbulb className="w-4 h-4 text-primary" />
-                          <h4 className="font-semibold">Why This Idea Matches You</h4>
+                          <h4 className="font-semibold">Why This Solution Matches You</h4>
                         </div>
                         <p className="text-sm text-muted-foreground">{idea.whyThisIdea}</p>
                       </div>
@@ -368,7 +368,7 @@ export default function IdeaGenerator() {
                     {/* Action Button */}
                     <Button className="w-full" data-testid={`button-research-${index}`}>
                       <TrendingUp className="w-4 h-4 mr-2" />
-                      Research This Idea
+                      Research This Solution
                     </Button>
                   </CardContent>
                 </Card>

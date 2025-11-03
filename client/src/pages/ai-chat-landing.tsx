@@ -49,14 +49,14 @@ export default function AIChatLanding() {
             AI Chat & Strategize
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Dive deep into any startup opportunity with AI-powered insights. Select an idea to begin your strategic conversation.
+            Dive deep into any startup opportunity with AI-powered insights. Select a solution to begin your strategic conversation.
           </p>
           
           <div className="max-w-xl mx-auto relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search for an idea to discuss..."
+              placeholder="Search for a solution to discuss..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-12 h-12 text-lg"
@@ -69,12 +69,12 @@ export default function AIChatLanding() {
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
               <Sparkles className="w-12 h-12 mx-auto mb-4 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading ideas...</p>
+              <p className="text-muted-foreground">Loading solutions...</p>
             </div>
           </div>
         ) : topIdeas.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-lg text-muted-foreground">No ideas found matching "{searchQuery}"</p>
+            <p className="text-lg text-muted-foreground">No solutions found matching "{searchQuery}"</p>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

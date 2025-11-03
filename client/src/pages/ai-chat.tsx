@@ -104,9 +104,9 @@ export default function AIChat() {
   };
 
   const suggestedQuestions = [
-    'What makes this idea unique?',
+    'What makes this solution unique?',
     'What are the main challenges?',
-    'How can I validate this idea?',
+    'How can I validate this solution?',
     'What skills do I need to execute this?',
     'What is the market size?',
     'How do I get my first customers?',
@@ -132,7 +132,7 @@ export default function AIChat() {
         <Header />
         <div className="flex items-center justify-center h-[60vh]">
           <div className="text-center">
-            <p className="text-xl text-muted-foreground">Idea not found</p>
+            <p className="text-xl text-muted-foreground">Solution not found</p>
           </div>
         </div>
       </div>
@@ -154,7 +154,7 @@ export default function AIChat() {
             data-testid="button-back"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Ideas
+            Back to Solutions
           </Button>
           
           <div className="flex items-start gap-4">
@@ -166,7 +166,7 @@ export default function AIChat() {
                 AI Chat: {idea.title}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Ask me anything about this startup idea
+                Ask me anything about this startup solution
               </p>
             </div>
             <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">
@@ -268,7 +268,7 @@ export default function AIChat() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask a question about this idea..."
+            placeholder="Ask a question about this solution..."
             className="flex-1"
             disabled={isLoading}
             data-testid="input-chat-message"

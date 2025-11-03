@@ -15,7 +15,7 @@ export default function WhyNow() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <p>Idea not found</p>
+          <p>Solution not found</p>
         </div>
       </div>
     );
@@ -44,7 +44,7 @@ export default function WhyNow() {
       <div className="min-h-screen bg-background">
         <Header />
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <p>Idea not found</p>
+          <p>Solution not found</p>
         </div>
       </div>
     );
@@ -94,7 +94,7 @@ export default function WhyNow() {
         ) : (
           <Card>
             <CardContent className="py-12 text-center text-muted-foreground">
-              No timing analysis available for this idea yet.
+              No timing analysis available for this solution yet.
             </CardContent>
           </Card>
         )}

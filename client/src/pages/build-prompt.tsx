@@ -1518,7 +1518,7 @@ export default function BuildPrompt() {
           <div className="text-center">
             <h1 className="text-2xl font-bold mb-4">Not Found</h1>
             <Button onClick={() => setLocation(`/idea/${slug}`)}>
-              Back to Idea
+              Back to Solution
             </Button>
           </div>
         </div>
@@ -1539,7 +1539,7 @@ export default function BuildPrompt() {
           data-testid="button-back-to-idea"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Idea
+          Back to Solution
         </Button>
 
         {/* Header */}
@@ -1571,7 +1571,7 @@ export default function BuildPrompt() {
           <CardContent className="space-y-3">
             <p className="text-sm text-muted-foreground">
               We've created comprehensive prompts across 5 key categories to help you build, market, validate, grow, and operate your business. 
-              Each category contains detailed, copy-paste prompts tailored to your idea and the {builderConfig.name} platform.
+              Each category contains detailed, copy-paste prompts tailored to your solution and the {builderConfig.name} platform.
             </p>
             <div className="flex items-start gap-3">
               <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold flex-shrink-0">

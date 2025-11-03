@@ -199,7 +199,7 @@ export default function FounderFit() {
               Your Founder Fit Results
             </h1>
             <p className="text-lg text-muted-foreground">
-              Based on your profile, here are the startup ideas that match you best
+              Based on your profile, here are the startup solutions that match you best
             </p>
           </div>
 
@@ -268,10 +268,10 @@ export default function FounderFit() {
               <Target className="w-12 h-12 mx-auto mb-4 text-primary" />
               <h3 className="text-xl font-bold mb-2">Want More Personalized Matches?</h3>
               <p className="text-muted-foreground mb-4">
-                Browse our full database of startup ideas and filter by your preferences
+                Browse our full database of startup solutions and filter by your preferences
               </p>
               <Button onClick={() => setLocation('/database')} data-testid="button-browse-all">
-                Browse All Ideas
+                Browse All Solutions
               </Button>
             </CardContent>
           </Card>
@@ -290,7 +290,7 @@ export default function FounderFit() {
             Founder Fit Assessment
           </h1>
           <p className="text-lg text-muted-foreground text-center mb-6">
-            Answer a few questions to discover startup ideas that match your skills and goals
+            Answer a few questions to discover startup solutions that match your skills and goals
           </p>
           
           <div className="mb-4">

@@ -131,7 +131,7 @@ export default function FounderFitIdea() {
             {idea.title}
           </p>
           <p className="text-muted-foreground mt-4">
-            Assess how well this idea matches your skills, experience, and resources. 
+            Assess how well this solution matches your skills, experience, and resources. 
             Understanding founder fit helps you identify opportunities where you have the highest chance of success.
           </p>
         </div>

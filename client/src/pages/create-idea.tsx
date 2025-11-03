@@ -124,7 +124,7 @@ export default function CreateIdea() {
     onSuccess: (response) => {
       toast({
         title: "Success!",
-        description: "Your idea has been created successfully.",
+        description: "Your solution has been created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/ideas'] });
       setLocation(`/idea/${response.slug}`);
@@ -132,7 +132,7 @@ export default function CreateIdea() {
     onError: (error) => {
       toast({
         title: "Error",
-        description: "Failed to create idea. Please try again.",
+        description: "Failed to create solution. Please try again.",
         variant: "destructive",
       });
       console.error('Error creating idea:', error);
@@ -246,7 +246,7 @@ export default function CreateIdea() {
     if (!isAuthenticated) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to use AI-powered idea generation.",
+        description: "Please log in to use AI-powered solution generation.",
         variant: "destructive",
       });
       return;
@@ -304,14 +304,14 @@ export default function CreateIdea() {
       setActiveTab('manual');
       
       toast({
-        title: "AI Idea Generated!",
-        description: "Your AI-generated startup idea is ready for review.",
+        title: "AI Solution Generated!",
+        description: "Your AI-generated startup solution is ready for review.",
       });
     } catch (error) {
       console.error('Error generating AI idea:', error);
       toast({
         title: "Generation Failed",
-        description: "Failed to generate idea. Please try again.",
+        description: "Failed to generate solution. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -329,11 +329,11 @@ export default function CreateIdea() {
           <div className="flex items-center mb-4">
             <Lightbulb className="w-8 h-8 mr-3 text-primary" />
             <h1 className="text-4xl font-bold text-foreground">
-              Create New Idea
+              Create New Solution
             </h1>
           </div>
           <p className="text-xl text-muted-foreground">
-            Import existing content or create a new startup idea from scratch
+            Import existing content or create a new startup solution from scratch
           </p>
         </div>
 
@@ -372,7 +372,7 @@ export default function CreateIdea() {
                     data-testid="input-file-upload"
                   />
                   <p className="text-sm text-muted-foreground">
-                    Upload an HTML file to automatically extract idea details
+                    Upload an HTML file to automatically extract solution details
                   </p>
                   {uploadedFile && (
                     <Badge variant="secondary" className="mt-2">
@@ -391,7 +391,7 @@ export default function CreateIdea() {
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    placeholder="Paste your idea description, business plan, or instructions here..."
+                    placeholder="Paste your solution description, business plan, or instructions here..."
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
                     className="min-h-32 mb-4"
@@ -424,7 +424,7 @@ export default function CreateIdea() {
                         id="title"
                         value={formData.title}
                         onChange={(e) => handleInputChange('title', e.target.value)}
-                        placeholder="Your startup idea title"
+                        placeholder="Your startup solution title"
                         data-testid="input-title"
                       />
                     </div>
@@ -446,7 +446,7 @@ export default function CreateIdea() {
                         id="description"
                         value={formData.description}
                         onChange={(e) => handleInputChange('description', e.target.value)}
-                        placeholder="Brief description of your idea"
+                        placeholder="Brief description of your solution"
                         className="min-h-24"
                         data-testid="textarea-description"
                       />
@@ -524,7 +524,7 @@ export default function CreateIdea() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label htmlFor="image">Idea Image</Label>
+                    <Label htmlFor="image">Solution Image</Label>
                     <input
                       id="image"
                       type="file"
@@ -568,7 +568,7 @@ export default function CreateIdea() {
                   disabled={createIdeaMutation.isPending || !formData.title || !formData.description}
                   data-testid="button-create-idea"
                 >
-                  {createIdeaMutation.isPending ? 'Creating...' : 'Create Idea'}
+                  {createIdeaMutation.isPending ? 'Creating...' : 'Create Solution'}
                 </Button>
               </div>
             </form>
@@ -677,24 +677,24 @@ export default function CreateIdea() {
                     {isGenerating ? (
                       <>
                         <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                        Generating Idea...
+                        Generating Solution...
                       </>
                     ) : (
                       <>
                         <Sparkles className="w-4 h-4 mr-2" />
-                        Generate AI Idea
+                        Generate AI Solution
                       </>
                     )}
                   </Button>
                   
                   {!isAuthenticated && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      Please log in to use AI-powered idea generation
+                      Please log in to use AI-powered solution generation
                     </p>
                   )}
                   
                   <p className="text-xs text-muted-foreground mt-4">
-                    AI will generate a comprehensive startup idea with market analysis, scoring, and detailed business insights based on your preferences.
+                    AI will generate a comprehensive startup solution with market analysis, scoring, and detailed business insights based on your preferences.
                   </p>
                 </div>
               </CardContent>

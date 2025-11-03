@@ -28,7 +28,7 @@ export default function About() {
   ];
 
   const stats = [
-    { label: "Curated Ideas", value: "400+", icon: Target },
+    { label: "Curated Solutions", value: "400+", icon: Target },
     { label: "Active Users", value: "50K+", icon: Users },
     { label: "Success Stories", value: "120+", icon: Award },
     { label: "Markets Tracked", value: "25+", icon: TrendingUp },
@@ -52,7 +52,7 @@ export default function About() {
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-6">Our Mission</h2>
             <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              We believe great startup ideas shouldn't be left to chance. Our platform helps
+              We believe great startup solutions shouldn't be left to chance. Our platform helps
               entrepreneurs discover data-driven business opportunities with comprehensive
               research, market validation, and AI-powered insights. We're on a mission to
               democratize access to high-quality startup intelligence.

@@ -84,7 +84,7 @@ export default function TopIdeas() {
     
     toast({
       title: "Reminder Set!",
-      description: "You'll receive tomorrow's Idea of the Day via email.",
+      description: "You'll receive tomorrow's Solution of the Day via email.",
     });
     setShowReminder(false);
     setEmail("");
@@ -150,7 +150,7 @@ export default function TopIdeas() {
               data-testid="button-show-reminder"
             >
               <Bell className="w-4 h-4 mr-2" />
-              Get Tomorrow's Idea via Email
+              Get Tomorrow's Solution via Email
             </Button>
           </div>
         )}
@@ -160,7 +160,7 @@ export default function TopIdeas() {
             <CardContent className="p-6">
               <h3 className="font-semibold mb-2">Set Email Reminder</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Get tomorrow's Idea of the Day delivered to your inbox
+                Get tomorrow's Solution of the Day delivered to your inbox
               </p>
               <div className="flex gap-2">
                 <Input
@@ -366,7 +366,7 @@ export default function TopIdeas() {
                     data-testid="button-ai-chat-iotd"
                   >
                     <Brain className="w-4 h-4 mr-2" />
-                    AI Chat with this Idea
+                    AI Chat with this Solution
                   </Button>
                 </div>
 
@@ -399,7 +399,7 @@ export default function TopIdeas() {
               <CardContent className="p-8">
                 <h3 className="text-2xl font-bold mb-2">Start Building in 1-click</h3>
                 <p className="text-muted-foreground mb-6">
-                  Turn this idea into your business with AI-powered development tools
+                  Turn this solution into your business with AI-powered development tools
                 </p>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Button
@@ -485,10 +485,10 @@ export default function TopIdeas() {
               </Card>
             )}
 
-            {/* Idea Actions */}
+            {/* Solution Actions */}
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-xl font-bold mb-4">Idea Actions</h3>
+                <h3 className="text-xl font-bold mb-4">Solution Actions</h3>
                 <div className="grid sm:grid-cols-2 gap-3">
                   <Button
                     variant="outline"
