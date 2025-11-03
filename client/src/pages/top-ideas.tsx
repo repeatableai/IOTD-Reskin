@@ -106,9 +106,7 @@ export default function TopIdeas() {
         <div className="text-center mb-12">
           <div className="flex items-center justify-center mb-4">
             <Calendar className="w-10 h-10 mr-3 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-bold">
-              Idea of the Day
-            </h1>
+            <h1 className="text-4xl md:text-5xl font-bold">Solution of the Day</h1>
           </div>
         </div>
 
