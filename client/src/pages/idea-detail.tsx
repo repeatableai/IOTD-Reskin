@@ -897,9 +897,9 @@ export default function IdeaDetail() {
                                 <Button 
                                   size="sm" 
                                   variant="outline"
-                                  onClick={() => window.open(`https://bolt.new/?prompt=${encodeURIComponent(prompt)}`, '_blank')}
+                                  onClick={() => window.open(`https://claude.ai/?prompt=${encodeURIComponent(prompt)}`, '_blank')}
                                 >
-                                  Bolt.new
+                                  Claude Codex
                                 </Button>
                                 <Button 
                                   size="sm" 
@@ -1416,7 +1416,7 @@ export default function IdeaDetail() {
               </CardContent>
             </Card>
 
-            {/* Bolt.new */}
+            {/* Claude Codex */}
             <Card className="cursor-pointer hover:border-primary transition-colors">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -1424,7 +1424,7 @@ export default function IdeaDetail() {
                     <Rocket className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">Bolt.new</h3>
+                    <h3 className="font-semibold text-lg mb-2">Claude Codex</h3>
                     <p className="text-sm text-muted-foreground mb-3">
                       AI-powered full-stack development. Build and deploy web apps instantly.
                     </p>
