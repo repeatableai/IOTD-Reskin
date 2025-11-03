@@ -586,7 +586,7 @@ export default function TopIdeas() {
         {/* The Idea Database Section */}
         <div className="mt-16 border-t pt-16">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">The Idea Database</h2>
+            <h2 className="text-4xl font-bold mb-4">The Application Database</h2>
             <p className="text-xl text-muted-foreground">Dive into deep research and analysis on 400+ business solutions</p>
           </div>
           
