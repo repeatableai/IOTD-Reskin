@@ -531,7 +531,7 @@ export default function TopIdeas() {
             {/* Rating Section */}
             <Card>
               <CardContent className="p-8 text-center">
-                <h3 className="text-xl font-bold mb-4">What'd you think of this idea?</h3>
+                <h3 className="text-xl font-bold mb-4">Rate this Use Case</h3>
                 <div className="flex justify-center gap-2 mb-2">
                   {[1, 2, 3, 4, 5].map((rating) => (
                     <button
