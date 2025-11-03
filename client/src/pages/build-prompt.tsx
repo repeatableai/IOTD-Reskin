@@ -31,10 +31,10 @@ const BUILDER_CONFIG = {
     description: "AI-powered full-stack development platform"
   },
   bolt: {
-    name: "Bolt.new",
+    name: "Claude Codex",
     icon: Rocket,
     color: "blue",
-    url: () => "https://bolt.new",
+    url: () => "https://claude.ai",
     description: "AI-powered full-stack web app builder"
   },
   v0: {
