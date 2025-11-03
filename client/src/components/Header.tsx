@@ -151,7 +151,7 @@ export default function Header() {
                     <Search className="w-5 h-5 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-semibold inline-flex items-center gap-2">
-                        Research Your Ideas 
+                        Research Your Apps 
                         <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">PRO</span>
                       </div>
                       <div className="text-sm text-muted-foreground">Get comprehensive research reports in 24 hours</div>
