@@ -101,7 +101,6 @@ export default function TopIdeas() {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-12">
@@ -588,9 +587,7 @@ export default function TopIdeas() {
         <div className="mt-16 border-t pt-16">
           <div className="text-center mb-12">
             <h2 className="text-4xl font-bold mb-4">The Idea Database</h2>
-            <p className="text-xl text-muted-foreground">
-              Dive into deep research and analysis on 400+ business ideas
-            </p>
+            <p className="text-xl text-muted-foreground">Dive into deep research and analysis on 400+ business solutions</p>
           </div>
           
           <DatabasePreview />
