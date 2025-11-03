@@ -405,11 +405,11 @@ export default function TopIdeas() {
                   <Button
                     variant="outline"
                     className="h-auto py-4 flex flex-col items-start"
-                    onClick={() => window.open(`https://bolt.new`, '_blank')}
+                    onClick={() => window.open(`https://claude.ai`, '_blank')}
                   >
                     <Code className="w-5 h-5 mb-2" />
                     <div className="text-left">
-                      <div className="font-semibold">Bolt.new</div>
+                      <div className="font-semibold">Claude Codex</div>
                       <div className="text-xs text-muted-foreground">AI Full-Stack Dev</div>
                     </div>
                   </Button>
