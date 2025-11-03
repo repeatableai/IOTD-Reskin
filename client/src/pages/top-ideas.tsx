@@ -110,9 +110,6 @@ export default function TopIdeas() {
               Idea of the Day
             </h1>
           </div>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Fully researched business opportunity delivered daily
-          </p>
         </div>
 
         {/* Date Navigation */}
