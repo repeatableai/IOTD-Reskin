@@ -522,7 +522,7 @@ export default function TopIdeas() {
                     data-testid="button-claim-idea"
                   >
                     <Lock className="w-4 h-4 mr-2" />
-                    Claim Idea
+                    Submit for Approval
                   </Button>
                 </div>
               </CardContent>

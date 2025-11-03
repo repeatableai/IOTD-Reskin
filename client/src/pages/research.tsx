@@ -91,7 +91,7 @@ export default function Research() {
             <Search className="w-8 h-8 text-primary" />
           </div>
           <div className="inline-flex items-center gap-2 mb-4">
-            <h1 className="text-4xl font-bold">Research Your Ideas</h1>
+            <h1 className="text-4xl font-bold">Research Your Solutions</h1>
             <span className="text-xs bg-primary text-primary-foreground px-2 py-1 rounded">PRO</span>
           </div>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
