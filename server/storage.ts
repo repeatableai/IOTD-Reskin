@@ -576,32 +576,51 @@ export class DatabaseStorage implements IStorage {
 
   // User idea interactions
   async setIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void> {
-    // First check if interaction exists
-    const [existing] = await db
-      .select()
-      .from(userIdeaInteractions)
-      .where(and(
-        eq(userIdeaInteractions.userId, userId),
-        eq(userIdeaInteractions.ideaId, ideaId),
-        eq(userIdeaInteractions.status, status)
-      ));
+    // Map status to boolean fields
+    const statusFields = {
+      isInterested: status === 'interested',
+      isNotInterested: status === 'not_interested',
+      isBuilding: status === 'building',
+    };
 
-    if (!existing) {
-      await db.insert(userIdeaInteractions).values({
+    await db
+      .insert(userIdeaInteractions)
+      .values({
         userId,
         ideaId,
-        status,
+        ...statusFields,
+      })
+      .onConflictDoUpdate({
+        target: [userIdeaInteractions.userId, userIdeaInteractions.ideaId],
+        set: {
+          ...statusFields,
+          updatedAt: sql`now()`,
+        },
       });
-    }
   }
 
   async removeIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void> {
+    // Map status to boolean fields - set to false
+    const statusFields = {
+      isInterested: status === 'interested' ? false : undefined,
+      isNotInterested: status === 'not_interested' ? false : undefined,
+      isBuilding: status === 'building' ? false : undefined,
+    };
+
+    // Filter out undefined values
+    const updateFields = Object.fromEntries(
+      Object.entries(statusFields).filter(([_, v]) => v !== undefined)
+    );
+
     await db
-      .delete(userIdeaInteractions)
+      .update(userIdeaInteractions)
+      .set({
+        ...updateFields,
+        updatedAt: sql`now()`,
+      })
       .where(and(
         eq(userIdeaInteractions.userId, userId),
-        eq(userIdeaInteractions.ideaId, ideaId),
-        eq(userIdeaInteractions.status, status)
+        eq(userIdeaInteractions.ideaId, ideaId)
       ));
   }
 
@@ -613,10 +632,16 @@ export class DatabaseStorage implements IStorage {
         eq(userIdeaInteractions.userId, userId),
         eq(userIdeaInteractions.ideaId, ideaId)
       ))
-      .orderBy(desc(userIdeaInteractions.updatedAt))
       .limit(1);
 
-    return interaction?.status || null;
+    if (!interaction) return null;
+
+    // Convert boolean fields back to status string
+    if (interaction.isInterested) return 'interested';
+    if (interaction.isNotInterested) return 'not_interested';
+    if (interaction.isBuilding) return 'building';
+
+    return null;
   }
 
   async getIdeasByInteraction(userId: string, status: string): Promise<Idea[]> {
@@ -680,7 +705,10 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(ideas, eq(userIdeaInteractions.ideaId, ideas.id))
       .where(and(
         eq(userIdeaInteractions.userId, userId),
-        eq(userIdeaInteractions.status, status)
+        status === 'interested' ? eq(userIdeaInteractions.isInterested, true) :
+        status === 'not_interested' ? eq(userIdeaInteractions.isNotInterested, true) :
+        status === 'building' ? eq(userIdeaInteractions.isBuilding, true) :
+        sql`false`
       ))
       .orderBy(desc(userIdeaInteractions.createdAt));
   }

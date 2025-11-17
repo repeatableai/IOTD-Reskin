@@ -72,6 +72,38 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Local development bypass - create a demo user
+  const isLocalDev = process.env.REPLIT_DOMAINS?.includes('localhost');
+
+  if (isLocalDev) {
+    // Create or get demo user
+    const demoUser = {
+      id: 'demo-user-local',
+      email: 'demo@localhost.com',
+      firstName: 'Demo',
+      lastName: 'User',
+      profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
+    };
+
+    await storage.upsertUser(demoUser);
+
+    // Auto-login middleware for local development
+    app.use((req: any, res, next) => {
+      if (!req.user && !req.path.startsWith('/api/logout')) {
+        req.user = {
+          claims: {
+            sub: demoUser.id,
+            email: demoUser.email,
+            first_name: demoUser.firstName,
+            last_name: demoUser.lastName,
+            profile_image_url: demoUser.profileImageUrl,
+          }
+        };
+      }
+      next();
+    });
+  }
+
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -129,6 +161,12 @@ export async function setupAuth(app: Express) {
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
+
+  // Bypass auth for local development
+  const isLocalDev = process.env.REPLIT_DOMAINS?.includes('localhost');
+  if (isLocalDev && user?.claims?.sub) {
+    return next();
+  }
 
   if (!req.isAuthenticated() || !user.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
