@@ -590,7 +590,7 @@ Build complete with product catalog, subscription management, and admin dashboar
     }
   },
   {
-    title: "ClearLabel: Decode Hidden Food Ingredients in Seconds",
+    title: "Application Arbitrage Platform",
     subtitle: "$3M-$5M ARR Potential",
     slug: "ai-powered-ingredient-transparency-tool-for-nootropics",
     description: "ClearLabel turns confusing product labels into instant, trustworthy insights for health-conscious shoppers. Upload a photo of any ingredient list, and the platform decodes chemical names, flags concerning additives, and translates nutritional jargon into plain English. It spots allergens, identifies potentially harmful ingredients, and gives you personalized recommendations based on your dietary needs.",

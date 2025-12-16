@@ -148,10 +148,17 @@ export default function TopIdeas() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center mb-4">
-            <Calendar className="w-10 h-10 mr-3 text-primary" />
-            <h1 className="text-4xl md:text-5xl font-bold">Solution of the Day</h1>
-          </div>
+          {isLoading ? (
+            <div className="animate-pulse">
+              <div className="h-12 bg-muted rounded w-3/4 mx-auto mb-4"></div>
+            </div>
+          ) : featuredIdea ? (
+            <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-solution-title">
+              {featuredIdea.title}
+            </h1>
+          ) : (
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Solution of the Day</h1>
+          )}
         </div>
 
         {/* Date Navigation */}

@@ -1,9 +1,10 @@
 /**
  * Real Data Service
- * Fetches actual data from Reddit (public JSON), Claude web search, and caches results
+ * Fetches actual data from Reddit (public JSON), Claude web search, SerpAPI (Google Search/Trends), and caches results
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import { getJson } from 'serpapi';
 
 // Cache for API responses to reduce calls
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -135,12 +136,178 @@ class RealDataService {
   }
 
   /**
+   * Search Google using SerpAPI
+   */
+  async searchGoogle(query: string, options: { 
+    location?: string; 
+    num?: number;
+    type?: 'search' | 'news';
+  } = {}): Promise<{
+    organic: Array<{ title: string; link: string; snippet: string }>;
+    news?: Array<{ title: string; link: string; snippet: string; date?: string }>;
+    relatedSearches?: string[];
+  }> {
+    const cacheKey = `google:${query}:${JSON.stringify(options)}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      console.warn('SERP_API_KEY not set, falling back to Claude web search');
+      const claudeResult = await this.searchWithClaude(query, options.type === 'news' ? 'news' : 'trends');
+      return {
+        organic: claudeResult.newsArticles.map(a => ({
+          title: a.title,
+          link: a.url,
+          snippet: a.snippet,
+        })),
+        relatedSearches: claudeResult.relatedTopics,
+      };
+    }
+
+    try {
+      const params: any = {
+        q: query,
+        api_key: apiKey,
+        engine: options.type === 'news' ? 'google_news' : 'google',
+        num: options.num || 10,
+      };
+
+      if (options.location) {
+        params.location = options.location;
+      }
+
+      const results = await getJson(params);
+      
+      const result = {
+        organic: (results.organic_results || []).map((r: any) => ({
+          title: r.title,
+          link: r.link,
+          snippet: r.snippet,
+        })),
+        news: results.news_results?.map((r: any) => ({
+          title: r.title,
+          link: r.link,
+          snippet: r.snippet,
+          date: r.date,
+        })),
+        relatedSearches: results.related_searches?.map((r: any) => r.query),
+      };
+
+      this.setCache(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('SerpAPI error:', error);
+      // Fallback to Claude web search
+      const claudeResult = await this.searchWithClaude(query, options.type === 'news' ? 'news' : 'trends');
+      return {
+        organic: claudeResult.newsArticles.map(a => ({
+          title: a.title,
+          link: a.url,
+          snippet: a.snippet,
+        })),
+        relatedSearches: claudeResult.relatedTopics,
+      };
+    }
+  }
+
+  /**
+   * Get Google Trends data via SerpAPI
+   */
+  async getGoogleTrends(keyword: string): Promise<{
+    interestOverTime: Array<{ date: string; value: number }>;
+    relatedQueries: string[];
+    relatedTopics: string[];
+  }> {
+    const cacheKey = `trends:${keyword}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      console.warn('SERP_API_KEY not set, using empty trends data');
+      return {
+        interestOverTime: [],
+        relatedQueries: [],
+        relatedTopics: [],
+      };
+    }
+
+    try {
+      const results = await getJson({
+        engine: 'google_trends',
+        q: keyword,
+        api_key: apiKey,
+        data_type: 'TIMESERIES',
+      });
+
+      const result = {
+        interestOverTime: results.timeline_data?.map((d: any) => ({
+          date: d.date,
+          value: d.values?.[0]?.value || 0,
+        })) || [],
+        relatedQueries: results.related_queries?.flatMap((q: any) => 
+          q.query?.map((item: any) => item.query) || []
+        ) || [],
+        relatedTopics: results.related_topics?.flatMap((t: any) =>
+          t.topic?.map((item: any) => item.title) || []
+        ) || [],
+      };
+
+      this.setCache(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('Google Trends API error:', error);
+      return {
+        interestOverTime: [],
+        relatedQueries: [],
+        relatedTopics: [],
+      };
+    }
+  }
+
+  /**
    * Use Claude web search to gather market intelligence
+   * Now tries SerpAPI first for better results when available
    */
   async searchWithClaude(query: string, searchType: 'trends' | 'competitors' | 'market' | 'news'): Promise<TrendSearchResult> {
     const cacheKey = `claude:${searchType}:${query}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
+
+    // Try SerpAPI first for better results (especially for news and competitors)
+    const apiKey = process.env.SERP_API_KEY;
+    if (apiKey && (searchType === 'news' || searchType === 'competitors')) {
+      try {
+        const googleResults = await this.searchGoogle(query, {
+          type: searchType === 'news' ? 'news' : 'search',
+          num: 10,
+        });
+
+        const result: TrendSearchResult = {
+          keyword: query,
+          relatedTopics: googleResults.relatedSearches || [],
+          newsArticles: (searchType === 'news' ? googleResults.news : googleResults.organic)?.map(r => ({
+            title: r.title,
+            url: r.link,
+            snippet: r.snippet,
+            source: new URL(r.link).hostname.replace('www.', ''),
+          })) || [],
+          competitorInsights: searchType === 'competitors' ? googleResults.organic?.map(r => ({
+            title: r.title,
+            url: r.link,
+            snippet: r.snippet,
+            source: new URL(r.link).hostname.replace('www.', ''),
+          })) || [],
+          marketTrends: [],
+        };
+
+        this.setCache(cacheKey, result);
+        return result;
+      } catch (error) {
+        console.error('SerpAPI search failed, falling back to Claude:', error);
+      }
+    }
 
     const anthropic = getAnthropicClient();
     if (!anthropic) {

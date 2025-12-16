@@ -61,12 +61,46 @@ export interface OpportunityScoreDetail {
 
 class ExternalDataService {
   /**
-   * Get real trend data from web search using Reddit and Claude
+   * Get real trend data from web search using SerpAPI, Reddit and Claude
    * Fetches actual data when available, falls back to generated data
    */
   async getTrendData(keyword: string): Promise<TrendData> {
     try {
-      // Fetch real data from Reddit and Claude web search
+      // Try SerpAPI first for real Google Trends
+      const apiKey = process.env.SERP_API_KEY;
+      if (apiKey) {
+        try {
+          const trendsData = await realDataService.getGoogleTrends(keyword);
+          if (trendsData.interestOverTime.length > 0) {
+            const avgValue = trendsData.interestOverTime.reduce((sum, d) => sum + d.value, 0) / trendsData.interestOverTime.length;
+            const latestValue = trendsData.interestOverTime[trendsData.interestOverTime.length - 1]?.value || 0;
+            const firstValue = trendsData.interestOverTime[0]?.value || 0;
+            const growth = firstValue > 0 ? ((latestValue - firstValue) / firstValue) * 100 : 0;
+
+            // Get Google Search results for sources
+            const googleResults = await realDataService.searchGoogle(keyword, { num: 5 }).catch(() => null);
+
+            return {
+              keyword,
+              volume: Math.floor(avgValue * 1000),
+              growth: `+${Math.floor(growth)}%`,
+              relatedApps: trendsData.relatedTopics.slice(0, 3),
+              whyTrending: trendsData.relatedQueries[0] || `Growing interest in ${keyword}`,
+              trendingIndustries: this.generateTrendingIndustries(keyword),
+              sources: googleResults?.organic?.slice(0, 5).map(r => ({
+                title: r.title,
+                url: r.link,
+                snippet: r.snippet,
+                source: new URL(r.link).hostname.replace('www.', ''),
+              })) || this.generateSources(keyword),
+            };
+          }
+        } catch (error) {
+          console.error('SerpAPI error in getTrendData, falling back:', error);
+        }
+      }
+
+      // Fallback to existing Reddit + Claude approach
       const [redditData, claudeData] = await Promise.all([
         realDataService.searchReddit(keyword).catch(() => null),
         realDataService.searchWithClaude(keyword, 'trends').catch(() => null),
@@ -111,15 +145,46 @@ class ExternalDataService {
   }
 
   /**
-   * Get market insights from Reddit (real data) and other sources
+   * Get market insights from SerpAPI (Google Search/News), Reddit (real data) and other sources
    */
   async getMarketInsights(topic: string): Promise<MarketInsight[]> {
     try {
+      const insights: MarketInsight[] = [];
+
+      // Try SerpAPI for Google News first
+      const apiKey = process.env.SERP_API_KEY;
+      if (apiKey) {
+        try {
+          const googleNews = await realDataService.searchGoogle(topic, { type: 'news', num: 10 });
+          if (googleNews.news && googleNews.news.length > 0) {
+            insights.push({
+              topic,
+              platform: 'Google News',
+              engagement: googleNews.news.length * 100, // Estimate based on article count
+              sentiment: 'Positive',
+              keyFindings: [
+                `${googleNews.news.length} recent news articles found`,
+                `Coverage across multiple sources`,
+                `Latest updates on ${topic}`,
+              ],
+              supportingData: googleNews.news.slice(0, 5).map(article => ({
+                title: article.title,
+                url: article.link,
+                snippet: article.snippet,
+                source: new URL(article.link).hostname.replace('www.', ''),
+                date: article.date,
+              })),
+              academicSources: this.generateAcademicSources(topic)
+            });
+          }
+        } catch (error) {
+          console.error('SerpAPI Google News error, continuing with other sources:', error);
+        }
+      }
+
       // Fetch real data from Reddit
       const redditData = await realDataService.searchReddit(topic).catch(() => null);
       const communityInsights = await realDataService.getCommunityInsights(topic).catch(() => null);
-
-      const insights: MarketInsight[] = [];
 
       // Add real Reddit insights if available
       if (redditData && redditData.posts.length > 0) {

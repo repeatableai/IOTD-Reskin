@@ -219,6 +219,66 @@ export async function getTrendData(
   providedGrowth?: number,
   timeRange: '6m' | '1y' | '2y' | 'all' = '1y'
 ): Promise<TrendResult> {
+  // Try SerpAPI first for real Google Trends data
+  const apiKey = process.env.SERP_API_KEY;
+  if (apiKey) {
+    try {
+      // Import realDataService dynamically to avoid circular dependency
+      const { realDataService } = await import('./realDataService');
+      const trendsData = await realDataService.getGoogleTrends(keyword);
+      
+      if (trendsData.interestOverTime.length > 0) {
+        // Convert SerpAPI format to our TrendResult format
+        const timelineData: TrendDataPoint[] = trendsData.interestOverTime.map((d) => ({
+          date: d.date,
+          value: d.value,
+          searches: d.value * 100, // Scale appropriately (Google Trends uses 0-100 scale)
+        }));
+
+        const values = timelineData.map(d => d.value);
+        const currentValue = Math.round(values[values.length - 1] || 0);
+        const peakValue = Math.round(Math.max(...values));
+        const peakIndex = values.indexOf(Math.max(...values));
+        const peakDate = timelineData[peakIndex]?.date || '';
+        const averageValue = Math.round(values.reduce((a, b) => a + b, 0) / values.length);
+        const growthRate = values.length > 1 
+          ? Math.round(((currentValue - values[0]) / Math.max(1, values[0])) * 100)
+          : 0;
+
+        // Generate CPC and competition from keyword
+        const random = seededRandom(keyword + 'cpc');
+        const cpc = parseFloat((random() * 5 + 0.5).toFixed(2));
+        const competitionRandom = seededRandom(keyword + 'competition');
+        const competitionScore = Math.floor(competitionRandom() * 100);
+        const competition: 'low' | 'medium' | 'high' = 
+          competitionScore < 33 ? 'low' : competitionScore < 66 ? 'medium' : 'high';
+
+        // Calculate volumes
+        const baseMonthlyVolume = Math.round(1000 + random() * 99000);
+        const currentVolume = Math.round((currentValue / 100) * baseMonthlyVolume);
+        const maxVolume = Math.round((peakValue / 100) * baseMonthlyVolume);
+
+        return {
+          keyword,
+          timelineData,
+          averageValue,
+          peakValue,
+          peakDate,
+          currentValue,
+          growthRate,
+          currentVolume,
+          maxVolume,
+          cpc,
+          competition,
+          competitionScore,
+        };
+      }
+    } catch (error) {
+      console.error('SerpAPI trends error, falling back to synthetic:', error);
+    }
+  }
+
+  // Fallback to synthetic data
   // Determine number of months based on time range
   const monthsMap = {
     '6m': 6,
