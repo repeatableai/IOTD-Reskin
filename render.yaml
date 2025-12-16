@@ -9,10 +9,9 @@ services:
     name: iotd-reskin
     runtime: node
     plan: free
-    nodeVersion: 20
     buildCommand: npm install && npm run build
     startCommand: npm run start:migrate
-    healthCheckPath: /
+    healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV
         value: production
@@ -24,6 +23,4 @@ services:
         generateValue: true
       - key: ANTHROPIC_API_KEY
         sync: false  # You'll need to add this manually in Render dashboard
-      - key: PORT
-        value: 10000
 
