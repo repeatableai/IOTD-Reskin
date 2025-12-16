@@ -284,21 +284,27 @@ class RealDataService {
           num: 10,
         });
 
+        const newsOrOrganic = searchType === 'news' 
+          ? (googleResults.news || [])
+          : (googleResults.organic || []);
+
         const result: TrendSearchResult = {
           keyword: query,
           relatedTopics: googleResults.relatedSearches || [],
-          newsArticles: (searchType === 'news' ? googleResults.news : googleResults.organic)?.map(r => ({
+          newsArticles: newsOrOrganic.map(r => ({
             title: r.title,
             url: r.link,
             snippet: r.snippet,
             source: new URL(r.link).hostname.replace('www.', ''),
-          })) || [],
-          competitorInsights: searchType === 'competitors' ? googleResults.organic?.map(r => ({
-            title: r.title,
-            url: r.link,
-            snippet: r.snippet,
-            source: new URL(r.link).hostname.replace('www.', ''),
-          })) || [],
+          })),
+          competitorInsights: searchType === 'competitors' 
+            ? (googleResults.organic || []).map(r => ({
+                title: r.title,
+                url: r.link,
+                snippet: r.snippet,
+                source: new URL(r.link).hostname.replace('www.', ''),
+              }))
+            : [],
           marketTrends: [],
         };
 
