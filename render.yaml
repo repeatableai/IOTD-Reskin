@@ -9,8 +9,10 @@ services:
     name: iotd-reskin
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build && npm run db:push
-    startCommand: npm start
+    nodeVersion: 20
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:migrate
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
