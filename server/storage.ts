@@ -65,7 +65,12 @@ export interface IStorage {
   getUserVoteOnIdea(userId: string, ideaId: string): Promise<'up' | 'down' | null>;
   
   // Claim and rating operations
-  claimIdea(ideaId: string, userId: string): Promise<void>;
+  claimIdea(ideaId: string, userId: string): Promise<{ success: boolean; claimedAt: Date }>;
+  unclaimIdea(ideaId: string, userId: string): Promise<void>;
+  getClaimStatus(ideaId: string): Promise<{ isClaimed: boolean; claimedBy: string | null; claimedAt: Date | null; claimProgress: number; claimCount: number; claimer?: any }>;
+  updateClaimProgress(ideaId: string, userId: string, data: { progress?: number; notes?: string; milestones?: any[] }): Promise<{ success: boolean }>;
+  getUserClaimedIdeas(userId: string): Promise<Idea[]>;
+  logExport(userId: string, ideaId: string, exportType: string, exportUrl?: string): Promise<void>;
   rateIdea(userId: string, ideaId: string, rating: number): Promise<void>;
   getUserRating(userId: string, ideaId: string): Promise<number | null>;
   
@@ -94,6 +99,9 @@ export interface IStorage {
   removeIdeaInteraction(userId: string, ideaId: string, status: string): Promise<void>;
   getUserIdeaInteraction(userId: string, ideaId: string): Promise<string | null>;
   getIdeasByInteraction(userId: string, status: string): Promise<Idea[]>;
+  
+  // For You personalized recommendations
+  getForYouIdeas(userId: string, limit: number, offset: number): Promise<{ ideas: Idea[]; total: number }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -120,16 +128,41 @@ export class DatabaseStorage implements IStorage {
 
   // Ideas operations
   async getIdeas(filters: IdeaFilters, userId?: string): Promise<{ ideas: Idea[]; total: number }> {
+    // Handle For You personalized recommendations
+    if (filters.forYou && userId) {
+      return this.getForYouIdeas(userId, filters.limit, filters.offset);
+    }
+    
     const conditions = [eq(ideas.isPublished, true)];
 
     if (filters.search) {
       const searchCondition = or(
         ilike(ideas.title, `%${filters.search}%`),
         ilike(ideas.description, `%${filters.search}%`),
-        ilike(ideas.keyword, `%${filters.search}%`)
+        ilike(ideas.keyword, `%${filters.search}%`),
+        ilike(ideas.targetAudience, `%${filters.search}%`),
+        ilike(ideas.content, `%${filters.search}%`)
       );
       if (searchCondition) {
         conditions.push(searchCondition);
+      }
+    }
+
+    // Handle tags/category filter - search across relevant fields
+    if (filters.tags && filters.tags.length > 0) {
+      const tagConditions = filters.tags.map(tag => 
+        or(
+          ilike(ideas.title, `%${tag}%`),
+          ilike(ideas.description, `%${tag}%`),
+          ilike(ideas.keyword, `%${tag}%`),
+          ilike(ideas.targetAudience, `%${tag}%`),
+          ilike(ideas.content, `%${tag}%`)
+        )
+      );
+      // At least one tag should match
+      const combinedTagCondition = or(...tagConditions.filter(Boolean) as any[]);
+      if (combinedTagCondition) {
+        conditions.push(combinedTagCondition);
       }
     }
 
@@ -411,11 +444,115 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Claim and rating operations
-  async claimIdea(ideaId: string, userId: string): Promise<void> {
+  async claimIdea(ideaId: string, userId: string): Promise<{ success: boolean; claimedAt: Date }> {
+    // Check if idea is already claimed
+    const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId));
+    if (idea?.claimedBy) {
+      throw new Error('Idea is already claimed');
+    }
+    
+    const claimedAt = new Date();
+    
     await db
       .update(ideas)
-      .set({ claimedBy: userId })
+      .set({ 
+        claimedBy: userId,
+        claimedAt: claimedAt,
+        claimCount: sql`COALESCE(${ideas.claimCount}, 0) + 1`
+      })
       .where(eq(ideas.id, ideaId));
+    
+    return { success: true, claimedAt };
+  }
+  
+  async unclaimIdea(ideaId: string, userId: string): Promise<void> {
+    // Check if user is the one who claimed
+    const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId));
+    if (idea?.claimedBy !== userId) {
+      throw new Error('You have not claimed this idea');
+    }
+    
+    await db
+      .update(ideas)
+      .set({ 
+        claimedBy: null,
+        claimedAt: null,
+        claimProgress: 0,
+        claimMilestones: null
+      })
+      .where(eq(ideas.id, ideaId));
+  }
+  
+  async getClaimStatus(ideaId: string): Promise<{
+    isClaimed: boolean;
+    claimedBy: string | null;
+    claimedAt: Date | null;
+    claimProgress: number;
+    claimCount: number;
+    claimer?: { id: string; firstName: string | null; lastName: string | null; profileImageUrl: string | null };
+  }> {
+    const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId));
+    if (!idea) {
+      return { isClaimed: false, claimedBy: null, claimedAt: null, claimProgress: 0, claimCount: 0 };
+    }
+    
+    let claimer = undefined;
+    if (idea.claimedBy) {
+      const [user] = await db.select().from(users).where(eq(users.id, idea.claimedBy));
+      if (user) {
+        claimer = {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          profileImageUrl: user.profileImageUrl
+        };
+      }
+    }
+    
+    return {
+      isClaimed: !!idea.claimedBy,
+      claimedBy: idea.claimedBy,
+      claimedAt: idea.claimedAt,
+      claimProgress: idea.claimProgress || 0,
+      claimCount: idea.claimCount || 0,
+      claimer
+    };
+  }
+  
+  async updateClaimProgress(ideaId: string, userId: string, data: { 
+    progress?: number; 
+    notes?: string; 
+    milestones?: any[] 
+  }): Promise<{ success: boolean }> {
+    // Check if user is the one who claimed
+    const [idea] = await db.select().from(ideas).where(eq(ideas.id, ideaId));
+    if (idea?.claimedBy !== userId) {
+      throw new Error('You have not claimed this idea');
+    }
+    
+    const updateData: any = {};
+    if (data.progress !== undefined) updateData.claimProgress = data.progress;
+    if (data.milestones !== undefined) updateData.claimMilestones = data.milestones;
+    
+    await db
+      .update(ideas)
+      .set(updateData)
+      .where(eq(ideas.id, ideaId));
+    
+    return { success: true };
+  }
+  
+  async getUserClaimedIdeas(userId: string): Promise<Idea[]> {
+    return await db
+      .select()
+      .from(ideas)
+      .where(eq(ideas.claimedBy, userId))
+      .orderBy(desc(ideas.claimedAt));
+  }
+  
+  async logExport(userId: string, ideaId: string, exportType: string, exportUrl?: string): Promise<void> {
+    // For now, just log to console - can add to exportHistory table later
+    console.log(`Export: user=${userId}, idea=${ideaId}, type=${exportType}, url=${exportUrl || 'N/A'}`);
   }
 
   async rateIdea(userId: string, ideaId: string, rating: number): Promise<void> {
@@ -711,6 +848,159 @@ export class DatabaseStorage implements IStorage {
         sql`false`
       ))
       .orderBy(desc(userIdeaInteractions.createdAt));
+  }
+  
+  // For You personalized recommendations based on user behavior
+  async getForYouIdeas(userId: string, limit: number, offset: number): Promise<{ ideas: Idea[]; total: number }> {
+    // Step 1: Get user's interacted ideas (saved, interested, upvoted)
+    const savedIdeas = await db
+      .select({ ideaId: userSavedIdeas.ideaId })
+      .from(userSavedIdeas)
+      .where(eq(userSavedIdeas.userId, userId));
+    
+    const upvotedIdeas = await db
+      .select({ ideaId: userIdeaVotes.ideaId })
+      .from(userIdeaVotes)
+      .where(and(
+        eq(userIdeaVotes.userId, userId),
+        eq(userIdeaVotes.voteType, 'up')
+      ));
+    
+    const interestedIdeas = await db
+      .select({ ideaId: userIdeaInteractions.ideaId })
+      .from(userIdeaInteractions)
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.isInterested, true)
+      ));
+    
+    // Combine all interacted idea IDs
+    const interactedIdeaIds = new Set([
+      ...savedIdeas.map(s => s.ideaId),
+      ...upvotedIdeas.map(v => v.ideaId),
+      ...interestedIdeas.map(i => i.ideaId)
+    ].filter(Boolean) as string[]);
+    
+    // Step 2: Get preferences from interacted ideas
+    if (interactedIdeaIds.size === 0) {
+      // No interactions yet - show trending/popular ideas
+      const trendingIdeas = await db
+        .select()
+        .from(ideas)
+        .where(eq(ideas.isPublished, true))
+        .orderBy(desc(ideas.voteCount), desc(ideas.viewCount), desc(ideas.opportunityScore))
+        .limit(limit)
+        .offset(offset);
+      
+      const countResult = await db
+        .select({ count: sql`count(*)` })
+        .from(ideas)
+        .where(eq(ideas.isPublished, true));
+      
+      return {
+        ideas: trendingIdeas,
+        total: Number(countResult[0]?.count || 0)
+      };
+    }
+    
+    // Get market and type preferences from interacted ideas
+    const interactedIdeasData = await db
+      .select({
+        market: ideas.market,
+        type: ideas.type,
+        keyword: ideas.keyword
+      })
+      .from(ideas)
+      .where(inArray(ideas.id, Array.from(interactedIdeaIds)));
+    
+    // Count preferences
+    const marketCounts: Record<string, number> = {};
+    const typeCounts: Record<string, number> = {};
+    
+    interactedIdeasData.forEach(idea => {
+      if (idea.market) {
+        marketCounts[idea.market] = (marketCounts[idea.market] || 0) + 1;
+      }
+      if (idea.type) {
+        typeCounts[idea.type] = (typeCounts[idea.type] || 0) + 1;
+      }
+    });
+    
+    // Get preferred markets and types (top 2 of each)
+    const preferredMarkets = Object.entries(marketCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([market]) => market);
+    
+    const preferredTypes = Object.entries(typeCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([type]) => type);
+    
+    // Get not interested ideas to exclude
+    const notInterestedIdeas = await db
+      .select({ ideaId: userIdeaInteractions.ideaId })
+      .from(userIdeaInteractions)
+      .where(and(
+        eq(userIdeaInteractions.userId, userId),
+        eq(userIdeaInteractions.isNotInterested, true)
+      ));
+    
+    const excludeIds = new Set([
+      ...interactedIdeaIds,
+      ...notInterestedIdeas.map(n => n.ideaId).filter(Boolean) as string[]
+    ]);
+    
+    // Step 3: Build recommendation query
+    const conditions = [
+      eq(ideas.isPublished, true)
+    ];
+    
+    // Exclude already interacted ideas
+    if (excludeIds.size > 0) {
+      conditions.push(sql`${ideas.id} NOT IN (${sql.join(Array.from(excludeIds).map(id => sql`${id}`), sql`, `)})`);
+    }
+    
+    // Prefer ideas matching user preferences
+    const preferenceConditions = [];
+    if (preferredMarkets.length > 0) {
+      preferenceConditions.push(inArray(ideas.market, preferredMarkets));
+    }
+    if (preferredTypes.length > 0) {
+      preferenceConditions.push(inArray(ideas.type, preferredTypes));
+    }
+    
+    // Create a relevance score for ordering
+    // Ideas matching preferences come first, sorted by opportunity score
+    const recommendedIdeas = await db
+      .select()
+      .from(ideas)
+      .where(and(...conditions))
+      .orderBy(
+        // Prioritize matching markets and types
+        sql`CASE 
+          WHEN ${ideas.market} IN (${sql.join(preferredMarkets.map(m => sql`${m}`), sql`, `)}) 
+          AND ${ideas.type} IN (${sql.join(preferredTypes.map(t => sql`${t}`), sql`, `)}) THEN 1
+          WHEN ${ideas.market} IN (${sql.join(preferredMarkets.map(m => sql`${m}`), sql`, `)}) THEN 2
+          WHEN ${ideas.type} IN (${sql.join(preferredTypes.map(t => sql`${t}`), sql`, `)}) THEN 3
+          ELSE 4
+        END`,
+        desc(ideas.opportunityScore),
+        desc(ideas.voteCount)
+      )
+      .limit(limit)
+      .offset(offset);
+    
+    // Count total recommendations (excluding already interacted)
+    const countResult = await db
+      .select({ count: sql`count(*)` })
+      .from(ideas)
+      .where(and(...conditions));
+    
+    return {
+      ideas: recommendedIdeas,
+      total: Number(countResult[0]?.count || 0)
+    };
   }
 }
 

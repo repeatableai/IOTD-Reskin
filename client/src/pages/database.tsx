@@ -1,17 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation, useSearch } from "wouter";
 import Header from "@/components/Header";
 import IdeaCard from "@/components/IdeaCard";
 import IdeaFilters from "@/components/IdeaFilters";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, X } from "lucide-react";
 import type { IdeaFilters as IdeaFiltersType } from "@shared/schema";
 
 export default function Database() {
-  const [filters, setFilters] = useState<IdeaFiltersType>({
-    sortBy: 'newest',
-    limit: 20,
-    offset: 0,
-  });
+  const [location, setLocation] = useLocation();
+  const searchParams = useSearch();
+  
+  // Parse URL search params on initial load
+  const getInitialFilters = (): IdeaFiltersType => {
+    const params = new URLSearchParams(searchParams);
+    return {
+      search: params.get('search') || undefined,
+      market: (params.get('market') as 'B2B' | 'B2C' | 'B2B2C') || undefined,
+      type: params.get('type') || undefined,
+      sortBy: (params.get('sort') as 'newest' | 'popular' | 'opportunity' | 'revenue') || 'newest',
+      tags: params.getAll('tag').length > 0 ? params.getAll('tag') : undefined,
+      limit: 20,
+      offset: 0,
+    };
+  };
+
+  const [filters, setFilters] = useState<IdeaFiltersType>(getInitialFilters());
+
+  // Update filters when URL changes
+  useEffect(() => {
+    const newFilters = getInitialFilters();
+    setFilters(prev => ({ ...prev, ...newFilters, offset: 0 }));
+  }, [searchParams]);
 
   const { data: result, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", filters],
@@ -49,8 +71,81 @@ export default function Database() {
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-4">The Solution Database</h1>
-          <p className="text-muted-foreground">Dive into deep research and analysis on 400+ business solutions</p>
+          {filters.forYou ? (
+            <>
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Sparkles className="w-8 h-8 text-purple-500" />
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+                  For You
+                </h1>
+                <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">Personalized</Badge>
+              </div>
+              <p className="text-muted-foreground">
+                Solutions tailored to your interests based on what you've saved, liked, and explored
+              </p>
+            </>
+          ) : filters.search ? (
+            <>
+              <h1 className="text-3xl font-bold mb-4">
+                Search Results for "{filters.search}"
+              </h1>
+              <div className="flex items-center justify-center gap-2">
+                <p className="text-muted-foreground">
+                  Showing solutions matching your search
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setFilters(prev => ({ ...prev, search: undefined, offset: 0 }));
+                    setLocation('/database');
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-4 h-4 mr-1" />
+                  Clear search
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold mb-4">The Solution Database</h1>
+              <p className="text-muted-foreground">Dive into deep research and analysis on 400+ business solutions</p>
+            </>
+          )}
+        </div>
+
+        {/* Category Tags Quick Filter */}
+        <div className="mb-8">
+          <div className="flex flex-wrap gap-2 justify-center">
+            {[
+              { label: 'All', value: undefined },
+              { label: 'AI & Machine Learning', value: 'ai' },
+              { label: 'SaaS', value: 'saas' },
+              { label: 'Healthcare', value: 'health' },
+              { label: 'Fintech', value: 'finance' },
+              { label: 'E-commerce', value: 'ecommerce' },
+              { label: 'Education', value: 'education' },
+              { label: 'Productivity', value: 'productivity' },
+              { label: 'Marketing', value: 'marketing' },
+            ].map((category) => (
+              <Button
+                key={category.label}
+                variant={(!filters.search && !category.value) || filters.search === category.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  if (category.value) {
+                    setFilters(prev => ({ ...prev, search: category.value, offset: 0 }));
+                  } else {
+                    setFilters(prev => ({ ...prev, search: undefined, offset: 0 }));
+                  }
+                }}
+                className="rounded-full"
+              >
+                {category.label}
+              </Button>
+            ))}
+          </div>
         </div>
         
         <div className="flex flex-col lg:flex-row gap-8">

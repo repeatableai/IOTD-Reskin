@@ -38,6 +38,7 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
       isGregsPick: undefined,
       userStatus: undefined,
       forYou: undefined,
+      tags: undefined,
     });
   };
 
@@ -56,14 +57,29 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
             <Label className="text-sm font-medium">Premium Filters</Label>
             <div className="flex flex-col gap-2">
               <Button
+                variant={filters.forYou ? "default" : "outline"}
+                size="sm"
+                onClick={() => onFiltersChange({ 
+                  forYou: filters.forYou ? undefined : true,
+                  userStatus: undefined // Clear user status when enabling For You
+                })}
+                className="justify-start bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0"
+                data-testid="button-for-you"
+              >
+                <Sparkles className="w-4 h-4 mr-2" />
+                For You
+                {filters.forYou && <Badge className="ml-auto bg-white/20" variant="secondary">Active</Badge>}
+              </Button>
+              
+              <Button
                 variant={filters.isGregsPick ? "default" : "outline"}
                 size="sm"
                 onClick={() => onFiltersChange({ isGregsPick: filters.isGregsPick ? undefined : true })}
                 className="justify-start"
-                data-testid="button-gregs-pick"
+                data-testid="button-favorite"
               >
                 <Star className="w-4 h-4 mr-2" />
-                Greg's Pick
+                Favorites
                 {filters.isGregsPick && <Badge className="ml-auto" variant="secondary">Active</Badge>}
               </Button>
               
@@ -71,7 +87,8 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
                 variant={filters.userStatus === 'interested' ? "default" : "outline"}
                 size="sm"
                 onClick={() => onFiltersChange({ 
-                  userStatus: filters.userStatus === 'interested' ? undefined : 'interested' 
+                  userStatus: filters.userStatus === 'interested' ? undefined : 'interested',
+                  forYou: undefined // Clear For You when selecting a status
                 })}
                 className="justify-start"
                 data-testid="button-status-interested"
@@ -84,7 +101,8 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
                 variant={filters.userStatus === 'saved' ? "default" : "outline"}
                 size="sm"
                 onClick={() => onFiltersChange({ 
-                  userStatus: filters.userStatus === 'saved' ? undefined : 'saved' 
+                  userStatus: filters.userStatus === 'saved' ? undefined : 'saved',
+                  forYou: undefined
                 })}
                 className="justify-start"
                 data-testid="button-status-saved"
@@ -97,7 +115,8 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
                 variant={filters.userStatus === 'building' ? "default" : "outline"}
                 size="sm"
                 onClick={() => onFiltersChange({ 
-                  userStatus: filters.userStatus === 'building' ? undefined : 'building' 
+                  userStatus: filters.userStatus === 'building' ? undefined : 'building',
+                  forYou: undefined
                 })}
                 className="justify-start"
                 data-testid="button-status-building"
@@ -192,8 +211,46 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
               <SelectItem value="marketplace">Marketplace</SelectItem>
               <SelectItem value="subscription">Subscription</SelectItem>
               <SelectItem value="enterprise">Enterprise</SelectItem>
+              <SelectItem value="api">API / Developer Tool</SelectItem>
+              <SelectItem value="plugin">Plugin / Extension</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Industry/Category */}
+        <div>
+          <Label className="text-sm font-medium mb-2 block">Industry</Label>
+          <div className="space-y-2">
+            {[
+              { id: 'ai', label: 'AI & Machine Learning' },
+              { id: 'health', label: 'Healthcare & Wellness' },
+              { id: 'finance', label: 'Fintech & Finance' },
+              { id: 'education', label: 'Education & Learning' },
+              { id: 'ecommerce', label: 'E-commerce & Retail' },
+              { id: 'productivity', label: 'Productivity & Tools' },
+              { id: 'marketing', label: 'Marketing & Sales' },
+              { id: 'travel', label: 'Travel & Hospitality' },
+            ].map((industry) => (
+              <div key={industry.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`industry-${industry.id}`}
+                  checked={(filters.tags || []).includes(industry.id)}
+                  onCheckedChange={(checked) => {
+                    const currentTags = filters.tags || [];
+                    if (checked) {
+                      onFiltersChange({ tags: [...currentTags, industry.id] });
+                    } else {
+                      onFiltersChange({ tags: currentTags.filter(t => t !== industry.id) });
+                    }
+                  }}
+                  data-testid={`checkbox-industry-${industry.id}`}
+                />
+                <Label htmlFor={`industry-${industry.id}`} className="text-sm cursor-pointer">
+                  {industry.label}
+                </Label>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Opportunity Score */}

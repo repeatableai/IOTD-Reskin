@@ -106,8 +106,15 @@ export const ideas = pgTable("ideas", {
   communitySignals: jsonb("community_signals"), // Reddit, Facebook, YouTube, Other community data with scores
   signalBadges: text("signal_badges").array(), // Badge tags like "Perfect Timing", "Unfair Advantage", etc.
   
-  // User engagement
+  // Claim feature - social proof and accountability
   claimedBy: varchar("claimed_by").references(() => users.id), // User who claimed the idea
+  claimedAt: timestamp("claimed_at"), // When the idea was claimed
+  claimCount: integer("claim_count").default(0), // Total number of times claimed (historical)
+  maxClaimSlots: integer("max_claim_slots").default(5), // Max concurrent claimers (for future multi-claim)
+  claimProgress: integer("claim_progress").default(0), // 0-100% progress
+  claimMilestones: jsonb("claim_milestones"), // Array of milestone objects {name, completed, date}
+  
+  // User engagement
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }), // Average user rating
   ratingCount: integer("rating_count").default(0), // Number of ratings
   
@@ -257,6 +264,30 @@ export const userToolFavorites = pgTable("user_tool_favorites", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Claims history - tracks all claim events
+export const ideaClaims = pgTable("idea_claims", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar("status").default('active'), // active, released, completed, expired
+  progress: integer("progress").default(0), // 0-100
+  milestones: jsonb("milestones"), // Array of milestone objects
+  notes: text("notes"), // User notes about their progress
+  claimedAt: timestamp("claimed_at").defaultNow(),
+  releasedAt: timestamp("released_at"),
+  completedAt: timestamp("completed_at"),
+});
+
+// Export history - tracks user exports
+export const exportHistory = pgTable("export_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  exportType: varchar("export_type").notNull(), // pdf, notion, google_docs, markdown
+  exportUrl: text("export_url"), // URL to exported document (for Notion/Docs)
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   savedIdeas: many(userSavedIdeas),
@@ -363,6 +394,12 @@ export type FaqQuestion = typeof faqQuestions.$inferSelect;
 
 export type InsertTool = typeof toolsLibrary.$inferInsert;
 export type Tool = typeof toolsLibrary.$inferSelect;
+
+export type InsertIdeaClaim = typeof ideaClaims.$inferInsert;
+export type IdeaClaim = typeof ideaClaims.$inferSelect;
+
+export type InsertExportHistory = typeof exportHistory.$inferInsert;
+export type ExportHistory = typeof exportHistory.$inferSelect;
 
 // Input schemas
 export const insertIdeaSchema = createInsertSchema(ideas).omit({

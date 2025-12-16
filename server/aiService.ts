@@ -1,10 +1,30 @@
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import Anthropic from '@anthropic-ai/sdk';
 
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy-load API clients to allow server startup without keys
+let openai: OpenAI | null = null;
+let anthropic: Anthropic | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY is not set. Please set it in your environment variables.');
+    }
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  }
+  return openai;
+}
+
+function getAnthropic(): Anthropic {
+  if (!anthropic) {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error('ANTHROPIC_API_KEY is not set. Please set it in your environment variables.');
+    }
+    anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  }
+  return anthropic;
+}
 
 export interface GeneratedIdea {
   title: string;
@@ -110,10 +130,87 @@ export interface ResearchReport {
   opportunities: string[];
 }
 
+// Deep Research Report (Claude Sonnet 4.5 with Extended Thinking)
+export interface DeepResearchReport {
+  thinking: string; // Extended thinking process
+  executiveSummary: string;
+  marketAnalysis: {
+    marketSize: string;
+    growthRate: string;
+    trends: string[];
+    drivers: string[];
+    challenges: string[];
+  };
+  competitorLandscape: {
+    directCompetitors: Array<{ name: string; strength: string; weakness: string; marketShare: string }>;
+    indirectCompetitors: string[];
+    competitiveAdvantages: string[];
+  };
+  customerAnalysis: {
+    primarySegments: Array<{ segment: string; size: string; painPoints: string[]; willingness: string }>;
+    buyerPersonas: string[];
+    customerJourney: string;
+  };
+  businessModel: {
+    revenueStreams: string[];
+    pricingStrategy: string;
+    costStructure: string;
+    unitEconomics: string;
+  };
+  goToMarket: {
+    launchStrategy: string;
+    channelStrategy: string[];
+    partnershipOpportunities: string[];
+    marketingApproach: string;
+  };
+  financialProjections: {
+    year1: { revenue: string; costs: string; profit: string };
+    year2: { revenue: string; costs: string; profit: string };
+    year3: { revenue: string; costs: string; profit: string };
+    breakEvenTimeline: string;
+    fundingRequirements: string;
+  };
+  riskAnalysis: {
+    marketRisks: string[];
+    operationalRisks: string[];
+    financialRisks: string[];
+    mitigationStrategies: string[];
+  };
+  implementationRoadmap: {
+    phase1: { timeline: string; milestones: string[]; resources: string };
+    phase2: { timeline: string; milestones: string[]; resources: string };
+    phase3: { timeline: string; milestones: string[]; resources: string };
+  };
+  validationScores: {
+    overallScore: number;
+    marketOpportunity: number;
+    competitivePosition: number;
+    executionFeasibility: number;
+    financialViability: number;
+    timingScore: number;
+  };
+  keyRecommendations: string[];
+  criticalSuccessFactors: string[];
+}
+
+// Rapid Research Report (Claude Haiku - faster, more concise)
+export interface RapidResearchReport {
+  summary: string;
+  marketOpportunity: string;
+  topCompetitors: string[];
+  targetCustomer: string;
+  revenueModel: string;
+  estimatedRevenue: string;
+  keyRisks: string[];
+  nextSteps: string[];
+  overallScore: number;
+  recommendation: 'Pursue' | 'Refine' | 'Reconsider';
+}
+
 class AIService {
   private async callOpenAI(messages: ChatCompletionMessageParam[]): Promise<string> {
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         messages: messages,
         temperature: 0.8,
@@ -270,7 +367,7 @@ Make it realistic, innovative, and comprehensive. Use real market insights. Gene
       }
     ];
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       messages: messages,
       temperature: 0.8,
@@ -336,23 +433,50 @@ Return the response as a JSON object with this structure:
 
 Make the analysis realistic, data-driven, and actionable. Focus on practical insights that would help an entrepreneur make informed decisions.`;
 
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: "system",
-        content: "You are a senior business analyst and market researcher with expertise in startup evaluation and market analysis. Provide comprehensive, realistic research reports with actionable insights."
-      },
-      {
-        role: "user",
-        content: prompt
-      }
-    ];
-
-    const response = await this.callOpenAI(messages);
-    
     try {
+      console.log('Generating research report with Claude...');
+      
+      const response = await getAnthropic().messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 4000,
+        system: "You are a senior business analyst and market researcher with expertise in startup evaluation and market analysis. Provide comprehensive, realistic research reports with actionable insights. Always respond with valid JSON.",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const textContent = response.content[0].type === 'text' ? response.content[0].text : '';
+      
       // Clean the response to extract JSON
-      const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      const parsedReport = JSON.parse(cleanedResponse);
+      let cleanedResponse = textContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      const jsonMatch = cleanedResponse.match(/\{[\s\S]*\}/);
+      let jsonText = jsonMatch ? jsonMatch[0] : cleanedResponse;
+      
+      // Clean problematic characters that can break JSON parsing
+      jsonText = jsonText
+        .replace(/[\x00-\x1F\x7F]/g, ' ')  // Remove control characters
+        .replace(/\n/g, '\\n')  // Escape newlines in strings
+        .replace(/\r/g, '\\r')  // Escape carriage returns
+        .replace(/\t/g, '\\t')  // Escape tabs
+        .replace(/\\n\\n/g, '\\n')  // Reduce double newlines
+        .replace(/"\s*\n\s*"/g, '" "');  // Fix broken strings
+      
+      // Try to parse, if it fails try more aggressive cleaning
+      let parsedReport;
+      try {
+        parsedReport = JSON.parse(jsonText);
+      } catch (firstError) {
+        // More aggressive cleaning - remove all newlines and extra spaces
+        jsonText = jsonText
+          .replace(/\\n/g, ' ')
+          .replace(/\\r/g, ' ')
+          .replace(/\\t/g, ' ')
+          .replace(/\s+/g, ' ');
+        parsedReport = JSON.parse(jsonText);
+      }
       
       // Validate required fields
       const requiredFields = ['executiveSummary', 'marketAnalysis', 'competitorAnalysis'];
@@ -362,11 +486,11 @@ Make the analysis realistic, data-driven, and actionable. Focus on practical ins
         }
       }
       
+      console.log('Research report generated successfully');
       return parsedReport;
     } catch (parseError) {
-      console.error('Error parsing AI research report:', parseError);
-      console.error('Raw response:', response);
-      throw new Error('Failed to parse AI-generated research report');
+      console.error('Error generating/parsing AI research report:', parseError);
+      throw new Error('Failed to generate AI research report');
     }
   }
 
@@ -508,7 +632,7 @@ Format the response as JSON with this structure:
     ];
 
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: messages,
         temperature: 0.7,
@@ -603,7 +727,7 @@ Format as JSON:
     ];
 
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o",
         messages: messages,
         temperature: 0.8,
@@ -619,6 +743,580 @@ Format as JSON:
     } catch (error) {
       console.error('Error generating personalized ideas:', error);
       throw new Error('Failed to generate ideas');
+    }
+  }
+
+  // Deep Research with Claude Sonnet 4.5 and Extended Thinking
+  async generateDeepResearch(params: {
+    ideaTitle: string;
+    ideaDescription: string;
+    targetMarket?: string;
+    additionalContext?: string;
+  }): Promise<DeepResearchReport> {
+    const prompt = `You are an elite business strategist and market researcher. Conduct an exhaustive, comprehensive analysis of this startup idea.
+
+STARTUP IDEA:
+Title: ${params.ideaTitle}
+Description: ${params.ideaDescription}
+${params.targetMarket ? `Target Market: ${params.targetMarket}` : ''}
+${params.additionalContext ? `Additional Context: ${params.additionalContext}` : ''}
+
+Perform deep research and analysis covering ALL of the following areas in extreme detail:
+
+1. EXECUTIVE SUMMARY (500+ words)
+   - Core value proposition
+   - Key findings overview
+   - Investment/pursuit recommendation
+
+2. MARKET ANALYSIS
+   - Total Addressable Market (TAM), Serviceable Addressable Market (SAM), Serviceable Obtainable Market (SOM)
+   - Market growth rate and projections
+   - Key market trends (5+)
+   - Market drivers (5+)
+   - Market challenges (5+)
+
+3. COMPETITOR LANDSCAPE
+   - Direct competitors (5+ with detailed analysis: name, strengths, weaknesses, market share)
+   - Indirect competitors (5+)
+   - Competitive advantages this idea could have (5+)
+   - Competitive positioning strategy
+
+4. CUSTOMER ANALYSIS
+   - Primary customer segments (3+ with size, pain points, willingness to pay)
+   - Detailed buyer personas (3+)
+   - Customer journey map
+   - Customer acquisition strategies
+
+5. BUSINESS MODEL
+   - Revenue streams (multiple)
+   - Detailed pricing strategy with tiers
+   - Cost structure breakdown
+   - Unit economics (CAC, LTV, margins)
+
+6. GO-TO-MARKET STRATEGY
+   - Launch strategy (phased approach)
+   - Channel strategy (5+ channels with priority)
+   - Partnership opportunities (5+)
+   - Marketing approach and budget allocation
+
+7. FINANCIAL PROJECTIONS
+   - Year 1, 2, 3 detailed projections (revenue, costs, profit)
+   - Break-even timeline
+   - Funding requirements and use of funds
+   - Key financial assumptions
+
+8. RISK ANALYSIS
+   - Market risks (5+)
+   - Operational risks (5+)
+   - Financial risks (5+)
+   - Detailed mitigation strategies for each
+
+9. IMPLEMENTATION ROADMAP
+   - Phase 1 (0-6 months): Timeline, milestones, resources needed
+   - Phase 2 (6-12 months): Timeline, milestones, resources needed
+   - Phase 3 (12-24 months): Timeline, milestones, resources needed
+
+10. VALIDATION SCORES (1-10 scale with justification)
+    - Overall Score
+    - Market Opportunity Score
+    - Competitive Position Score
+    - Execution Feasibility Score
+    - Financial Viability Score
+    - Timing Score
+
+11. KEY RECOMMENDATIONS (10+)
+    - Prioritized action items
+
+12. CRITICAL SUCCESS FACTORS (5+)
+    - What must go right for this to succeed
+
+Return your analysis as a comprehensive JSON object with this exact structure:
+{
+  "thinking": "Your extended thinking process and reasoning",
+  "executiveSummary": "...",
+  "marketAnalysis": {
+    "marketSize": "TAM/SAM/SOM breakdown",
+    "growthRate": "X% CAGR",
+    "trends": ["trend1", "trend2", ...],
+    "drivers": ["driver1", "driver2", ...],
+    "challenges": ["challenge1", "challenge2", ...]
+  },
+  "competitorLandscape": {
+    "directCompetitors": [{"name": "...", "strength": "...", "weakness": "...", "marketShare": "..."}],
+    "indirectCompetitors": ["..."],
+    "competitiveAdvantages": ["..."]
+  },
+  "customerAnalysis": {
+    "primarySegments": [{"segment": "...", "size": "...", "painPoints": ["..."], "willingness": "..."}],
+    "buyerPersonas": ["..."],
+    "customerJourney": "..."
+  },
+  "businessModel": {
+    "revenueStreams": ["..."],
+    "pricingStrategy": "...",
+    "costStructure": "...",
+    "unitEconomics": "..."
+  },
+  "goToMarket": {
+    "launchStrategy": "...",
+    "channelStrategy": ["..."],
+    "partnershipOpportunities": ["..."],
+    "marketingApproach": "..."
+  },
+  "financialProjections": {
+    "year1": {"revenue": "$X", "costs": "$X", "profit": "$X"},
+    "year2": {"revenue": "$X", "costs": "$X", "profit": "$X"},
+    "year3": {"revenue": "$X", "costs": "$X", "profit": "$X"},
+    "breakEvenTimeline": "...",
+    "fundingRequirements": "..."
+  },
+  "riskAnalysis": {
+    "marketRisks": ["..."],
+    "operationalRisks": ["..."],
+    "financialRisks": ["..."],
+    "mitigationStrategies": ["..."]
+  },
+  "implementationRoadmap": {
+    "phase1": {"timeline": "0-6 months", "milestones": ["..."], "resources": "..."},
+    "phase2": {"timeline": "6-12 months", "milestones": ["..."], "resources": "..."},
+    "phase3": {"timeline": "12-24 months", "milestones": ["..."], "resources": "..."}
+  },
+  "validationScores": {
+    "overallScore": 8,
+    "marketOpportunity": 8,
+    "competitivePosition": 7,
+    "executionFeasibility": 8,
+    "financialViability": 7,
+    "timingScore": 9
+  },
+  "keyRecommendations": ["..."],
+  "criticalSuccessFactors": ["..."]
+}
+
+Be thorough, data-driven, and provide specific, actionable insights. This is a premium research report.`;
+
+    try {
+      console.log('Starting deep research with Claude Sonnet 4.5...');
+
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        thinking: {
+          type: "enabled",
+          budget_tokens: 10000
+        },
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      // Extract thinking and text content
+      let thinkingContent = '';
+      let textContent = '';
+
+      for (const block of response.content) {
+        if (block.type === 'thinking') {
+          thinkingContent = block.thinking;
+        } else if (block.type === 'text') {
+          textContent = block.text;
+        }
+      }
+
+      // Parse the JSON response
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+      const report = JSON.parse(jsonText) as DeepResearchReport;
+
+      // Add the thinking content
+      report.thinking = thinkingContent;
+
+      console.log('Deep research completed successfully');
+      return report;
+    } catch (error) {
+      console.error('Error generating deep research:', error);
+      throw new Error('Failed to generate deep research report');
+    }
+  }
+
+  // Generate Sectioned Builder Prompts - one comprehensive prompt per app section
+  async generateBuilderPrompts(params: {
+    ideaTitle: string;
+    ideaDescription: string;
+    type?: string;
+    market?: string;
+    targetAudience?: string;
+  }): Promise<{
+    comprehensive: string;
+    sections: {
+      landingPage: string;
+      adminFeatures: string;
+      uiFrontend: string;
+      backendFunctionality: string;
+      mathCalculations: string;
+    };
+    // Keep legacy format for backwards compatibility
+    claude: string;
+    gemini: string;
+    gpt: string;
+  }> {
+    const baseContext = `STARTUP IDEA:
+Title: ${params.ideaTitle}
+Description: ${params.ideaDescription}
+${params.type ? `Type: ${params.type}` : ''}
+${params.market ? `Market: ${params.market}` : ''}
+${params.targetAudience ? `Target Audience: ${params.targetAudience}` : ''}`;
+
+    console.log('Generating sectioned builder prompts with Claude Haiku (fast)...');
+
+    try {
+      // Generate all sections in parallel for speed
+      const [comprehensive, landingPage, adminFeatures, uiFrontend, backendFunctionality, mathCalculations] = await Promise.all([
+        // 1. Comprehensive prompt
+        this.generateSinglePrompt(baseContext, 'comprehensive', params.market),
+        // 2. Landing page
+        this.generateSinglePrompt(baseContext, 'landingPage', params.market),
+        // 3. Admin features
+        this.generateSinglePrompt(baseContext, 'adminFeatures', params.market),
+        // 4. UI/Frontend
+        this.generateSinglePrompt(baseContext, 'uiFrontend', params.market),
+        // 5. Backend
+        this.generateSinglePrompt(baseContext, 'backendFunctionality', params.market),
+        // 6. Math/calculations
+        this.generateSinglePrompt(baseContext, 'mathCalculations', params.market),
+      ]);
+
+      const result = {
+        comprehensive,
+        sections: {
+          landingPage,
+          adminFeatures,
+          uiFrontend,
+          backendFunctionality,
+          mathCalculations,
+        },
+        // Legacy format
+        claude: comprehensive,
+        gemini: comprehensive,
+        gpt: comprehensive,
+      };
+
+      console.log('Sectioned builder prompts generated successfully');
+      return result;
+    } catch (error) {
+      console.error('Error generating builder prompts:', error);
+      throw new Error('Failed to generate builder prompts');
+    }
+  }
+
+  // Helper to generate a single section prompt
+  private async generateSinglePrompt(baseContext: string, section: string, market?: string): Promise<string> {
+    const sectionPrompts: Record<string, string> = {
+      comprehensive: `You are an expert full-stack developer. Create a comprehensive build prompt for this startup idea that can be used with any AI coding assistant (Claude, GPT, Cursor, etc.).
+
+${baseContext}
+
+Generate a complete, self-contained build prompt that includes:
+1. Project overview and tech stack (React, TypeScript, Node.js, PostgreSQL)
+2. Core features list with brief descriptions
+3. Database schema (main tables and relationships)
+4. Key API endpoints
+5. Authentication requirements
+6. UI/UX guidelines
+
+Format as a clear, actionable prompt that starts with "Build a..." - Keep it focused and under 1500 words.`,
+
+      landingPage: `You are a frontend expert. Create a build prompt specifically for the LANDING PAGE of this startup idea.
+
+${baseContext}
+
+Generate a prompt that covers:
+1. Hero section (headline, subheadline, CTA)
+2. Feature highlights (3-4 key features with icons)
+3. Social proof section (testimonials or metrics)
+4. Pricing cards (if applicable)
+5. FAQ section
+6. Footer with links
+
+Include specific design requirements (colors, fonts, responsive breakpoints). Format as a clear prompt starting with "Build a landing page..." - Under 800 words.`,
+
+      adminFeatures: `You are a full-stack developer. Create a build prompt specifically for the ADMIN DASHBOARD of this startup idea.
+
+${baseContext}
+
+Generate a prompt that covers:
+1. Dashboard layout and navigation
+2. User management (list, create, edit, delete users)
+3. ${market === 'B2B' ? 'Team/organization management' : 'User settings and preferences'}
+4. Analytics overview (key metrics)
+5. Content management interfaces
+6. Settings and configuration
+
+Format as a clear prompt starting with "Build an admin dashboard..." - Under 800 words.`,
+
+      uiFrontend: `You are a UI/UX expert. Create a build prompt specifically for the UI COMPONENT LIBRARY of this startup idea.
+
+${baseContext}
+
+Generate a prompt that covers:
+1. Design system (colors, typography, spacing)
+2. Button and form components
+3. Card and list components
+4. Modal and dialog components
+5. Navigation components
+6. Loading and error states
+
+Include specific Tailwind CSS classes or design tokens. Format as a clear prompt starting with "Create a UI component library..." - Under 800 words.`,
+
+      backendFunctionality: `You are a backend architect. Create a build prompt specifically for the BACKEND/API of this startup idea.
+
+${baseContext}
+
+Generate a prompt that covers:
+1. Database schema (tables, relationships, indexes)
+2. RESTful API endpoints with HTTP methods
+3. Authentication flow (signup, login, sessions)
+4. Authorization and permissions
+5. Data validation
+6. Error handling patterns
+
+Include specific table definitions and endpoint examples. Format as a clear prompt starting with "Build a backend API..." - Under 1000 words.`,
+
+      mathCalculations: `You are a business logic expert. Create a build prompt specifically for the BUSINESS LOGIC & CALCULATIONS of this startup idea.
+
+${baseContext}
+
+Generate a prompt that covers:
+1. Core business algorithms specific to this app
+2. Pricing/billing calculations (if applicable)
+3. Data aggregation and analytics
+4. Validation rules and constraints
+5. Any scheduling or matching algorithms
+6. Edge cases to handle
+
+Focus on the unique mathematical or logical requirements. Format as a clear prompt starting with "Implement the business logic..." - Under 600 words.`,
+    };
+
+    const response = await getAnthropic().messages.create({
+      model: "claude-3-5-haiku-20241022",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: sectionPrompts[section] || sectionPrompts.comprehensive
+        }
+      ]
+    });
+
+    return response.content[0].type === 'text' ? response.content[0].text : '';
+  }
+
+  // Rapid Research with Claude Haiku (fast, 5-10 minute response)
+  async generateRapidResearch(params: {
+    ideaTitle: string;
+    ideaDescription: string;
+    targetMarket?: string;
+  }): Promise<RapidResearchReport> {
+    const prompt = `You are a fast-acting business analyst. Provide a quick but valuable assessment of this startup idea.
+
+STARTUP IDEA:
+Title: ${params.ideaTitle}
+Description: ${params.ideaDescription}
+${params.targetMarket ? `Target Market: ${params.targetMarket}` : ''}
+
+Provide a rapid assessment with:
+1. A 2-3 sentence summary of the opportunity
+2. Market opportunity size and potential (1-2 paragraphs)
+3. Top 5 competitors in this space
+4. Target customer profile (1 paragraph)
+5. Recommended revenue model
+6. Estimated first-year revenue potential
+7. Top 5 risks to consider
+8. 5 immediate next steps to validate/pursue this idea
+9. Overall score (1-10)
+10. Recommendation: "Pursue", "Refine", or "Reconsider"
+
+Return as JSON:
+{
+  "summary": "Quick summary of the opportunity",
+  "marketOpportunity": "Market size and opportunity description",
+  "topCompetitors": ["Competitor 1", "Competitor 2", "Competitor 3", "Competitor 4", "Competitor 5"],
+  "targetCustomer": "Description of ideal customer",
+  "revenueModel": "Recommended monetization approach",
+  "estimatedRevenue": "$X-$Y first year",
+  "keyRisks": ["Risk 1", "Risk 2", "Risk 3", "Risk 4", "Risk 5"],
+  "nextSteps": ["Step 1", "Step 2", "Step 3", "Step 4", "Step 5"],
+  "overallScore": 7,
+  "recommendation": "Pursue"
+}
+
+Be concise but insightful. Focus on actionable information.`;
+
+    try {
+      console.log('Starting rapid research with Claude Haiku...');
+
+      const response = await getAnthropic().messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const textContent = response.content[0].type === 'text' ? response.content[0].text : '';
+
+      // Parse the JSON response
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+      const report = JSON.parse(jsonText) as RapidResearchReport;
+
+      console.log('Rapid research completed successfully');
+      return report;
+    } catch (error) {
+      console.error('Error generating rapid research:', error);
+      throw new Error('Failed to generate rapid research report');
+    }
+  }
+
+  // Generate Roast - brutally honest feedback from different perspectives
+  async generateRoast(params: {
+    ideaTitle: string;
+    ideaDescription: string;
+    market?: string;
+    type?: string;
+    targetAudience?: string;
+    intensity: 'gentle' | 'moderate' | 'tough' | 'savage';
+    perspective: 'vc' | 'technical' | 'competitor' | 'customer';
+  }): Promise<{
+    perspective: string;
+    intensity: string;
+    harshTruth: {
+      title: string;
+      points: string[];
+      verdict: string;
+    };
+    theHype: {
+      title: string;
+      points: string[];
+      verdict: string;
+    };
+    finalVerdict: {
+      score: number;
+      summary: string;
+      recommendation: string;
+    };
+  }> {
+    const intensityInstructions: Record<string, string> = {
+      gentle: 'Be constructive and encouraging while still being honest. Focus on growth opportunities rather than failures. Use supportive language.',
+      moderate: 'Give balanced, honest feedback. Point out real concerns while acknowledging strengths. Be direct but fair.',
+      tough: 'Be brutally honest about flaws. Don\'t sugarcoat problems. Focus on hard truths that the founder needs to hear.',
+      savage: 'No holds barred. Tear this idea apart. Find every weakness, every flaw, every reason it could fail. Be ruthless but still constructive.',
+    };
+
+    const perspectiveInstructions: Record<string, string> = {
+      vc: 'You are a seasoned VC partner at a top-tier firm. You\'ve seen 10,000+ pitches. You invest in 1% of what you see. Evaluate this from an investment standpoint - market size, defensibility, team fit, scalability, unit economics.',
+      technical: 'You are a technical founder who has built and sold multiple companies. You\'ve shipped products used by millions. Evaluate technical feasibility, architecture decisions, build complexity, technical moat, and whether this can actually be built well.',
+      competitor: 'You are a direct competitor already established in this market with $10M+ ARR. Find every weakness in this idea. What would you exploit? Where are they vulnerable? Why will they fail against you?',
+      customer: 'You are the exact target customer this product claims to serve. You experience the problem daily. Would you actually pay for this? Does it really solve your problem? What would make you switch from current solutions?',
+    };
+
+    const prompt = `${perspectiveInstructions[params.perspective]}
+
+${intensityInstructions[params.intensity]}
+
+STARTUP IDEA TO ROAST:
+Title: ${params.ideaTitle}
+Description: ${params.ideaDescription}
+${params.market ? `Market: ${params.market}` : ''}
+${params.type ? `Type: ${params.type}` : ''}
+${params.targetAudience ? `Target Audience: ${params.targetAudience}` : ''}
+
+Provide your roast with two sections:
+
+1. THE HARSH TRUTH - What's wrong with this idea? Be specific about:
+   - Market problems
+   - Competitive threats
+   - Execution challenges
+   - Why this might fail
+   - What the founder is missing
+   
+2. THE HYPE - What could make this work? Despite your criticism:
+   - What's genuinely interesting here?
+   - What market opportunity exists?
+   - What could make this succeed?
+   - What would change your mind?
+
+3. FINAL VERDICT - Your overall assessment with a score and recommendation.
+
+Return as JSON:
+{
+  "perspective": "${params.perspective}",
+  "intensity": "${params.intensity}",
+  "harshTruth": {
+    "title": "A punchy title for the criticism section",
+    "points": ["Specific criticism 1", "Specific criticism 2", "Specific criticism 3", "Specific criticism 4", "Specific criticism 5"],
+    "verdict": "A one-sentence brutal summary of the problems"
+  },
+  "theHype": {
+    "title": "A punchy title for the positive section",
+    "points": ["Genuine strength 1", "Genuine strength 2", "Genuine strength 3", "Genuine strength 4"],
+    "verdict": "A one-sentence summary of the opportunity"
+  },
+  "finalVerdict": {
+    "score": 7,
+    "summary": "2-3 sentence overall assessment balancing truth and hype",
+    "recommendation": "Specific actionable advice for the founder"
+  }
+}`;
+
+    try {
+      console.log(`Generating ${params.intensity} roast from ${params.perspective} perspective...`);
+
+      const response = await getAnthropic().messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const textContent = response.content[0].type === 'text' ? response.content[0].text : '';
+      
+      // Parse JSON from response
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+      
+      // Clean and parse
+      const cleanedJson = jsonText
+        .replace(/[\x00-\x1F\x7F]/g, ' ')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '')
+        .replace(/\t/g, ' ');
+      
+      let result;
+      try {
+        result = JSON.parse(cleanedJson);
+      } catch {
+        // More aggressive cleaning
+        const aggressiveClean = cleanedJson
+          .replace(/\\n/g, ' ')
+          .replace(/\s+/g, ' ');
+        result = JSON.parse(aggressiveClean);
+      }
+
+      console.log('Roast generated successfully');
+      return result;
+    } catch (error) {
+      console.error('Error generating roast:', error);
+      throw new Error('Failed to generate roast');
     }
   }
 }

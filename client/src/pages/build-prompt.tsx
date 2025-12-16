@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useParams, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { 
   Copy, 
   ExternalLink, 
@@ -19,8 +21,66 @@ import {
   Megaphone,
   Search,
   TrendingUp,
-  Briefcase
+  Briefcase,
+  Layout,
+  Settings,
+  Palette,
+  Server,
+  Calculator,
+  Loader2,
+  Wand2
 } from "lucide-react";
+
+// Sectioned builder prompts interface
+interface SectionedPrompts {
+  comprehensive: string;
+  sections: {
+    landingPage: string;
+    adminFeatures: string;
+    uiFrontend: string;
+    backendFunctionality: string;
+    mathCalculations: string;
+  };
+}
+
+// Section configuration for display
+const PROMPT_SECTIONS = [
+  {
+    id: 'landingPage',
+    name: 'Landing Page',
+    icon: Layout,
+    color: 'blue',
+    description: 'Hero, features, pricing, testimonials, FAQ, and conversion elements'
+  },
+  {
+    id: 'adminFeatures',
+    name: 'Admin & Dashboard',
+    icon: Settings,
+    color: 'purple',
+    description: 'Admin panel, user management, analytics, and content management'
+  },
+  {
+    id: 'uiFrontend',
+    name: 'UI/Frontend Components',
+    icon: Palette,
+    color: 'pink',
+    description: 'Design system, reusable components, forms, and responsive layouts'
+  },
+  {
+    id: 'backendFunctionality',
+    name: 'Backend & API',
+    icon: Server,
+    color: 'green',
+    description: 'Database schema, API endpoints, authentication, and server logic'
+  },
+  {
+    id: 'mathCalculations',
+    name: 'Business Logic & Math',
+    icon: Calculator,
+    color: 'orange',
+    description: 'Core algorithms, pricing calculations, analytics, and business rules'
+  }
+] as const;
 
 const BUILDER_CONFIG = {
   replit: {
@@ -1442,6 +1502,8 @@ export default function BuildPrompt() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const [copiedCategory, setCopiedCategory] = useState<string | null>(null);
+  const [sectionedPrompts, setSectionedPrompts] = useState<SectionedPrompts | null>(null);
+  const [activeSection, setActiveSection] = useState<string>('comprehensive');
 
   const { data: idea, isLoading } = useQuery({
     queryKey: ["/api/ideas", slug],
@@ -1451,6 +1513,35 @@ export default function BuildPrompt() {
         throw new Error('Failed to fetch idea');
       }
       return response.json();
+    },
+  });
+
+  // Mutation to generate AI-powered sectioned prompts
+  const generateSectionedPrompts = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/ai/generate-build-prompts', {
+        ideaTitle: idea.title,
+        ideaDescription: idea.description,
+        type: idea.type,
+        market: idea.market,
+        targetAudience: idea.targetAudience,
+      });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSectionedPrompts(data);
+      toast({
+        title: "Sectioned prompts generated!",
+        description: "Your comprehensive build prompts are ready to use.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error generating prompts:', error);
+      toast({
+        title: "Failed to generate prompts",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -1608,7 +1699,285 @@ export default function BuildPrompt() {
             })}
           </TabsList>
 
-          {PROMPT_CATEGORIES.map((category) => {
+          {/* BUILD TAB - Enhanced with Sectioned Prompts */}
+          <TabsContent value="build" className="space-y-6">
+            {/* AI-Generated Sectioned Prompts */}
+            <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Wand2 className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">AI-Generated Sectioned Build Prompts</CardTitle>
+                      <CardDescription className="mt-1">
+                        One comprehensive prompt per section - works with any LLM (Claude, GPT, Gemini, etc.)
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => generateSectionedPrompts.mutate()}
+                    disabled={generateSectionedPrompts.isPending}
+                    className="gap-2"
+                  >
+                    {generateSectionedPrompts.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        Generate Sectioned Prompts
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+
+              {sectionedPrompts && (
+                <CardContent className="pt-0">
+                  {/* Section Navigation */}
+                  <div className="flex flex-wrap gap-2 mb-4 pb-4 border-b">
+                    <Button
+                      variant={activeSection === 'comprehensive' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setActiveSection('comprehensive')}
+                      className="gap-2"
+                    >
+                      <Code className="w-4 h-4" />
+                      Full App
+                    </Button>
+                    {PROMPT_SECTIONS.map((section) => {
+                      const SectionIcon = section.icon;
+                      return (
+                        <Button
+                          key={section.id}
+                          variant={activeSection === section.id ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setActiveSection(section.id)}
+                          className="gap-2"
+                        >
+                          <SectionIcon className="w-4 h-4" />
+                          {section.name}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Comprehensive Prompt */}
+                  {activeSection === 'comprehensive' && (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="font-semibold text-lg flex items-center gap-2">
+                            <Code className="w-5 h-5 text-primary" />
+                            Complete Application Prompt
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            This single prompt will build your entire MVP - paste it into any AI assistant
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => copyToClipboard(sectionedPrompts.comprehensive, 'comprehensive')}
+                        >
+                          {copiedCategory === 'comprehensive' ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 mr-2" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Copy Prompt
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                      <div className="bg-muted p-6 rounded-lg max-h-[500px] overflow-y-auto">
+                        <pre className="whitespace-pre-wrap font-mono text-sm">
+                          {sectionedPrompts.comprehensive}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Individual Section Prompts */}
+                  {PROMPT_SECTIONS.map((section) => {
+                    if (activeSection !== section.id) return null;
+                    const SectionIcon = section.icon;
+                    const sectionKey = section.id as keyof typeof sectionedPrompts.sections;
+                    const promptContent = sectionedPrompts.sections[sectionKey];
+                    
+                    return (
+                      <div key={section.id} className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <h4 className="font-semibold text-lg flex items-center gap-2">
+                              <SectionIcon className="w-5 h-5 text-primary" />
+                              {section.name} Prompt
+                            </h4>
+                            <p className="text-sm text-muted-foreground">
+                              {section.description}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => copyToClipboard(promptContent, section.id)}
+                          >
+                            {copiedCategory === section.id ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 mr-2" />
+                                Copied!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4 mr-2" />
+                                Copy Prompt
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                        <div className="bg-muted p-6 rounded-lg max-h-[500px] overflow-y-auto">
+                          <pre className="whitespace-pre-wrap font-mono text-sm">
+                            {promptContent}
+                          </pre>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              )}
+
+              {!sectionedPrompts && !generateSectionedPrompts.isPending && (
+                <CardContent className="pt-0">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Sparkles className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="mb-2">Click "Generate Sectioned Prompts" to create AI-powered build prompts</p>
+                    <p className="text-sm">Each section builds a specific part of your app</p>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            {/* Section Overview Cards */}
+            {sectionedPrompts && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <Card 
+                  className={`cursor-pointer transition-all hover:shadow-md ${activeSection === 'comprehensive' ? 'ring-2 ring-primary' : ''}`}
+                  onClick={() => setActiveSection('comprehensive')}
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-primary/10 rounded">
+                        <Code className="w-4 h-4 text-primary" />
+                      </div>
+                      <CardTitle className="text-sm">Full Application</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-xs text-muted-foreground">Complete MVP in one prompt</p>
+                  </CardContent>
+                </Card>
+                
+                {PROMPT_SECTIONS.map((section) => {
+                  const SectionIcon = section.icon;
+                  return (
+                    <Card 
+                      key={section.id}
+                      className={`cursor-pointer transition-all hover:shadow-md ${activeSection === section.id ? 'ring-2 ring-primary' : ''}`}
+                      onClick={() => setActiveSection(section.id)}
+                    >
+                      <CardHeader className="pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-primary/10 rounded">
+                            <SectionIcon className="w-4 h-4 text-primary" />
+                          </div>
+                          <CardTitle className="text-sm">{section.name}</CardTitle>
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{section.description}</p>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Static Build Prompts (fallback/default) */}
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="static-prompts">
+                <AccordionTrigger className="text-lg font-semibold">
+                  <div className="flex items-center gap-2">
+                    <Code className="w-5 h-5" />
+                    Static Build Prompts (Pre-built Templates)
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4 pt-4">
+                    {(() => {
+                      const category = PROMPT_CATEGORIES.find(c => c.id === 'build');
+                      if (!category) return null;
+                      const prompt = category.generator(idea, builder as string);
+                      return (
+                        <Card>
+                          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <div>
+                              <CardTitle className="text-base">Template Build Prompt</CardTitle>
+                              <p className="text-sm text-muted-foreground mt-1">Pre-built prompt template for {builderConfig?.name || 'any builder'}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => copyToClipboard(prompt, 'build-static')}
+                              >
+                                {copiedCategory === 'build-static' ? (
+                                  <>
+                                    <CheckCircle2 className="w-4 h-4 mr-2" />
+                                    Copied!
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy className="w-4 h-4 mr-2" />
+                                    Copy
+                                  </>
+                                )}
+                              </Button>
+                              {builderConfig && 'url' in builderConfig && builderConfig.url && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => openBuilder(prompt)}
+                                >
+                                  <ExternalLink className="w-4 h-4 mr-2" />
+                                  Open {builderConfig.name}
+                                </Button>
+                              )}
+                            </div>
+                          </CardHeader>
+                          <CardContent>
+                            <div className="bg-muted p-6 rounded-lg max-h-[400px] overflow-y-auto">
+                              <pre className="whitespace-pre-wrap font-mono text-sm">
+                                {prompt}
+                              </pre>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })()}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </TabsContent>
+
+          {/* Other category tabs remain the same */}
+          {PROMPT_CATEGORIES.filter(c => c.id !== 'build').map((category) => {
             const prompt = category.generator(idea, builder as string);
             const CategoryIcon = category.icon;
             
@@ -1642,16 +2011,6 @@ export default function BuildPrompt() {
                           </>
                         )}
                       </Button>
-                      {category.id === 'build' && builderConfig && 'url' in builderConfig && builderConfig.url && (
-                        <Button
-                          size="sm"
-                          onClick={() => openBuilder(prompt)}
-                          data-testid="button-open-builder-from-tab"
-                        >
-                          <ExternalLink className="w-4 h-4 mr-2" />
-                          Open {builderConfig.name}
-                        </Button>
-                      )}
                     </div>
                   </CardHeader>
                   <CardContent>

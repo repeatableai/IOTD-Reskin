@@ -42,6 +42,10 @@ import ValueLadder from "@/pages/value-ladder";
 import Keywords from "@/pages/keywords";
 import FounderFitIdea from "@/pages/founder-fit-idea";
 import CommunitySignalsDetail from "@/pages/community-signals-detail";
+import ScoreAnalysis from "@/pages/score-analysis";
+import MarketInsightDetail from "@/pages/market-insight-detail";
+import TrendDetail from "@/pages/trend-detail";
+import MyIdeas from "@/pages/my-ideas";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +54,7 @@ function Router() {
     <Switch>
       <Route path="/" component={TopIdeas} />
       <Route path="/database" component={Database} />
+      <Route path="/my-ideas" component={MyIdeas} />
       <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
       <Route path="/idea-agent" component={IdeaAgent} />
       <Route path="/idea-generator" component={IdeaGenerator} />
@@ -65,10 +70,22 @@ function Router() {
       <Route path="/idea/:slug/founder-fit" component={FounderFitIdea} />
       <Route path="/idea/:slug/community-signals" component={CommunitySignalsDetail} />
       <Route path="/idea/:slug/build/:builder" component={BuildPrompt} />
+      {/* Score Analysis Pages */}
+      <Route path="/idea/:slug/opportunity-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/problem-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/feasibility-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/timing-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/execution-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/gtm-strategy" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/revenue-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/founder-fit-analysis" component={ScoreAnalysis} />
+      <Route path="/idea/:slug/:scoreType-analysis" component={ScoreAnalysis} />
       <Route path="/idea/:slug" component={IdeaDetail} />
       <Route path="/top-ideas" component={TopIdeas} />
       <Route path="/trends" component={Trends} />
+      <Route path="/trend/:id" component={TrendDetail} />
       <Route path="/market-insights" component={MarketInsights} />
+      <Route path="/market-insight/:slug" component={MarketInsightDetail} />
       <Route path="/research" component={Research} />
       <Route path="/idea-builder" component={IdeaBuilder} />
       <Route path="/features" component={Features} />

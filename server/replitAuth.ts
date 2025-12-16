@@ -8,9 +8,9 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
-}
+// Check if we're running on Replit (has OIDC) or elsewhere (Render, local, etc.)
+const isReplitEnvironment = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
+const isLocalDevelopment = process.env.NODE_ENV === 'development' || !isReplitEnvironment;
 
 const getOidcConfig = memoize(
   async () => {
@@ -68,26 +68,45 @@ async function upsertUser(
 
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
+  
+  // Check if we're running on Replit with OIDC available
+  const hasReplitOIDC = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
 
-  // Local development bypass - create a demo user
-  const isLocalDev = process.env.REPLIT_DOMAINS?.includes('localhost');
+  if (!hasReplitOIDC) {
+    // Use session-based auth for non-Replit environments (Render, local, etc.)
+    const isProduction = process.env.NODE_ENV === 'production';
+    const MemoryStore = (await import('memorystore')).default(session);
+    
+    app.use(session({
+      secret: process.env.SESSION_SECRET || 'local-dev-secret',
+      store: new MemoryStore({ checkPeriod: 86400000 }),
+      resave: false,
+      saveUninitialized: false,
+      cookie: { 
+        secure: isProduction, 
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+        sameSite: isProduction ? 'lax' : 'lax'
+      }
+    }));
+    app.use(passport.initialize());
+    app.use(passport.session());
 
-  if (isLocalDev) {
     // Create or get demo user
     const demoUser = {
-      id: 'demo-user-local',
-      email: 'demo@localhost.com',
+      id: 'demo-user-public',
+      email: 'demo@iotd.app',
       firstName: 'Demo',
       lastName: 'User',
       profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
     };
 
-    await storage.upsertUser(demoUser);
+    try {
+      await storage.upsertUser(demoUser);
+    } catch (e) {
+      console.log('Note: Could not create demo user (database may need migration)');
+    }
 
-    // Auto-login middleware for local development
+    // Auto-login middleware for demo mode
     app.use((req: any, res, next) => {
       if (!req.user && !req.path.startsWith('/api/logout')) {
         req.user = {
@@ -102,7 +121,22 @@ export async function setupAuth(app: Express) {
       }
       next();
     });
+
+    passport.serializeUser((user: Express.User, cb) => cb(null, user));
+    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
+
+    // Stub auth routes for demo mode
+    app.get("/api/login", (req, res) => res.redirect('/'));
+    app.get("/api/callback", (req, res) => res.redirect('/'));
+    app.get("/api/logout", (req, res) => res.redirect('/'));
+    
+    return; // Skip Replit OIDC setup
   }
+
+  // Production Replit auth setup
+  app.use(getSession());
+  app.use(passport.initialize());
+  app.use(passport.session());
 
   const config = await getOidcConfig();
 
@@ -162,13 +196,19 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  // Bypass auth for local development
-  const isLocalDev = process.env.REPLIT_DOMAINS?.includes('localhost');
-  if (isLocalDev && user?.claims?.sub) {
-    return next();
+  // Check if we're in non-Replit environment (Render, local, etc.)
+  const hasReplitOIDC = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
+  
+  // For non-Replit environments, just check if user has claims
+  if (!hasReplitOIDC) {
+    if (user?.claims?.sub) {
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
   }
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // Replit OIDC flow
+  if (!req.isAuthenticated() || !user?.expires_at) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 

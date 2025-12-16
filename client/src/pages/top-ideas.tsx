@@ -9,11 +9,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight, 
-  Bell, 
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  Bell,
   Eye,
   Bookmark,
   ThumbsUp,
@@ -25,7 +25,14 @@ import {
   Code,
   TrendingUp,
   Download,
-  Lock
+  Lock,
+  Lightbulb,
+  Copy,
+  Check,
+  Sparkles,
+  ExternalLink,
+  Loader2,
+  Wand2
 } from "lucide-react";
 import { format, subDays, addDays, isAfter } from "date-fns";
 
@@ -35,6 +42,10 @@ export default function TopIdeas() {
   const [email, setEmail] = useState("");
   const [showReminder, setShowReminder] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
+  const [selectedPromptTab, setSelectedPromptTab] = useState<'claude' | 'gemini' | 'gpt'>('claude');
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [generatedPrompts, setGeneratedPrompts] = useState<{ claude: string; gemini: string; gpt: string } | null>(null);
+  const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
   const { toast } = useToast();
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
@@ -93,6 +104,39 @@ export default function TopIdeas() {
   const handleRating = (rating: number) => {
     setSelectedRating(rating);
     ratingMutation.mutate(rating);
+  };
+
+  const handleGeneratePrompts = async () => {
+    if (!featuredIdea) return;
+
+    setIsGeneratingPrompts(true);
+    try {
+      const response = await apiRequest('/api/ai/generate-build-prompts', 'POST', {
+        ideaId: featuredIdea.id,
+        ideaTitle: featuredIdea.title,
+        ideaDescription: featuredIdea.description,
+        type: featuredIdea.type,
+        market: featuredIdea.market,
+        targetAudience: featuredIdea.targetAudience,
+      });
+
+      setGeneratedPrompts(response);
+      toast({
+        title: "Build Prompts Generated!",
+        description: "Your AI build prompts are ready. Copy and paste them into your favorite AI tool.",
+      });
+
+      // Refresh the featured idea to get the saved prompts
+      queryClient.invalidateQueries({ queryKey: ["/api/ideas/featured", dateString] });
+    } catch (error) {
+      toast({
+        title: "Generation Failed",
+        description: "Please try again or sign in to generate build prompts.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPrompts(false);
+    }
   };
 
   const isToday = format(selectedDate, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
@@ -230,39 +274,39 @@ export default function TopIdeas() {
                 )}
 
                 {/* Title & Description */}
-                <h2 className="text-3xl font-bold mb-3" data-testid="text-featured-title">
+                <h2 className="text-3xl font-bold mb-3 text-white" data-testid="text-featured-title">
                   {featuredIdea.title}
                 </h2>
-                
+
                 {featuredIdea.subtitle && (
-                  <p className="text-lg text-muted-foreground mb-4">
+                  <p className="text-lg text-white/80 mb-4">
                     {featuredIdea.subtitle}
                   </p>
                 )}
-                
-                <p className="text-muted-foreground mb-6 leading-relaxed text-lg">
+
+                <p className="text-white/90 mb-6 leading-relaxed text-lg">
                   {featuredIdea.description}
                 </p>
 
                 {/* Keyword Info */}
                 {featuredIdea.keyword && (
-                  <Card className="mb-6 bg-muted/50">
+                  <Card className="mb-6 bg-white/10 border-white/20">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div>
-                          <div className="text-sm text-muted-foreground mb-1">Keyword</div>
-                          <div className="font-semibold">{featuredIdea.keyword}</div>
+                          <div className="text-sm text-white/70 mb-1">Keyword</div>
+                          <div className="font-semibold text-white">{featuredIdea.keyword}</div>
                         </div>
                         {featuredIdea.keywordVolume && (
                           <div className="text-center px-4">
-                            <div className="text-2xl font-bold">{featuredIdea.keywordVolume}</div>
-                            <div className="text-xs text-muted-foreground">Volume</div>
+                            <div className="text-2xl font-bold text-white">{featuredIdea.keywordVolume}</div>
+                            <div className="text-xs text-white/70">Volume</div>
                           </div>
                         )}
                         {featuredIdea.keywordGrowth && (
                           <div className="text-center">
-                            <div className="text-2xl font-bold text-green-600">+{featuredIdea.keywordGrowth}%</div>
-                            <div className="text-xs text-muted-foreground">Growth</div>
+                            <div className="text-2xl font-bold text-green-400">+{featuredIdea.keywordGrowth}%</div>
+                            <div className="text-xs text-white/70">Growth</div>
                           </div>
                         )}
                       </div>
@@ -293,6 +337,66 @@ export default function TopIdeas() {
                     sublabel={featuredIdea.timingLabel} 
                   />
                 </div>
+
+                {/* Why Now Section */}
+                {featuredIdea.whyNowAnalysis && (
+                  <Card className="mb-6 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 border-purple-200 dark:border-purple-800">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="w-5 h-5 text-purple-600" />
+                        <h3 className="text-lg font-bold text-purple-900 dark:text-purple-100">Why Now?</h3>
+                      </div>
+                      <p className="text-purple-800 dark:text-purple-200 leading-relaxed">
+                        {featuredIdea.whyNowAnalysis}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Proof Signals Section */}
+                {featuredIdea.proofSignals && (
+                  <Card className="mb-6 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200 dark:border-green-800">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Star className="w-5 h-5 text-green-600" />
+                        <h3 className="text-lg font-bold text-green-900 dark:text-green-100">Proof & Signals</h3>
+                      </div>
+                      <p className="text-green-800 dark:text-green-200 leading-relaxed">
+                        {featuredIdea.proofSignals}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Market Gap Section */}
+                {featuredIdea.marketGap && (
+                  <Card className="mb-6 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200 dark:border-blue-800">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Lightbulb className="w-5 h-5 text-blue-600" />
+                        <h3 className="text-lg font-bold text-blue-900 dark:text-blue-100">Market Gap</h3>
+                      </div>
+                      <p className="text-blue-800 dark:text-blue-200 leading-relaxed">
+                        {featuredIdea.marketGap}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Trend Analysis Section */}
+                {featuredIdea.trendAnalysis && (
+                  <Card className="mb-6 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border-orange-200 dark:border-orange-800">
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 mb-3">
+                        <TrendingUp className="w-5 h-5 text-orange-600" />
+                        <h3 className="text-lg font-bold text-orange-900 dark:text-orange-100">Trend Analysis</h3>
+                      </div>
+                      <p className="text-orange-800 dark:text-orange-200 leading-relaxed">
+                        {featuredIdea.trendAnalysis}
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Business Fit Section */}
                 <Card className="mb-8">
@@ -371,7 +475,7 @@ export default function TopIdeas() {
                 </div>
 
                 {/* Stats */}
-                <div className="flex flex-wrap gap-6 text-sm text-muted-foreground border-t pt-4">
+                <div className="flex flex-wrap gap-6 text-sm text-white/70 border-t border-white/20 pt-4">
                   <div className="flex items-center gap-2">
                     <Eye className="w-4 h-4" />
                     <span>{featuredIdea.viewCount || 0} views</span>
@@ -394,61 +498,350 @@ export default function TopIdeas() {
               </div>
             </div>
 
-            {/* Start Building Section */}
-            <Card>
-              <CardContent className="p-8">
-                <h3 className="text-2xl font-bold mb-2">Start Building in 1-click</h3>
-                <p className="text-muted-foreground mb-6">
-                  Turn this solution into your business with AI-powered development tools
-                </p>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-start"
-                    onClick={() => window.open(`https://claude.ai`, '_blank')}
-                  >
-                    <Code className="w-5 h-5 mb-2" />
-                    <div className="text-left">
-                      <div className="font-semibold">Claude Codex</div>
-                      <div className="text-xs text-muted-foreground">AI Full-Stack Dev</div>
+            {/* AI Build Prompts Section */}
+            {featuredIdea.builderPrompts && (
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardContent className="p-8">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-primary/10 rounded-lg">
+                      <Sparkles className="w-6 h-6 text-primary" />
                     </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-start"
-                    onClick={() => window.open('https://v0.dev', '_blank')}
-                  >
-                    <Code className="w-5 h-5 mb-2" />
-                    <div className="text-left">
-                      <div className="font-semibold">v0 by Vercel</div>
-                      <div className="text-xs text-muted-foreground">UI Generation</div>
+                    <div>
+                      <h3 className="text-2xl font-bold">One-Shot Build Prompts</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Copy these prompts into Claude, Gemini, or GPT to build a fully functional MVP
+                      </p>
                     </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-start"
-                    onClick={() => window.open(`https://replit.com/new?description=${encodeURIComponent(featuredIdea?.description || '')}`, '_blank')}
-                  >
-                    <Code className="w-5 h-5 mb-2" />
-                    <div className="text-left">
-                      <div className="font-semibold">Replit Agent</div>
-                      <div className="text-xs text-muted-foreground">Build with AI</div>
+                  </div>
+
+                  {/* AI Platform Tabs */}
+                  <div className="flex gap-2 mb-4 mt-6">
+                    <Button
+                      variant={selectedPromptTab === 'claude' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedPromptTab('claude')}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="w-4 h-4 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full" />
+                      Claude Sonnet 4.5
+                    </Button>
+                    <Button
+                      variant={selectedPromptTab === 'gemini' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedPromptTab('gemini')}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="w-4 h-4 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full" />
+                      Gemini 2.5
+                    </Button>
+                    <Button
+                      variant={selectedPromptTab === 'gpt' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSelectedPromptTab('gpt')}
+                      className="flex items-center gap-2"
+                    >
+                      <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded-full" />
+                      GPT-4o
+                    </Button>
+                  </div>
+
+                  {/* Prompt Display */}
+                  <div className="relative">
+                    <div className="bg-muted/50 rounded-lg p-4 max-h-80 overflow-y-auto font-mono text-sm whitespace-pre-wrap border">
+                      {featuredIdea.builderPrompts[selectedPromptTab] || 'Prompt not available for this platform'}
                     </div>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="h-auto py-4 flex flex-col items-start"
-                    onClick={() => window.open('https://cursor.sh', '_blank')}
-                  >
-                    <Code className="w-5 h-5 mb-2" />
-                    <div className="text-left">
-                      <div className="font-semibold">Cursor IDE</div>
-                      <div className="text-xs text-muted-foreground">AI Code Editor</div>
-                    </div>
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+                    <Button
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        const prompt = featuredIdea.builderPrompts[selectedPromptTab];
+                        if (prompt) {
+                          navigator.clipboard.writeText(prompt);
+                          setCopiedPrompt(true);
+                          toast({
+                            title: "Prompt Copied!",
+                            description: `Paste this into ${selectedPromptTab === 'claude' ? 'Claude' : selectedPromptTab === 'gemini' ? 'Gemini' : 'ChatGPT'} to start building.`,
+                          });
+                          setTimeout(() => setCopiedPrompt(false), 2000);
+                        }
+                      }}
+                    >
+                      {copiedPrompt ? (
+                        <>
+                          <Check className="w-4 h-4 mr-1" />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4 mr-1" />
+                          Copy Prompt
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Quick Launch Buttons */}
+                  <div className="flex flex-wrap gap-3 mt-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(featuredIdea.builderPrompts.claude || '');
+                        window.open('https://claude.ai', '_blank');
+                        toast({ title: "Prompt copied! Opening Claude..." });
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Claude
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(featuredIdea.builderPrompts.gemini || '');
+                        window.open('https://gemini.google.com', '_blank');
+                        toast({ title: "Prompt copied! Opening Gemini..." });
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open Gemini
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        navigator.clipboard.writeText(featuredIdea.builderPrompts.gpt || '');
+                        window.open('https://chat.openai.com', '_blank');
+                        toast({ title: "Prompt copied! Opening ChatGPT..." });
+                      }}
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      Open ChatGPT
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('https://cursor.sh', '_blank')}
+                    >
+                      <Code className="w-4 h-4 mr-2" />
+                      Cursor IDE
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open('https://replit.com', '_blank')}
+                    >
+                      <Code className="w-4 h-4 mr-2" />
+                      Replit
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground mt-4">
+                    These prompts are optimized for each AI model and include complete technical specifications, database schemas, API endpoints, and deployment instructions.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Generate Build Prompts Section or Display Generated Prompts */}
+            {!featuredIdea.builderPrompts && (
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardContent className="p-8">
+                  {/* Show generated prompts if available */}
+                  {generatedPrompts ? (
+                    <>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Sparkles className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-2xl font-bold">One-Shot Build Prompts</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Copy these prompts into Claude, Gemini, or GPT to build a fully functional MVP
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* AI Platform Tabs */}
+                      <div className="flex gap-2 mb-4 mt-6">
+                        <Button
+                          variant={selectedPromptTab === 'claude' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedPromptTab('claude')}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="w-4 h-4 bg-gradient-to-br from-orange-400 to-orange-600 rounded-full" />
+                          Claude Sonnet 4.5
+                        </Button>
+                        <Button
+                          variant={selectedPromptTab === 'gemini' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedPromptTab('gemini')}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="w-4 h-4 bg-gradient-to-br from-blue-400 to-purple-600 rounded-full" />
+                          Gemini 2.5
+                        </Button>
+                        <Button
+                          variant={selectedPromptTab === 'gpt' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setSelectedPromptTab('gpt')}
+                          className="flex items-center gap-2"
+                        >
+                          <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded-full" />
+                          GPT-4o
+                        </Button>
+                      </div>
+
+                      {/* Prompt Display */}
+                      <div className="relative">
+                        <div className="bg-muted/50 rounded-lg p-4 max-h-80 overflow-y-auto font-mono text-sm whitespace-pre-wrap border">
+                          {generatedPrompts[selectedPromptTab] || 'Prompt not available for this platform'}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={() => {
+                            const prompt = generatedPrompts[selectedPromptTab];
+                            if (prompt) {
+                              navigator.clipboard.writeText(prompt);
+                              setCopiedPrompt(true);
+                              toast({
+                                title: "Prompt Copied!",
+                                description: `Paste this into ${selectedPromptTab === 'claude' ? 'Claude' : selectedPromptTab === 'gemini' ? 'Gemini' : 'ChatGPT'} to start building.`,
+                              });
+                              setTimeout(() => setCopiedPrompt(false), 2000);
+                            }
+                          }}
+                        >
+                          {copiedPrompt ? (
+                            <>
+                              <Check className="w-4 h-4 mr-1" />
+                              Copied!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4 mr-1" />
+                              Copy Prompt
+                            </>
+                          )}
+                        </Button>
+                      </div>
+
+                      {/* Quick Launch Buttons */}
+                      <div className="flex flex-wrap gap-3 mt-6">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedPrompts.claude || '');
+                            window.open('https://claude.ai', '_blank');
+                            toast({ title: "Prompt copied! Opening Claude..." });
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Open Claude
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedPrompts.gemini || '');
+                            window.open('https://gemini.google.com', '_blank');
+                            toast({ title: "Prompt copied! Opening Gemini..." });
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Open Gemini
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(generatedPrompts.gpt || '');
+                            window.open('https://chat.openai.com', '_blank');
+                            toast({ title: "Prompt copied! Opening ChatGPT..." });
+                          }}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-2" />
+                          Open ChatGPT
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Show generate button */}
+                      <div className="text-center">
+                        <div className="p-3 bg-primary/10 rounded-full w-fit mx-auto mb-4">
+                          <Wand2 className="w-8 h-8 text-primary" />
+                        </div>
+                        <h3 className="text-2xl font-bold mb-2">Generate AI Build Prompts</h3>
+                        <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
+                          Create optimized one-shot prompts for Claude, Gemini, and GPT-4o that will help you build a fully functional MVP of this idea
+                        </p>
+                        <Button
+                          size="lg"
+                          onClick={handleGeneratePrompts}
+                          disabled={isGeneratingPrompts}
+                          className="mb-6"
+                        >
+                          {isGeneratingPrompts ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Generating Prompts...
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4 mr-2" />
+                              Generate Build Prompts
+                            </>
+                          )}
+                        </Button>
+
+                        {/* Alternative: Quick build tools */}
+                        <div className="border-t pt-6 mt-6">
+                          <p className="text-sm text-muted-foreground mb-4">Or start building directly with:</p>
+                          <div className="flex flex-wrap gap-3 justify-center">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open('https://claude.ai', '_blank')}
+                            >
+                              <Code className="w-4 h-4 mr-2" />
+                              Claude
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open('https://v0.dev', '_blank')}
+                            >
+                              <Code className="w-4 h-4 mr-2" />
+                              v0 by Vercel
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open('https://cursor.sh', '_blank')}
+                            >
+                              <Code className="w-4 h-4 mr-2" />
+                              Cursor IDE
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => window.open('https://replit.com', '_blank')}
+                            >
+                              <Code className="w-4 h-4 mr-2" />
+                              Replit
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Categorization */}
             {(featuredIdea.type || featuredIdea.market || featuredIdea.targetAudience) && (

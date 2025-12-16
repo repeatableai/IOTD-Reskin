@@ -1,11 +1,32 @@
+import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { 
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { 
   Search, 
   Menu, 
@@ -26,12 +47,66 @@ import {
   Info,
   Sparkles,
   CreditCard,
-  User
+  User,
+  X,
+  ArrowRight,
+  Home,
+  Award,
+  LogOut
 } from "lucide-react";
 
 export default function Header() {
   const [location, setLocation] = useLocation();
   const { isAuthenticated, user } = useAuth();
+  const [showSearch, setShowSearch] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const navigateTo = (path: string) => {
+    setShowMobileMenu(false);
+    setLocation(path);
+  };
+
+  // Focus input when search opens
+  useEffect(() => {
+    if (showSearch && searchInputRef.current) {
+      searchInputRef.current.focus();
+    }
+  }, [showSearch]);
+
+  // Handle keyboard shortcut (Cmd/Ctrl + K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowSearch(true);
+      }
+      if (e.key === 'Escape') {
+        setShowSearch(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      setShowSearch(false);
+      setLocation(`/database?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchQuery("");
+    }
+  };
+
+  const quickSearches = [
+    { label: "AI Tools", query: "AI" },
+    { label: "SaaS Ideas", query: "SaaS" },
+    { label: "B2B Solutions", query: "B2B" },
+    { label: "Mobile Apps", query: "mobile app" },
+    { label: "Healthcare", query: "health" },
+    { label: "Fintech", query: "finance" },
+  ];
 
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -338,8 +413,15 @@ export default function Header() {
           
           {/* Actions */}
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" data-testid="button-search">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowSearch(true)}
+              className="gap-2"
+              data-testid="button-search"
+            >
               <Search className="w-5 h-5" />
+              <span className="hidden lg:inline text-muted-foreground text-xs">⌘K</span>
             </Button>
             
             {isAuthenticated ? (
@@ -358,6 +440,13 @@ export default function Header() {
                     data-testid="link-dashboard"
                   >
                     Dashboard
+                  </button>
+                  <button
+                    onClick={() => setLocation('/my-ideas')}
+                    className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors"
+                    data-testid="link-my-ideas"
+                  >
+                    My Ideas
                   </button>
                   <button
                     onClick={() => setLocation('/create-idea')}
@@ -385,12 +474,355 @@ export default function Header() {
               </Button>
             )}
             
-            <Button variant="ghost" size="sm" className="md:hidden" data-testid="button-mobile-menu">
-              <Menu className="w-5 h-5" />
-            </Button>
+            {/* Mobile Menu */}
+            <Sheet open={showMobileMenu} onOpenChange={setShowMobileMenu}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden" data-testid="button-mobile-menu">
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] sm:w-[350px] overflow-y-auto">
+                <SheetHeader className="text-left mb-6">
+                  <SheetTitle className="flex items-center gap-2">
+                    <div className="text-2xl font-bold infinity-logo">∞</div>
+                    <span className="text-xl font-bold">Ai</span>
+                  </SheetTitle>
+                </SheetHeader>
+
+                {/* User Section */}
+                {isAuthenticated && (
+                  <div className="mb-6 pb-4 border-b">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="w-5 h-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-semibold">{(user as any)?.firstName || 'User'}</p>
+                        <p className="text-sm text-muted-foreground">Welcome back!</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button variant="outline" size="sm" onClick={() => navigateTo('/home')} className="justify-start">
+                        <Home className="w-4 h-4 mr-2" />
+                        Dashboard
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => navigateTo('/my-ideas')} className="justify-start">
+                        <Award className="w-4 h-4 mr-2" />
+                        My Ideas
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Navigation Accordion */}
+                <Accordion type="multiple" className="w-full">
+                  {/* Browse Solutions */}
+                  <AccordionItem value="browse">
+                    <AccordionTrigger className="text-base font-semibold">
+                      Browse Solutions
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Calendar className="w-4 h-4 text-muted-foreground" />
+                          <span>Solution of the Day</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/database')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Database className="w-4 h-4 text-muted-foreground" />
+                          <span>Solution Database</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/database?sort=popular')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Trophy className="w-4 h-4 text-muted-foreground" />
+                          <span>Leaderboard</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/trends')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <TrendingUp className="w-4 h-4 text-muted-foreground" />
+                          <span>Trends</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/market-insights')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Users className="w-4 h-4 text-muted-foreground" />
+                          <span>Market Insights</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Tools */}
+                  <AccordionItem value="tools">
+                    <AccordionTrigger className="text-base font-semibold">
+                      Tools
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/research')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Search className="w-4 h-4 text-muted-foreground" />
+                          <span>Research Your Apps</span>
+                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded ml-auto">PRO</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/founder-fit')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Target className="w-4 h-4 text-muted-foreground" />
+                          <span>Founder Fit</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/idea-builder')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Wrench className="w-4 h-4 text-muted-foreground" />
+                          <span>Solution Builder</span>
+                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded ml-auto">PRO</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/ai-chat')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <MessageSquare className="w-4 h-4 text-muted-foreground" />
+                          <span>Chat & Strategize</span>
+                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded ml-auto">PRO</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Resources */}
+                  <AccordionItem value="resources">
+                    <AccordionTrigger className="text-base font-semibold">
+                      Resources
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/tour')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Play className="w-4 h-4 text-muted-foreground" />
+                          <span>Platform Tour</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/features')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span>Explore Features</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/tools-library')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Zap className="w-4 h-4 text-muted-foreground" />
+                          <span>Tools Library</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Company */}
+                  <AccordionItem value="company">
+                    <AccordionTrigger className="text-base font-semibold">
+                      Company
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/whats-new')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Sparkles className="w-4 h-4 text-muted-foreground" />
+                          <span>What's New</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/about')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Info className="w-4 h-4 text-muted-foreground" />
+                          <span>About</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/faq')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <HelpCircle className="w-4 h-4 text-muted-foreground" />
+                          <span>FAQ</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/contact')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Mail className="w-4 h-4 text-muted-foreground" />
+                          <span>Contact & Support</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* Plans */}
+                  <AccordionItem value="plans">
+                    <AccordionTrigger className="text-base font-semibold">
+                      Plans & Pricing
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/plan-details')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <FileText className="w-4 h-4 text-muted-foreground" />
+                          <span>Your Plan Details</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/pricing')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <CreditCard className="w-4 h-4 text-muted-foreground" />
+                          <span>Upgrade Plans</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+
+                {/* Bottom Actions */}
+                <div className="mt-6 pt-4 border-t space-y-3">
+                  {isAuthenticated ? (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        className="w-full justify-start"
+                        onClick={() => navigateTo('/create-idea')}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Create Solution
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full justify-start text-destructive hover:text-destructive"
+                        onClick={() => {
+                          setShowMobileMenu(false);
+                          window.location.href = '/api/logout';
+                        }}
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Log Out
+                      </Button>
+                    </>
+                  ) : (
+                    <Button 
+                      className="w-full"
+                      onClick={() => {
+                        setShowMobileMenu(false);
+                        window.location.href = '/api/login';
+                      }}
+                    >
+                      Get Started
+                    </Button>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </div>
+
+      {/* Search Dialog */}
+      <Dialog open={showSearch} onOpenChange={setShowSearch}>
+        <DialogContent className="sm:max-w-xl p-0 gap-0 overflow-hidden">
+          <DialogHeader className="px-4 pt-4 pb-2">
+            <DialogTitle className="text-lg font-semibold">Search Solutions</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSearch} className="px-4 pb-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                placeholder="Search by keyword, industry, or technology..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10 h-12 text-lg"
+                data-testid="input-global-search"
+              />
+              {searchQuery && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </form>
+
+          <div className="px-4 pb-4">
+            <p className="text-sm text-muted-foreground mb-3">Quick searches:</p>
+            <div className="flex flex-wrap gap-2">
+              {quickSearches.map((item) => (
+                <Button
+                  key={item.query}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setShowSearch(false);
+                    setLocation(`/database?search=${encodeURIComponent(item.query)}`);
+                  }}
+                  className="text-sm"
+                >
+                  {item.label}
+                  <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t bg-muted/50 px-4 py-3 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 bg-background border rounded text-[10px]">↵</kbd>
+                to search
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 bg-background border rounded text-[10px]">esc</kbd>
+                to close
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowSearch(false);
+                setLocation('/database');
+              }}
+              className="text-xs h-auto py-1"
+            >
+              Browse all solutions
+              <ArrowRight className="w-3 h-3 ml-1" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }

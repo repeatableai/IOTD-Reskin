@@ -127,16 +127,49 @@
   color: transparent;
 }
 
-/* Gradient Border Components */
+/* Gradient Border Components - Dark theme for white text readability */
 .gradient-border {
-  background: linear-gradient(135deg, #FF6B6B 0%, #8B5CF6 50%, #10B981 75%, #3B82F6 100%);
-  padding: 1px;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+  padding: 0;
   border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(30, 27, 75, 0.3);
 }
 
 .gradient-border-inner {
-  background: hsl(var(--background));
-  border-radius: calc(var(--radius) - 1px);
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+  border-radius: var(--radius);
+}
+
+/* Force dark readable text ONLY on cards with solid light backgrounds */
+.gradient-border-inner .bg-card,
+.gradient-border-inner .bg-white {
+  color: #1e293b !important;
+}
+
+.gradient-border-inner .bg-card *,
+.gradient-border-inner .bg-white * {
+  color: #1e293b !important;
+}
+
+.gradient-border-inner .bg-card .text-muted-foreground,
+.gradient-border-inner .bg-white .text-muted-foreground {
+  color: #64748b !important;
+}
+
+/* Preserve colored text within light cards */
+.gradient-border-inner .bg-card .text-green-600,
+.gradient-border-inner .bg-white .text-green-600 {
+  color: #16a34a !important;
+}
+
+.gradient-border-inner .bg-card .text-orange-600,
+.gradient-border-inner .bg-white .text-orange-600 {
+  color: #ea580c !important;
+}
+
+.gradient-border-inner .bg-card .text-blue-600,
+.gradient-border-inner .bg-white .text-blue-600 {
+  color: #2563eb !important;
 }
 
 /* Score Display Styles */

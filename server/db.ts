@@ -6,22 +6,14 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Check if we're using local PostgreSQL or Neon
-const isLocalPostgres = process.env.DATABASE_URL.includes('localhost') ||
-                         process.env.DATABASE_URL.includes('127.0.0.1');
+// Check if we're using Neon (for Replit) or standard PostgreSQL (for Render/local)
+const isNeonDatabase = process.env.DATABASE_URL.includes('neon.tech');
 
 let pool: any;
 let db: any;
 
-if (isLocalPostgres) {
-  // Use standard pg for local development
-  const pg = await import('pg');
-  const { drizzle: drizzleNodePostgres } = await import('drizzle-orm/node-postgres');
-
-  pool = new pg.default.Pool({ connectionString: process.env.DATABASE_URL });
-  db = drizzleNodePostgres(pool, { schema });
-} else {
-  // Use Neon serverless for production
+if (isNeonDatabase) {
+  // Use Neon serverless for Replit/Neon hosting
   const { Pool: NeonPool, neonConfig } = await import('@neondatabase/serverless');
   const { drizzle: drizzleNeonServerless } = await import('drizzle-orm/neon-serverless');
   const ws = await import('ws');
@@ -30,6 +22,16 @@ if (isLocalPostgres) {
 
   pool = new NeonPool({ connectionString: process.env.DATABASE_URL });
   db = drizzleNeonServerless({ client: pool, schema });
+} else {
+  // Use standard pg for Render, Railway, local development, etc.
+  const pg = await import('pg');
+  const { drizzle: drizzleNodePostgres } = await import('drizzle-orm/node-postgres');
+
+  pool = new pg.default.Pool({ 
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  });
+  db = drizzleNodePostgres(pool, { schema });
 }
 
 export { pool, db };

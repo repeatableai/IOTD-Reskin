@@ -41,11 +41,19 @@ import {
   Search,
   Star,
   Award,
-  Check
+  Check,
+  Flame,
+  ChevronRight,
+  Play,
+  MessageSquare
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
+import RoastDialog from "@/components/RoastDialog";
+import CommunitySignalDialog from "@/components/CommunitySignalDialog";
+import ClaimButton from "@/components/ClaimButton";
+import ExportDialog from "@/components/ExportDialog";
 
 export default function IdeaDetail() {
   const { slug } = useParams();
@@ -54,6 +62,8 @@ export default function IdeaDetail() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
+  const [showRoastDialog, setShowRoastDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", slug],
@@ -85,8 +95,6 @@ export default function IdeaDetail() {
 
   const [researchReport, setResearchReport] = useState<any>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
-  const [showExportDialog, setShowExportDialog] = useState(false);
-  const [selectedExportFormat, setSelectedExportFormat] = useState<'json' | 'txt'>('json');
 
   const saveIdeaMutation = useMutation({
     mutationFn: async () => {
@@ -285,39 +293,6 @@ export default function IdeaDetail() {
     },
   });
 
-  const handleExportData = () => {
-    setShowExportDialog(true);
-  };
-
-  const handleDownloadExport = async () => {
-    try {
-      const response = await fetch(`/api/ideas/${idea.id}/export?format=${selectedExportFormat}`);
-      
-      if (!response.ok) {
-        throw new Error('Export failed');
-      }
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${idea.slug}.${selectedExportFormat}`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      
-      setShowExportDialog(false);
-      toast({ title: `Data exported successfully as ${selectedExportFormat.toUpperCase()}!` });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to export data. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
-
   const generateResearchReport = async () => {
     if (!isAuthenticated) {
       toast({
@@ -423,35 +398,106 @@ export default function IdeaDetail() {
             )}
           </div>
           
-          {/* Signal Badges */}
-          {idea.signalBadges && idea.signalBadges.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
-              {idea.signalBadges.slice(0, 3).map((badge: string, index: number) => (
-                <Badge 
-                  key={index}
-                  variant="outline" 
-                  className="px-3 py-1 text-sm"
-                  data-testid={`badge-signal-${index}`}
-                >
-                  {badge === "Perfect Timing" && "⏰"}
-                  {badge === "Unfair Advantage" && "⚡"}
-                  {badge === "Organic Growth" && "🌱"}
-                  {badge === "Proven Model" && "✓"}
-                  {badge === "Low Competition" && "🎯"}
-                  {badge === "High Demand" && "🔥"}
-                  {badge === "Strong Community" && "👥"}
-                  {badge === "Tech Tailwind" && "🚀"}
-                  {badge === "Clear Monetization" && "💰"}
-                  {" "}{badge}
-                </Badge>
-              ))}
-              {idea.signalBadges.length > 3 && (
-                <Badge variant="secondary" className="px-3 py-1 text-sm">
-                  +{idea.signalBadges.length - 3} More
-                </Badge>
-              )}
-            </div>
-          )}
+          {/* Dynamic Insight Badges */}
+          {(() => {
+            // Generate dynamic badges based on scores
+            const dynamicBadges: { text: string; icon: string; color: string }[] = [];
+            
+            // Why Now / Timing badges
+            if (idea.whyNowScore >= 8) {
+              dynamicBadges.push({ text: 'Perfect Timing', icon: '⏰', color: 'bg-yellow-100 text-yellow-800 border-yellow-300' });
+            } else if (idea.whyNowScore >= 6) {
+              dynamicBadges.push({ text: 'Good Timing', icon: '⏰', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' });
+            }
+            
+            // Market size badges
+            if (idea.opportunityScore >= 9) {
+              dynamicBadges.push({ text: 'Massive Market', icon: '🌍', color: 'bg-blue-100 text-blue-800 border-blue-300' });
+            } else if (idea.opportunityScore >= 7) {
+              dynamicBadges.push({ text: 'Large Market', icon: '🌐', color: 'bg-blue-50 text-blue-700 border-blue-200' });
+            }
+            
+            // Problem severity badges
+            if (idea.problemScore >= 9) {
+              dynamicBadges.push({ text: 'Severe Pain', icon: '🔥', color: 'bg-red-100 text-red-800 border-red-300' });
+            } else if (idea.problemScore >= 7) {
+              dynamicBadges.push({ text: 'Real Problem', icon: '💡', color: 'bg-orange-50 text-orange-700 border-orange-200' });
+            }
+            
+            // Feasibility badges
+            if (idea.feasibilityScore >= 8) {
+              dynamicBadges.push({ text: 'Easy to Build', icon: '🚀', color: 'bg-green-100 text-green-800 border-green-300' });
+            } else if (idea.feasibilityScore <= 4) {
+              dynamicBadges.push({ text: 'Complex Build', icon: '⚙️', color: 'bg-gray-100 text-gray-700 border-gray-300' });
+            }
+            
+            // Competitive advantage badges
+            if (idea.uniquenessFactor === '10x Better' || idea.innovationScore >= 8) {
+              dynamicBadges.push({ text: '10x Better', icon: '✨', color: 'bg-purple-100 text-purple-800 border-purple-300' });
+            }
+            
+            // Revenue potential badges
+            if (idea.revenuePotential && idea.revenuePotential.includes('$10M+')) {
+              dynamicBadges.push({ text: 'High Revenue', icon: '💰', color: 'bg-emerald-100 text-emerald-800 border-emerald-300' });
+            }
+            
+            // Trend badges
+            if (idea.trendGrowth && parseFloat(idea.trendGrowth) > 50) {
+              dynamicBadges.push({ text: 'Trending Up', icon: '📈', color: 'bg-cyan-100 text-cyan-800 border-cyan-300' });
+            }
+            
+            // Add existing signal badges
+            const existingBadges = idea.signalBadges || [];
+            const allBadges = [...dynamicBadges.map(b => b.text), ...existingBadges];
+            const displayBadges = dynamicBadges.slice(0, 4);
+            const remainingCount = allBadges.length - displayBadges.length;
+            
+            if (displayBadges.length === 0 && existingBadges.length === 0) return null;
+            
+            return (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {displayBadges.map((badge, index) => (
+                  <Badge 
+                    key={`dynamic-${index}`}
+                    variant="outline" 
+                    className={`px-3 py-1.5 text-sm font-medium ${badge.color}`}
+                    data-testid={`badge-insight-${index}`}
+                  >
+                    <span className="mr-1">{badge.icon}</span>
+                    {badge.text}
+                  </Badge>
+                ))}
+                {existingBadges.slice(0, Math.max(0, 4 - displayBadges.length)).map((signalBadge: string, index: number) => (
+                  <Badge 
+                    key={`signal-${index}`}
+                    variant="outline" 
+                    className="px-3 py-1.5 text-sm font-medium"
+                    data-testid={`badge-signal-${index}`}
+                  >
+                    {signalBadge === "Perfect Timing" && "⏰ "}
+                    {signalBadge === "Unfair Advantage" && "⚡ "}
+                    {signalBadge === "Organic Growth" && "🌱 "}
+                    {signalBadge === "Proven Model" && "✓ "}
+                    {signalBadge === "Low Competition" && "🎯 "}
+                    {signalBadge === "High Demand" && "🔥 "}
+                    {signalBadge === "Strong Community" && "👥 "}
+                    {signalBadge === "Tech Tailwind" && "🚀 "}
+                    {signalBadge === "Clear Monetization" && "💰 "}
+                    {signalBadge}
+                  </Badge>
+                ))}
+                {remainingCount > 0 && (
+                  <Badge 
+                    variant="secondary" 
+                    className="px-3 py-1.5 text-sm cursor-pointer hover:bg-secondary/80"
+                    title={`${remainingCount} more insights available`}
+                  >
+                    +{remainingCount} More
+                  </Badge>
+                )}
+              </div>
+            );
+          })()}
           
           <h1 className="text-4xl font-bold mb-4" data-testid="text-idea-title">{idea.title}</h1>
           
@@ -492,34 +538,30 @@ export default function IdeaDetail() {
               <Code className="w-4 h-4 mr-2" />
               {buildIdeaMutation.isPending ? 'Creating...' : 'Build This Solution'}
             </Button>
+
+            <Button 
+              variant="outline"
+              onClick={() => setShowRoastDialog(true)}
+              className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+              data-testid="button-roast-idea"
+            >
+              <Flame className="w-4 h-4 mr-2" />
+              Roast
+            </Button>
             
             <Button 
               variant="outline" 
-              onClick={handleExportData}
+              onClick={() => setShowExportDialog(true)}
               data-testid="button-export-data"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export Data
+              Export
             </Button>
             
-            {isAuthenticated && !idea.claimedBy && (
-              <Button 
-                variant="default"
-                onClick={() => claimIdeaMutation.mutate()}
-                disabled={claimIdeaMutation.isPending}
-                data-testid="button-claim-idea"
-              >
-                <Award className="w-4 h-4 mr-2" />
-                {claimIdeaMutation.isPending ? 'Claiming...' : 'Claim This Solution'}
-              </Button>
-            )}
-            
-            {idea.claimedBy && (
-              <Badge variant="secondary" className="px-4 py-2">
-                <Award className="w-4 h-4 mr-2" />
-                Claimed
-              </Badge>
-            )}
+            <ClaimButton 
+              ideaId={idea.id} 
+              ideaTitle={idea.title}
+            />
           </div>
         </div>
 
@@ -567,73 +609,121 @@ export default function IdeaDetail() {
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="offer" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9">
-                      {idea.offerTiers && <TabsTrigger value="offer">Offer</TabsTrigger>}
-                      {idea.whyNowAnalysis && <TabsTrigger value="whynow">Why Now</TabsTrigger>}
-                      {idea.proofSignals && <TabsTrigger value="proof">Proof</TabsTrigger>}
-                      {idea.marketGap && <TabsTrigger value="gap">Gap</TabsTrigger>}
-                      {idea.executionPlan && <TabsTrigger value="execution">Plan</TabsTrigger>}
-                      {idea.frameworkData && <TabsTrigger value="framework">Framework</TabsTrigger>}
-                      {idea.trendAnalysis && <TabsTrigger value="trends">Trends</TabsTrigger>}
-                      {idea.keywordData && <TabsTrigger value="keywords">Keywords</TabsTrigger>}
-                      {idea.builderPrompts && <TabsTrigger value="builders">Builders</TabsTrigger>}
+                    <TabsList className="flex flex-wrap gap-2 h-auto p-1 bg-muted/50">
+                      {idea.offerTiers && <TabsTrigger value="offer" className="px-4">Offer</TabsTrigger>}
+                      {idea.whyNowAnalysis && <TabsTrigger value="whynow" className="px-4">Why Now</TabsTrigger>}
+                      {idea.proofSignals && <TabsTrigger value="proof" className="px-4">Proof</TabsTrigger>}
+                      {idea.marketGap && <TabsTrigger value="gap" className="px-4">Gap</TabsTrigger>}
+                      {idea.executionPlan && <TabsTrigger value="execution" className="px-4">Plan</TabsTrigger>}
+                      {idea.frameworkData && <TabsTrigger value="framework" className="px-4">Framework</TabsTrigger>}
+                      {idea.trendAnalysis && <TabsTrigger value="trends" className="px-4">Trends</TabsTrigger>}
+                      {idea.keywordData && <TabsTrigger value="keywords" className="px-4">Keywords</TabsTrigger>}
+                      {idea.builderPrompts && <TabsTrigger value="builders" className="px-4">Builders</TabsTrigger>}
                     </TabsList>
 
                     {idea.offerTiers && (
                       <TabsContent value="offer" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <DollarSign className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">Value Ladder</h3>
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <DollarSign className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">Value Ladder</h3>
+                          </div>
+                          <Link href={`/idea/${slug}/value-ladder`}>
+                            <Button variant="outline" size="sm">
+                              View full value ladder →
+                            </Button>
+                          </Link>
                         </div>
-                        <div className="grid gap-4">
+                        
+                        {/* IdeaBrowser-style numbered value ladder */}
+                        <div className="space-y-3">
                           {idea.offerTiers.leadMagnet && (
-                            <div className="border rounded-lg p-4 bg-muted/50">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">Lead Magnet</h4>
-                                <Badge variant="secondary">{idea.offerTiers.leadMagnet.price}</Badge>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-green-50/50 to-transparent dark:from-green-950/30 border-green-200 dark:border-green-800">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold text-sm">
+                                1
                               </div>
-                              <p className="text-sm font-medium mb-1">{idea.offerTiers.leadMagnet.name}</p>
-                              <p className="text-sm text-muted-foreground">{idea.offerTiers.leadMagnet.description}</p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-green-600 dark:text-green-400 uppercase tracking-wide">Lead Magnet</span>
+                                  <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                                    {idea.offerTiers.leadMagnet.price}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold mb-1">{idea.offerTiers.leadMagnet.name}</h4>
+                                <p className="text-sm text-muted-foreground">{idea.offerTiers.leadMagnet.description}</p>
+                              </div>
                             </div>
                           )}
+                          
                           {idea.offerTiers.frontend && (
-                            <div className="border rounded-lg p-4 bg-muted/50">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">Frontend Offer</h4>
-                                <Badge variant="secondary">{idea.offerTiers.frontend.price}</Badge>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/30 border-blue-200 dark:border-blue-800">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm">
+                                2
                               </div>
-                              <p className="text-sm font-medium mb-1">{idea.offerTiers.frontend.name}</p>
-                              <p className="text-sm text-muted-foreground">{idea.offerTiers.frontend.description}</p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Frontend</span>
+                                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+                                    {idea.offerTiers.frontend.price}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold mb-1">{idea.offerTiers.frontend.name}</h4>
+                                <p className="text-sm text-muted-foreground">{idea.offerTiers.frontend.description}</p>
+                              </div>
                             </div>
                           )}
+                          
                           {idea.offerTiers.core && (
-                            <div className="border rounded-lg p-4 bg-primary/10">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">Core Offer</h4>
-                                <Badge>{idea.offerTiers.core.price}</Badge>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border-2 bg-gradient-to-r from-purple-50/50 to-transparent dark:from-purple-950/30 border-purple-400 dark:border-purple-600 shadow-sm">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white flex items-center justify-center font-bold text-sm">
+                                3
                               </div>
-                              <p className="text-sm font-medium mb-1">{idea.offerTiers.core.name}</p>
-                              <p className="text-sm text-muted-foreground">{idea.offerTiers.core.description}</p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">Core Offer ⭐</span>
+                                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white">
+                                    {idea.offerTiers.core.price}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold mb-1">{idea.offerTiers.core.name}</h4>
+                                <p className="text-sm text-muted-foreground">{idea.offerTiers.core.description}</p>
+                              </div>
                             </div>
                           )}
+                          
                           {idea.offerTiers.backend && (
-                            <div className="border rounded-lg p-4 bg-muted/50">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">Backend Offer</h4>
-                                <Badge variant="secondary">{idea.offerTiers.backend.price}</Badge>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-orange-50/50 to-transparent dark:from-orange-950/30 border-orange-200 dark:border-orange-800">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-orange-500 text-white flex items-center justify-center font-bold text-sm">
+                                4
                               </div>
-                              <p className="text-sm font-medium mb-1">{idea.offerTiers.backend.name}</p>
-                              <p className="text-sm text-muted-foreground">{idea.offerTiers.backend.description}</p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-orange-600 dark:text-orange-400 uppercase tracking-wide">Backend</span>
+                                  <Badge variant="secondary" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300">
+                                    {idea.offerTiers.backend.price}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold mb-1">{idea.offerTiers.backend.name}</h4>
+                                <p className="text-sm text-muted-foreground">{idea.offerTiers.backend.description}</p>
+                              </div>
                             </div>
                           )}
+                          
                           {idea.offerTiers.continuity && (
-                            <div className="border rounded-lg p-4 bg-muted/50">
-                              <div className="flex justify-between items-start mb-2">
-                                <h4 className="font-semibold">Continuity</h4>
-                                <Badge variant="secondary">{idea.offerTiers.continuity.price}</Badge>
+                            <div className="flex items-start gap-4 p-4 rounded-lg border bg-gradient-to-r from-cyan-50/50 to-transparent dark:from-cyan-950/30 border-cyan-200 dark:border-cyan-800">
+                              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-cyan-500 text-white flex items-center justify-center font-bold text-sm">
+                                5
                               </div>
-                              <p className="text-sm font-medium mb-1">{idea.offerTiers.continuity.name}</p>
-                              <p className="text-sm text-muted-foreground">{idea.offerTiers.continuity.description}</p>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-xs font-medium text-cyan-600 dark:text-cyan-400 uppercase tracking-wide">Continuity</span>
+                                  <Badge variant="secondary" className="bg-cyan-100 text-cyan-700 dark:bg-cyan-900 dark:text-cyan-300">
+                                    {idea.offerTiers.continuity.price}
+                                  </Badge>
+                                </div>
+                                <h4 className="font-semibold mb-1">{idea.offerTiers.continuity.name}</h4>
+                                <p className="text-sm text-muted-foreground">{idea.offerTiers.continuity.description}</p>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -701,7 +791,7 @@ export default function IdeaDetail() {
                             <Rocket className="w-5 h-5 mr-2 text-primary" />
                             <h3 className="text-lg font-semibold">Execution Plan</h3>
                           </div>
-                          <Link href={`/idea/${idea.slug}/execution-plan`}>
+                          <Link href={`/idea/${idea.slug}/execution-analysis`}>
                             <Button variant="outline" size="sm" data-testid="button-view-execution-plan">
                               View Full Analysis
                               <ExternalLink className="w-3 h-3 ml-2" />
@@ -1160,53 +1250,281 @@ export default function IdeaDetail() {
 
           {/* Sidebar */}
           <div className="space-y-6">
-            {/* Scoring */}
+            {/* Interactive Opportunity Scores - IdeaBrowser Style */}
             <Card>
-              <CardHeader>
-                <CardTitle>Opportunity Scores</CardTitle>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Opportunity Scores</CardTitle>
+                <p className="text-xs text-muted-foreground">Click any score for detailed analysis</p>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="grid grid-cols-2 gap-3">
                 <ScoreDisplay 
                   score={idea.opportunityScore} 
                   label="Opportunity" 
-                  sublabel={idea.opportunityLabel} 
+                  sublabel={idea.opportunityLabel}
+                  interactive={true}
+                  scoreType="opportunity"
+                  ideaSlug={slug}
                 />
                 <ScoreDisplay 
                   score={idea.problemScore} 
                   label="Problem" 
-                  sublabel={idea.problemLabel} 
+                  sublabel={idea.problemLabel}
+                  interactive={true}
+                  scoreType="problem"
+                  ideaSlug={slug}
                 />
                 <ScoreDisplay 
                   score={idea.feasibilityScore} 
                   label="Feasibility" 
-                  sublabel={idea.feasibilityLabel} 
+                  sublabel={idea.feasibilityLabel}
+                  interactive={true}
+                  scoreType="feasibility"
+                  ideaSlug={slug}
                 />
                 <ScoreDisplay 
-                  score={idea.timingScore} 
-                  label="Timing" 
-                  sublabel={idea.timingLabel} 
+                  score={idea.timingScore || idea.whyNowScore} 
+                  label="Why Now" 
+                  sublabel={idea.timingLabel}
+                  interactive={true}
+                  scoreType="timing"
+                  ideaSlug={slug}
                 />
                 <ScoreDisplay 
                   score={idea.executionScore} 
                   label="Execution" 
-                  sublabel="Difficulty" 
+                  sublabel="Difficulty"
+                  interactive={true}
+                  scoreType="execution"
+                  ideaSlug={slug}
                 />
                 <ScoreDisplay 
                   score={idea.gtmScore} 
                   label="Go-to-Market" 
-                  sublabel="Strength" 
+                  sublabel="Strength"
+                  interactive={true}
+                  scoreType="gtm"
+                  ideaSlug={slug}
                 />
               </CardContent>
             </Card>
 
-            {/* User Rating */}
+            {/* Business Fit Section - Clean Design */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Target className="w-5 h-5 text-primary" />
+                  Business Fit
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1">
+                {/* Revenue Potential */}
+                <div 
+                  className="flex items-center justify-between p-2.5 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/revenue-analysis`)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-md bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                      <DollarSign className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Revenue Potential</p>
+                      <p className="text-xs text-muted-foreground">{idea.revenuePotential || '$1M-$10M ARR'}</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+
+                <Separator />
+
+                {/* Execution Difficulty */}
+                <div 
+                  className="flex items-center justify-between p-2.5 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/execution-analysis`)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-md bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                      <Rocket className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Execution</p>
+                      <p className="text-xs text-muted-foreground">{idea.executionScore || 6}/10 difficulty</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+
+                <Separator />
+
+                {/* Go-To-Market */}
+                <div 
+                  className="flex items-center justify-between p-2.5 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/gtm-strategy`)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-md bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
+                      <TrendingUp className="w-4 h-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Go-To-Market</p>
+                      <p className="text-xs text-muted-foreground">{idea.gtmScore || 8}/10 strength</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+
+                <Separator />
+
+                {/* Founder Fit */}
+                <div 
+                  className="flex items-center justify-between p-2.5 rounded-md hover:bg-muted/50 cursor-pointer transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/founder-fit-analysis`)}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-md bg-pink-100 dark:bg-pink-900/30 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-pink-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">Founder Fit</p>
+                      <p className="text-xs text-muted-foreground">Is this right for you?</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Community Signals - Primary Position */}
+            <Card className="border-2 border-primary/20">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5 text-primary" />
+                    Community Signals
+                  </CardTitle>
+                  <Badge variant="outline" className="text-xs">Live Data</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">Where people are discussing this problem</p>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Reddit */}
+                <div 
+                  className="flex items-center justify-between p-3 rounded-lg bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200/50 dark:border-orange-800/50 cursor-pointer hover:bg-orange-50 dark:hover:bg-orange-950/30 transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center text-white font-bold">
+                      R
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Reddit</p>
+                      <p className="text-xs text-muted-foreground">
+                        {idea.communitySignals?.reddit?.subreddits || '5'} subreddits · {idea.communitySignals?.reddit?.members || '2.5M+'} members
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-orange-500 text-white">
+                      {idea.communitySignals?.reddit?.score || 8}/10
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  </div>
+                </div>
+
+                {/* Twitter/X */}
+                <div 
+                  className="flex items-center justify-between p-3 rounded-lg bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-800/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-950/30 transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold">
+                      𝕏
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Twitter/X</p>
+                      <p className="text-xs text-muted-foreground">
+                        Active discussions · High engagement
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {idea.communitySignals?.twitter?.score || 7}/10
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  </div>
+                </div>
+
+                {/* YouTube */}
+                <div 
+                  className="flex items-center justify-between p-3 rounded-lg bg-red-50/50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-800/50 cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white">
+                      <Play className="w-5 h-5 fill-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">YouTube</p>
+                      <p className="text-xs text-muted-foreground">
+                        {idea.communitySignals?.youtube?.channels || '14'} channels · {idea.communitySignals?.youtube?.views || '10M+'} views
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {idea.communitySignals?.youtube?.score || 7}/10
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  </div>
+                </div>
+
+                {/* Facebook Groups */}
+                <div 
+                  className="flex items-center justify-between p-3 rounded-lg bg-blue-50/50 dark:bg-blue-950/20 border border-blue-200/50 dark:border-blue-800/50 cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-colors group"
+                  onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                      f
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm">Facebook</p>
+                      <p className="text-xs text-muted-foreground">
+                        {idea.communitySignals?.facebook?.groups || '5'} groups · {idea.communitySignals?.facebook?.members || '500K+'} members
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {idea.communitySignals?.facebook?.score || 6}/10
+                    </Badge>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground" />
+                  </div>
+                </div>
+
+                {/* View Full Analysis */}
+                <Button 
+                  variant="outline" 
+                  className="w-full mt-2"
+                  onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                >
+                  View Full Community Analysis
+                  <ExternalLink className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* User Rating - Moved Below */}
             {isAuthenticated && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Rate This Solution</CardTitle>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Star className="w-4 h-4" />
+                    Your Rating
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="flex justify-center gap-2 mb-4">
+                  <div className="flex justify-center gap-2">
                     {[1, 2, 3, 4, 5].map((rating) => (
                       <button
                         key={rating}
@@ -1216,7 +1534,7 @@ export default function IdeaDetail() {
                         data-testid={`button-rate-${rating}`}
                       >
                         <Star
-                          className={`w-8 h-8 ${
+                          className={`w-6 h-6 ${
                             (userRating as any)?.rating >= rating
                               ? 'fill-yellow-400 text-yellow-400'
                               : 'text-gray-300'
@@ -1226,70 +1544,125 @@ export default function IdeaDetail() {
                     ))}
                   </div>
                   {idea.averageRating && (
-                    <div className="text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Average: {idea.averageRating}/5 ({idea.ratingCount || 0} ratings)
-                      </p>
-                    </div>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Avg: {idea.averageRating}/5 ({idea.ratingCount || 0})
+                    </p>
                   )}
                 </CardContent>
               </Card>
             )}
 
-            {/* Community Signals */}
-            {idea.communitySignals && (
+            {/* Legacy Community Signals - Hidden if new one exists */}
+            {false && idea.communitySignals && (
               <Card>
-                <CardHeader>
-                  <CardTitle>Community Signals</CardTitle>
+                <CardHeader className="pb-3">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Community Signals
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">Click any platform for detailed analysis</p>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3">
                   {idea.communitySignals.reddit && (
-                    <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-sm">Reddit</p>
-                        <p className="text-xs text-muted-foreground">
-                          {idea.communitySignals.reddit.subreddits} subreddits · {idea.communitySignals.reddit.members}
-                        </p>
+                    <CommunitySignalDialog
+                      platform="reddit"
+                      data={idea.communitySignals.reddit}
+                      ideaSlug={slug || ''}
+                    >
+                      <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/50 rounded-lg border border-orange-200 dark:border-orange-800 hover:shadow-md transition-all cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center text-white text-sm font-bold">R</div>
+                          <div>
+                            <p className="font-semibold text-sm">Reddit</p>
+                            <p className="text-xs text-muted-foreground">
+                              {idea.communitySignals.reddit.subreddits} subreddits · {idea.communitySignals.reddit.members}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-lg font-bold px-3 py-1">
+                          {idea.communitySignals.reddit.score}/10
+                        </Badge>
                       </div>
-                      <div className="text-2xl font-bold">{idea.communitySignals.reddit.score}/10</div>
-                    </div>
+                    </CommunitySignalDialog>
                   )}
                   
                   {idea.communitySignals.facebook && (
-                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-sm">Facebook</p>
-                        <p className="text-xs text-muted-foreground">
-                          {idea.communitySignals.facebook.groups} groups · {idea.communitySignals.facebook.members}
-                        </p>
+                    <CommunitySignalDialog
+                      platform="facebook"
+                      data={idea.communitySignals.facebook}
+                      ideaSlug={slug || ''}
+                    >
+                      <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800 hover:shadow-md transition-all cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold">f</div>
+                          <div>
+                            <p className="font-semibold text-sm">Facebook</p>
+                            <p className="text-xs text-muted-foreground">
+                              {idea.communitySignals.facebook.groups} groups · {idea.communitySignals.facebook.members}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-lg font-bold px-3 py-1">
+                          {idea.communitySignals.facebook.score}/10
+                        </Badge>
                       </div>
-                      <div className="text-2xl font-bold">{idea.communitySignals.facebook.score}/10</div>
-                    </div>
+                    </CommunitySignalDialog>
                   )}
                   
                   {idea.communitySignals.youtube && (
-                    <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-sm">YouTube</p>
-                        <p className="text-xs text-muted-foreground">
-                          {idea.communitySignals.youtube.channels} channels · {idea.communitySignals.youtube.views}
-                        </p>
+                    <CommunitySignalDialog
+                      platform="youtube"
+                      data={idea.communitySignals.youtube}
+                      ideaSlug={slug || ''}
+                    >
+                      <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-950/50 rounded-lg border border-red-200 dark:border-red-800 hover:shadow-md transition-all cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center text-white text-sm font-bold">▶</div>
+                          <div>
+                            <p className="font-semibold text-sm">YouTube</p>
+                            <p className="text-xs text-muted-foreground">
+                              {idea.communitySignals.youtube.channels} channels · {idea.communitySignals.youtube.views}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-lg font-bold px-3 py-1">
+                          {idea.communitySignals.youtube.score}/10
+                        </Badge>
                       </div>
-                      <div className="text-2xl font-bold">{idea.communitySignals.youtube.score}/10</div>
-                    </div>
+                    </CommunitySignalDialog>
                   )}
                   
                   {idea.communitySignals.other && (
-                    <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950 rounded-lg">
-                      <div>
-                        <p className="font-semibold text-sm">Other</p>
-                        <p className="text-xs text-muted-foreground">
-                          {idea.communitySignals.other.segments} segments · {idea.communitySignals.other.priorities} priorities
-                        </p>
+                    <CommunitySignalDialog
+                      platform="other"
+                      data={idea.communitySignals.other}
+                      ideaSlug={slug || ''}
+                    >
+                      <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-950/50 rounded-lg border border-purple-200 dark:border-purple-800 hover:shadow-md transition-all cursor-pointer">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">+</div>
+                          <div>
+                            <p className="font-semibold text-sm">Other</p>
+                            <p className="text-xs text-muted-foreground">
+                              {idea.communitySignals.other.segments} segments · {idea.communitySignals.other.priorities} priorities
+                            </p>
+                          </div>
+                        </div>
+                        <Badge variant="secondary" className="text-lg font-bold px-3 py-1">
+                          {idea.communitySignals.other.score}/10
+                        </Badge>
                       </div>
-                      <div className="text-2xl font-bold">{idea.communitySignals.other.score}/10</div>
-                    </div>
+                    </CommunitySignalDialog>
                   )}
+                  
+                  {/* View Full Analysis Link */}
+                  <Button 
+                    variant="ghost" 
+                    className="w-full text-sm text-primary hover:text-primary/80"
+                    onClick={() => setLocation(`/idea/${slug}/community-signals`)}
+                  >
+                    View detailed breakdown →
+                  </Button>
                 </CardContent>
               </Card>
             )}
@@ -1381,183 +1754,196 @@ export default function IdeaDetail() {
 
       {/* Builder Options Dialog */}
       <Dialog open={showBuilderDialog} onOpenChange={setShowBuilderDialog}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Build This Solution</DialogTitle>
+            <DialogTitle className="text-2xl">Start Building in 1-click</DialogTitle>
             <DialogDescription>
-              Choose your preferred no-code builder platform to bring this solution to life
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            {/* Replit Builder */}
-            <Card className="cursor-pointer hover:border-primary transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-orange-100 dark:bg-orange-900 rounded-lg">
-                    <Code className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">Replit Agent</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Use AI to build your app with natural language. Great for any technical level.
-                    </p>
-                    <Button 
-                      onClick={() => {
-                        setLocation(`/idea/${slug}/build/replit`);
-                        setShowBuilderDialog(false);
-                      }}
-                      data-testid="button-build-replit"
-                    >
-                      Get Build Prompt →
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Claude Codex */}
-            <Card className="cursor-pointer hover:border-primary transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <Rocket className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">Claude Codex</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      AI-powered full-stack development. Build and deploy web apps instantly.
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        setLocation(`/idea/${slug}/build/bolt`);
-                        setShowBuilderDialog(false);
-                      }}
-                      data-testid="button-build-bolt"
-                    >
-                      Get Build Prompt →
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* v0.dev */}
-            <Card className="cursor-pointer hover:border-primary transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                    <Sparkles className="w-6 h-6 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">v0 by Vercel</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Generate UI components with AI. Perfect for React and Next.js projects.
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        setLocation(`/idea/${slug}/build/v0`);
-                        setShowBuilderDialog(false);
-                      }}
-                      data-testid="button-build-v0"
-                    >
-                      Get Build Prompt →
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cursor */}
-            <Card className="cursor-pointer hover:border-primary transition-colors">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
-                    <Target className="w-6 h-6 text-green-600 dark:text-green-400" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg mb-2">Cursor IDE</h3>
-                    <p className="text-sm text-muted-foreground mb-3">
-                      AI-first code editor. Build with intelligent code suggestions and pair programming.
-                    </p>
-                    <Button 
-                      variant="outline"
-                      onClick={() => {
-                        setLocation(`/idea/${slug}/build/cursor`);
-                        setShowBuilderDialog(false);
-                      }}
-                      data-testid="button-build-cursor"
-                    >
-                      Get Build Prompt →
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Export Format Selection Dialog */}
-      <Dialog open={showExportDialog} onOpenChange={setShowExportDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Export Solution Data</DialogTitle>
-            <DialogDescription>
-              Choose your preferred export format
+              Turn this idea into your business with pre-built prompts for any AI platform
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 mt-4">
-            <RadioGroup value={selectedExportFormat} onValueChange={(value: 'json' | 'txt') => setSelectedExportFormat(value)}>
-              <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedExportFormat('json')}>
-                <RadioGroupItem value="json" id="format-json" />
-                <div className="flex-1">
-                  <Label htmlFor="format-json" className="font-semibold cursor-pointer">
-                    JSON Format
-                  </Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Complete structured data export. Perfect for importing into other applications or databases.
-                  </p>
+            {/* Works With Section */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Works with:</span>
+              <div className="flex gap-3">
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
+                  <span className="text-pink-500">♥</span> Lovable
                 </div>
-              </div>
-              
-              <div className="flex items-start space-x-3 space-y-0 p-4 border rounded-lg cursor-pointer hover:bg-accent" onClick={() => setSelectedExportFormat('txt')}>
-                <RadioGroupItem value="txt" id="format-txt" />
-                <div className="flex-1">
-                  <Label htmlFor="format-txt" className="font-semibold cursor-pointer">
-                    Text Format
-                  </Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Human-readable report with organized sections. Great for reading, printing, or sharing.
-                  </p>
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
+                  <span>⚡</span> v0
                 </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
+                  <span className="text-orange-500">◎</span> Replit
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
+                  ChatGPT
+                </div>
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
+                  Claude
+                </div>
+                <span className="text-xs">+more</span>
               </div>
-            </RadioGroup>
+            </div>
 
-            <div className="flex gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowExportDialog(false)}
-                className="flex-1"
-                data-testid="button-cancel-export"
+            {/* Build Prompt Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Replit */}
+              <Card 
+                className="cursor-pointer hover:border-orange-400 hover:shadow-md transition-all group"
+                onClick={() => {
+                  setLocation(`/idea/${slug}/build/replit`);
+                  setShowBuilderDialog(false);
+                }}
               >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleDownloadExport}
-                className="flex-1"
-                data-testid="button-download-export"
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
+                      <span className="text-orange-500 text-xl">◎</span>
+                    </div>
+                    <h3 className="font-semibold">Replit Agent</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    AI-powered full-stack development platform
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* v0 */}
+              <Card 
+                className="cursor-pointer hover:border-purple-400 hover:shadow-md transition-all group"
+                onClick={() => {
+                  setLocation(`/idea/${slug}/build/v0`);
+                  setShowBuilderDialog(false);
+                }}
               >
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
+                      <span className="text-purple-500 text-xl">⚡</span>
+                    </div>
+                    <h3 className="font-semibold">v0 by Vercel</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    AI UI component generator for React/Next.js
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Lovable */}
+              <Card 
+                className="cursor-pointer hover:border-pink-400 hover:shadow-md transition-all group"
+                onClick={() => {
+                  setLocation(`/idea/${slug}/build/bolt`);
+                  setShowBuilderDialog(false);
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-pink-100 dark:bg-pink-900/50 rounded-lg">
+                      <span className="text-pink-500 text-xl">♥</span>
+                    </div>
+                    <h3 className="font-semibold">Lovable</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Build full-stack apps with natural language
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Cursor */}
+              <Card 
+                className="cursor-pointer hover:border-green-400 hover:shadow-md transition-all group"
+                onClick={() => {
+                  setLocation(`/idea/${slug}/build/cursor`);
+                  setShowBuilderDialog(false);
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                      <Target className="w-5 h-5 text-green-500" />
+                    </div>
+                    <h3 className="font-semibold">Cursor IDE</h3>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    AI-first code editor with intelligent suggestions
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Additional Prompt Types */}
+            <div className="border-t pt-4">
+              <h4 className="text-sm font-semibold mb-3">More prompts...</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={() => {
+                    setLocation(`/idea/${slug}/build/ad-creatives`);
+                    setShowBuilderDialog(false);
+                  }}
+                >
+                  <Sparkles className="w-4 h-4 mr-2 text-pink-500" />
+                  Ad Creatives
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={() => {
+                    setLocation(`/idea/${slug}/build/brand-package`);
+                    setShowBuilderDialog(false);
+                  }}
+                >
+                  <Star className="w-4 h-4 mr-2 text-indigo-500" />
+                  Brand Package
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="justify-start"
+                  onClick={() => {
+                    setLocation(`/idea/${slug}/build/replit`);
+                    setShowBuilderDialog(false);
+                  }}
+                >
+                  <FileText className="w-4 h-4 mr-2 text-blue-500" />
+                  Landing Page
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Roast Dialog */}
+      {idea && (
+        <RoastDialog
+          open={showRoastDialog}
+          onOpenChange={setShowRoastDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+          }}
+        />
+      )}
+
+      {/* Export Dialog */}
+      {idea && (
+        <ExportDialog
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          ideaId={idea.id}
+          ideaSlug={idea.slug}
+          ideaTitle={idea.title}
+        />
+      )}
     </div>
   );
 }

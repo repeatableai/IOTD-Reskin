@@ -8,7 +8,9 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { ObjectPermission } from "./objectAcl";
 import { aiService, type IdeaGenerationParams } from "./aiService";
 import { externalDataService } from "./externalDataService";
+import { getTrendData, getMultipleTrends, getRelatedQueries } from "./googleTrendsService";
 import Anthropic from '@anthropic-ai/sdk';
+import PDFDocument from 'pdfkit';
 
 // Initialize Claude AI client for building prompts
 // Note: Using claude-sonnet-4-20250514 (latest model)
@@ -67,6 +69,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching top ideas:", error);
       res.status(500).json({ message: "Failed to fetch top ideas" });
+    }
+  });
+  
+  // For You personalized recommendations endpoint
+  app.get('/api/ideas/for-you', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit as string) || 20;
+      const offset = parseInt(req.query.offset as string) || 0;
+      const result = await storage.getForYouIdeas(userId, limit, offset);
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching For You recommendations:", error);
+      res.status(500).json({ message: "Failed to fetch personalized recommendations" });
     }
   });
 
@@ -155,16 +171,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Claim idea route
+  // Claim idea routes
   app.post('/api/ideas/:id/claim', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const { id } = req.params;
-      await storage.claimIdea(id, userId);
-      res.json({ success: true });
-    } catch (error) {
+      const result = await storage.claimIdea(id, userId);
+      res.json(result);
+    } catch (error: any) {
       console.error("Error claiming idea:", error);
+      if (error.message === 'Idea is already claimed') {
+        return res.status(409).json({ message: error.message });
+      }
       res.status(500).json({ message: "Failed to claim idea" });
+    }
+  });
+
+  app.delete('/api/ideas/:id/claim', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      await storage.unclaimIdea(id, userId);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error unclaiming idea:", error);
+      if (error.message === 'You have not claimed this idea') {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to unclaim idea" });
+    }
+  });
+
+  app.get('/api/ideas/:id/claim', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const claimStatus = await storage.getClaimStatus(id);
+      res.json(claimStatus);
+    } catch (error) {
+      console.error("Error fetching claim status:", error);
+      res.status(500).json({ message: "Failed to fetch claim status" });
+    }
+  });
+
+  app.put('/api/ideas/:id/claim/progress', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { progress, notes, milestones } = req.body;
+      
+      if (progress !== undefined && (progress < 0 || progress > 100)) {
+        return res.status(400).json({ message: "Progress must be between 0 and 100" });
+      }
+      
+      const result = await storage.updateClaimProgress(id, userId, { progress, notes, milestones });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error updating claim progress:", error);
+      if (error.message === 'You have not claimed this idea') {
+        return res.status(403).json({ message: error.message });
+      }
+      res.status(500).json({ message: "Failed to update claim progress" });
+    }
+  });
+
+  // Get user's claimed ideas
+  app.get('/api/user/claimed-ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const claims = await storage.getUserClaimedIdeas(userId);
+      res.json(claims);
+    } catch (error) {
+      console.error("Error fetching user claimed ideas:", error);
+      res.status(500).json({ message: "Failed to fetch claimed ideas" });
     }
   });
 
@@ -310,6 +388,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return sections.join('\n');
   }
 
+  // Helper function to generate PDF report
+  function generatePdfReport(idea: any): PDFDocument {
+    const doc = new PDFDocument({ margin: 50, size: 'A4' });
+    
+    // Title
+    doc.fontSize(24).fillColor('#1a1a2e').font('Helvetica-Bold')
+       .text(idea.title || 'Untitled Idea', { align: 'center' });
+    doc.moveDown(0.5);
+    
+    if (idea.subtitle) {
+      doc.fontSize(14).fillColor('#4a4a6a').font('Helvetica')
+         .text(idea.subtitle, { align: 'center' });
+    }
+    doc.moveDown(1);
+    
+    // Horizontal line
+    doc.strokeColor('#e0e0e0').lineWidth(1)
+       .moveTo(50, doc.y).lineTo(545, doc.y).stroke();
+    doc.moveDown(1);
+    
+    // Scores section
+    doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+       .text('Opportunity Analysis');
+    doc.moveDown(0.5);
+    
+    const scores = [
+      { label: 'Opportunity Score', value: idea.opportunityScore, suffix: '/10' },
+      { label: 'Problem Score', value: idea.problemScore, suffix: '/10' },
+      { label: 'Feasibility Score', value: idea.feasibilityScore, suffix: '/10' },
+      { label: 'Timing Score', value: idea.timingScore, suffix: '/10' },
+      { label: 'Revenue Potential', value: idea.revenuePotential, suffix: '' },
+    ];
+    
+    scores.forEach(score => {
+      if (score.value !== null && score.value !== undefined) {
+        doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+           .text(`${score.label}: `, { continued: true })
+           .font('Helvetica-Bold').fillColor('#2563eb')
+           .text(`${score.value}${score.suffix}`);
+      }
+    });
+    doc.moveDown(1);
+    
+    // Description
+    if (idea.description) {
+      doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+         .text('Description');
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+         .text(idea.description, { align: 'justify' });
+      doc.moveDown(1);
+    }
+    
+    // Market Information
+    doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+       .text('Market Information');
+    doc.moveDown(0.5);
+    
+    const marketInfo = [
+      { label: 'Market Type', value: idea.market },
+      { label: 'Type', value: idea.type },
+      { label: 'Target Audience', value: idea.targetAudience },
+      { label: 'Main Competitor', value: idea.mainCompetitor },
+      { label: 'Keyword', value: idea.keyword },
+    ];
+    
+    marketInfo.forEach(info => {
+      if (info.value) {
+        doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+           .text(`${info.label}: `, { continued: true })
+           .font('Helvetica-Bold')
+           .text(info.value);
+      }
+    });
+    doc.moveDown(1);
+    
+    // Why Now Analysis
+    if (idea.whyNowAnalysis) {
+      doc.addPage();
+      doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+         .text('Why Now Analysis');
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+         .text(idea.whyNowAnalysis, { align: 'justify' });
+      doc.moveDown(1);
+    }
+    
+    // Market Gap
+    if (idea.marketGap) {
+      doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+         .text('Market Gap');
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+         .text(idea.marketGap, { align: 'justify' });
+      doc.moveDown(1);
+    }
+    
+    // Execution Plan
+    if (idea.executionPlan) {
+      doc.addPage();
+      doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+         .text('Execution Plan');
+      doc.moveDown(0.5);
+      doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+         .text(idea.executionPlan, { align: 'justify' });
+      doc.moveDown(1);
+    }
+    
+    // Signal Badges
+    if (idea.signalBadges && idea.signalBadges.length > 0) {
+      doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+         .text('Signals & Indicators');
+      doc.moveDown(0.5);
+      idea.signalBadges.forEach((badge: string) => {
+        doc.fontSize(11).fillColor('#059669').font('Helvetica')
+           .text(`✓ ${badge}`);
+      });
+      doc.moveDown(1);
+    }
+    
+    // Community Stats
+    doc.fontSize(16).fillColor('#1a1a2e').font('Helvetica-Bold')
+       .text('Community Engagement');
+    doc.moveDown(0.5);
+    doc.fontSize(11).fillColor('#4a4a6a').font('Helvetica')
+       .text(`Views: ${idea.viewCount || 0}  |  Saves: ${idea.saveCount || 0}  |  Votes: ${idea.voteCount || 0}`);
+    
+    if (idea.averageRating) {
+      doc.text(`Average Rating: ${idea.averageRating}/5 (${idea.ratingCount} ratings)`);
+    }
+    doc.moveDown(1);
+    
+    // Footer
+    doc.fontSize(9).fillColor('#9ca3af').font('Helvetica')
+       .text(`Generated: ${new Date().toISOString()}`, 50, doc.page.height - 50)
+       .text(`Slug: ${idea.slug}`, 50, doc.page.height - 40);
+    
+    return doc;
+  }
+
+  // Generate markdown report for export
+  function generateMarkdownReport(idea: any): string {
+    const sections: string[] = [];
+    
+    sections.push(`# ${idea.title}`);
+    sections.push('');
+    if (idea.subtitle) {
+      sections.push(`*${idea.subtitle}*`);
+      sections.push('');
+    }
+    
+    sections.push('## Overview');
+    sections.push(`- **Market:** ${idea.market}`);
+    sections.push(`- **Type:** ${idea.type}`);
+    if (idea.targetAudience) sections.push(`- **Target Audience:** ${idea.targetAudience}`);
+    sections.push('');
+    
+    sections.push('## Description');
+    sections.push(idea.description);
+    sections.push('');
+    
+    sections.push('## Key Metrics');
+    sections.push(`| Metric | Score |`);
+    sections.push(`|--------|-------|`);
+    if (idea.opportunityScore) sections.push(`| Opportunity | ${idea.opportunityScore}/10 |`);
+    if (idea.problemScore) sections.push(`| Problem Severity | ${idea.problemScore}/10 |`);
+    if (idea.feasibilityScore) sections.push(`| Feasibility | ${idea.feasibilityScore}/10 |`);
+    if (idea.timingScore) sections.push(`| Timing | ${idea.timingScore}/10 |`);
+    if (idea.executionScore) sections.push(`| Execution | ${idea.executionScore}/10 |`);
+    if (idea.gtmScore) sections.push(`| Go-to-Market | ${idea.gtmScore}/10 |`);
+    sections.push('');
+    
+    if (idea.whyNowAnalysis) {
+      sections.push('## Why Now');
+      sections.push(idea.whyNowAnalysis);
+      sections.push('');
+    }
+    
+    if (idea.proofSignals) {
+      sections.push('## Proof & Signals');
+      sections.push(idea.proofSignals);
+      sections.push('');
+    }
+    
+    if (idea.marketGap) {
+      sections.push('## Market Gap');
+      sections.push(idea.marketGap);
+      sections.push('');
+    }
+    
+    if (idea.executionPlan) {
+      sections.push('## Execution Plan');
+      sections.push(idea.executionPlan);
+      sections.push('');
+    }
+    
+    if (idea.content) {
+      sections.push('## Full Analysis');
+      sections.push(idea.content);
+      sections.push('');
+    }
+    
+    sections.push('---');
+    sections.push(`*Exported from Idea Browser on ${new Date().toLocaleDateString()}*`);
+    
+    return sections.join('\n');
+  }
+
   // Export idea data
   app.get('/api/ideas/:id/export', async (req, res) => {
     try {
@@ -322,8 +608,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Validate format parameter
-      if (!['json', 'txt'].includes(format as string)) {
-        return res.status(400).json({ message: "Invalid format. Supported formats: json, txt" });
+      if (!['json', 'txt', 'pdf', 'markdown', 'md'].includes(format as string)) {
+        return res.status(400).json({ message: "Invalid format. Supported formats: json, txt, pdf, markdown" });
       }
 
       if (format === 'json') {
@@ -337,10 +623,195 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.txt"`);
         res.send(txtContent);
+      } else if (format === 'pdf') {
+        // Generate PDF report
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.pdf"`);
+        
+        const doc = generatePdfReport(idea);
+        doc.pipe(res);
+        doc.end();
+      } else if (format === 'markdown' || format === 'md') {
+        // Generate Markdown report
+        const mdContent = generateMarkdownReport(idea);
+        res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${idea.slug}.md"`);
+        res.send(mdContent);
       }
     } catch (error) {
       console.error("Error exporting idea:", error);
       res.status(500).json({ message: "Failed to export idea" });
+    }
+  });
+
+  // Export to Notion
+  app.post('/api/ideas/:id/export/notion', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const { notionToken, parentPageId } = req.body;
+      
+      if (!notionToken) {
+        return res.status(400).json({ message: "Notion integration token is required" });
+      }
+      
+      const idea = await storage.getIdeaById(id);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      // Create Notion page
+      const notionResponse = await fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${notionToken}`,
+          'Content-Type': 'application/json',
+          'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify({
+          parent: parentPageId ? { page_id: parentPageId } : { type: 'workspace', workspace: true },
+          properties: {
+            title: {
+              title: [{ text: { content: idea.title } }]
+            }
+          },
+          children: [
+            {
+              object: 'block',
+              type: 'heading_2',
+              heading_2: { rich_text: [{ text: { content: 'Overview' } }] }
+            },
+            {
+              object: 'block',
+              type: 'paragraph',
+              paragraph: { rich_text: [{ text: { content: idea.description } }] }
+            },
+            {
+              object: 'block',
+              type: 'heading_2',
+              heading_2: { rich_text: [{ text: { content: 'Key Metrics' } }] }
+            },
+            {
+              object: 'block',
+              type: 'bulleted_list_item',
+              bulleted_list_item: { rich_text: [{ text: { content: `Opportunity Score: ${idea.opportunityScore}/10` } }] }
+            },
+            {
+              object: 'block',
+              type: 'bulleted_list_item',
+              bulleted_list_item: { rich_text: [{ text: { content: `Market: ${idea.market}` } }] }
+            },
+            {
+              object: 'block',
+              type: 'bulleted_list_item',
+              bulleted_list_item: { rich_text: [{ text: { content: `Type: ${idea.type}` } }] }
+            },
+            ...(idea.whyNowAnalysis ? [
+              {
+                object: 'block',
+                type: 'heading_2',
+                heading_2: { rich_text: [{ text: { content: 'Why Now' } }] }
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: { rich_text: [{ text: { content: idea.whyNowAnalysis.slice(0, 2000) } }] }
+              }
+            ] : []),
+            ...(idea.executionPlan ? [
+              {
+                object: 'block',
+                type: 'heading_2',
+                heading_2: { rich_text: [{ text: { content: 'Execution Plan' } }] }
+              },
+              {
+                object: 'block',
+                type: 'paragraph',
+                paragraph: { rich_text: [{ text: { content: idea.executionPlan.slice(0, 2000) } }] }
+              }
+            ] : [])
+          ]
+        })
+      });
+      
+      if (!notionResponse.ok) {
+        const error = await notionResponse.json();
+        console.error("Notion API error:", error);
+        return res.status(400).json({ message: "Failed to create Notion page. Check your token and permissions." });
+      }
+      
+      const notionPage = await notionResponse.json();
+      
+      // Log export
+      await storage.logExport(userId, id, 'notion', notionPage.url);
+      
+      res.json({ 
+        success: true, 
+        url: notionPage.url,
+        pageId: notionPage.id 
+      });
+    } catch (error) {
+      console.error("Error exporting to Notion:", error);
+      res.status(500).json({ message: "Failed to export to Notion" });
+    }
+  });
+
+  // Export to Google Docs (generates a link to create doc with content)
+  app.post('/api/ideas/:id/export/google-docs', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      
+      const idea = await storage.getIdeaById(id);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      // Generate markdown content for Google Docs
+      const mdContent = generateMarkdownReport(idea);
+      
+      // Create a Google Docs URL with pre-filled content (using Google's URL scheme)
+      // This opens Google Docs with the title pre-filled
+      const encodedTitle = encodeURIComponent(idea.title);
+      const googleDocsUrl = `https://docs.google.com/document/create?title=${encodedTitle}`;
+      
+      // Log export
+      await storage.logExport(userId, id, 'google_docs');
+      
+      res.json({ 
+        success: true, 
+        url: googleDocsUrl,
+        content: mdContent, // Include content to copy
+        message: "Click the link to create a new Google Doc, then paste the content"
+      });
+    } catch (error) {
+      console.error("Error preparing Google Docs export:", error);
+      res.status(500).json({ message: "Failed to prepare Google Docs export" });
+    }
+  });
+
+  // Copy to clipboard formatted content
+  app.get('/api/ideas/:id/export/clipboard', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { format = 'markdown' } = req.query;
+      
+      const idea = await storage.getIdeaById(id);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      let content: string;
+      if (format === 'markdown' || format === 'md') {
+        content = generateMarkdownReport(idea);
+      } else {
+        content = generateTxtReport(idea);
+      }
+      
+      res.json({ content });
+    } catch (error) {
+      console.error("Error generating clipboard content:", error);
+      res.status(500).json({ message: "Failed to generate content" });
     }
   });
 
@@ -633,6 +1104,294 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Deep Research - Claude Sonnet 4.5 with Extended Thinking + Builder Prompts
+  app.post('/api/ai/deep-research', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const researchSchema = z.object({
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+        targetMarket: z.string().optional(),
+        additionalContext: z.string().optional(),
+        ideaId: z.string().optional(),
+        type: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+      });
+
+      const params = researchSchema.parse(req.body);
+
+      console.log(`User ${userId} starting deep research for: ${params.ideaTitle}`);
+
+      // Generate comprehensive research report using Claude Sonnet 4.5
+      // Also generate builder prompts in parallel for efficiency
+      const [deepReport, builderPrompts] = await Promise.all([
+        aiService.generateDeepResearch(params),
+        aiService.generateBuilderPrompts({
+          ideaTitle: params.ideaTitle,
+          ideaDescription: params.ideaDescription,
+          type: params.type,
+          market: params.market || params.targetMarket,
+          targetAudience: params.targetAudience,
+        })
+      ]);
+
+      // If ideaId is provided, save the builder prompts to the idea
+      if (params.ideaId) {
+        await storage.updateIdea(params.ideaId, { builderPrompts });
+        console.log(`Builder prompts saved to idea ${params.ideaId}`);
+      }
+
+      // Return both the research report and builder prompts
+      res.json({
+        ...deepReport,
+        builderPrompts
+      });
+    } catch (error) {
+      console.error("Error generating deep research report:", error);
+      res.status(500).json({
+        message: "Failed to generate deep research report",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Rapid Research - Claude Haiku (fast, 5-10 minute response) + Builder Prompts
+  app.post('/api/ai/rapid-research', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const researchSchema = z.object({
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+        targetMarket: z.string().optional(),
+        ideaId: z.string().optional(),
+        type: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+      });
+
+      const params = researchSchema.parse(req.body);
+
+      console.log(`User ${userId} starting rapid research for: ${params.ideaTitle}`);
+
+      // Generate quick research report using Claude Haiku
+      // Also generate builder prompts in parallel for efficiency
+      const [rapidReport, builderPrompts] = await Promise.all([
+        aiService.generateRapidResearch(params),
+        aiService.generateBuilderPrompts({
+          ideaTitle: params.ideaTitle,
+          ideaDescription: params.ideaDescription,
+          type: params.type,
+          market: params.market || params.targetMarket,
+          targetAudience: params.targetAudience,
+        })
+      ]);
+
+      // If ideaId is provided, save the builder prompts to the idea
+      if (params.ideaId) {
+        await storage.updateIdea(params.ideaId, { builderPrompts });
+        console.log(`Builder prompts saved to idea ${params.ideaId}`);
+      }
+
+      // Return both the research report and builder prompts
+      res.json({
+        ...rapidReport,
+        builderPrompts
+      });
+    } catch (error) {
+      console.error("Error generating rapid research report:", error);
+      res.status(500).json({
+        message: "Failed to generate rapid research report",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Roast Idea - Get brutally honest feedback from different perspectives
+  app.post('/api/ai/roast-idea', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const roastSchema = z.object({
+        ideaId: z.string().optional(),
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+        market: z.string().optional(),
+        type: z.string().optional(),
+        targetAudience: z.string().optional(),
+        intensity: z.enum(['gentle', 'moderate', 'tough', 'savage']),
+        perspective: z.enum(['vc', 'technical', 'competitor', 'customer']),
+      });
+
+      const params = roastSchema.parse(req.body);
+
+      console.log(`User ${userId} roasting idea: ${params.ideaTitle} (${params.intensity}/${params.perspective})`);
+
+      // Generate roast using AI service
+      const roast = await aiService.generateRoast({
+        ideaTitle: params.ideaTitle,
+        ideaDescription: params.ideaDescription,
+        market: params.market,
+        type: params.type,
+        targetAudience: params.targetAudience,
+        intensity: params.intensity,
+        perspective: params.perspective,
+      });
+
+      res.json(roast);
+    } catch (error) {
+      console.error("Error generating roast:", error);
+      res.status(500).json({
+        message: "Failed to generate roast",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Market Deep Research - AI-powered market analysis
+  app.post('/api/ai/market-deep-research', async (req, res) => {
+    try {
+      const marketSchema = z.object({
+        topic: z.string().min(1),
+        description: z.string().min(1),
+        category: z.string().optional(),
+      });
+
+      const params = marketSchema.parse(req.body);
+
+      console.log(`Generating deep market research for: ${params.topic}`);
+
+      // Use Claude to generate comprehensive market insights
+      const response = await anthropic.messages.create({
+        model: "claude-3-5-haiku-20241022",
+        max_tokens: 4000,
+        messages: [{
+          role: "user",
+          content: `You are a market research expert. Generate comprehensive market insights for the following opportunity:
+
+Topic: ${params.topic}
+Description: ${params.description}
+Category: ${params.category || 'General'}
+
+Generate a detailed JSON response with the following structure. Be specific and include real-world examples, actual community names, realistic numbers, and actionable insights:
+
+{
+  "overview": {
+    "summary": "2-3 paragraph detailed market overview",
+    "marketSize": "Estimated market size (e.g., '$5.2B in 2024')",
+    "growthRate": "Growth rate (e.g., '23% CAGR through 2028')",
+    "competitionLevel": "Low/Moderate/High with explanation",
+    "entryBarrier": "Low/Medium/High",
+    "keyTrends": ["5 specific trends driving this market"],
+    "targetAudience": ["5 specific target customer segments"]
+  },
+  "painPoints": {
+    "score": 8,
+    "severity": "severe/high/moderate",
+    "items": [
+      {
+        "title": "Pain point name",
+        "description": "Detailed description of the problem",
+        "severity": "critical/high/moderate",
+        "frequency": "How often this is mentioned (e.g., '75% of users report this')",
+        "userQuotes": ["2-3 realistic user quotes from forums/communities"],
+        "sources": ["r/relevantsubreddit", "Facebook Group Name", "Forum Name"]
+      }
+    ]
+  },
+  "solutionGaps": {
+    "score": 7,
+    "severity": "high/moderate",
+    "items": [
+      {
+        "title": "Gap name",
+        "description": "What's missing in current solutions",
+        "opportunity": "massive/significant/moderate",
+        "existingSolutions": ["Current tools/services"],
+        "whyTheyFail": "Why existing solutions fall short",
+        "idealSolution": "What the ideal solution would look like"
+      }
+    ]
+  },
+  "underservedSegments": {
+    "score": 7,
+    "segments": [
+      {
+        "name": "Segment name",
+        "size": "Estimated size (e.g., '2.5M users')",
+        "description": "Who they are and their specific needs",
+        "painIntensity": 8,
+        "willingnessToPay": "$X-Y/month",
+        "currentAlternatives": "What they use now",
+        "opportunity": "How to serve them better"
+      }
+    ]
+  },
+  "moneySignals": {
+    "score": 8,
+    "totalAddressableMarket": "$XB",
+    "servicableMarket": "$XM-YM",
+    "avgCustomerValue": "$X/year consumer, $Y/year business",
+    "signals": [
+      {
+        "type": "spending/investment/growth/pricing",
+        "title": "Signal name",
+        "description": "What the signal indicates",
+        "evidence": "Specific evidence or source",
+        "strength": "strong/moderate/emerging"
+      }
+    ],
+    "revenueModels": ["Viable business models"],
+    "pricingBenchmarks": ["Competitor pricing examples"]
+  }
+}
+
+Include at least:
+- 3-4 pain points with real user quotes
+- 2-3 solution gaps with specific analysis
+- 2-3 underserved segments with sizing
+- 4-5 money signals with evidence
+- 3-4 revenue model options
+
+Return ONLY valid JSON, no markdown or explanation.`
+        }]
+      });
+
+      // Parse the response
+      const content = response.content[0];
+      if (content.type !== 'text') {
+        throw new Error('Unexpected response format');
+      }
+
+      // Clean and parse JSON
+      let jsonText = content.text.trim();
+      if (jsonText.startsWith('```json')) {
+        jsonText = jsonText.slice(7);
+      }
+      if (jsonText.startsWith('```')) {
+        jsonText = jsonText.slice(3);
+      }
+      if (jsonText.endsWith('```')) {
+        jsonText = jsonText.slice(0, -3);
+      }
+
+      const insights = JSON.parse(jsonText);
+
+      res.json({ insights });
+    } catch (error) {
+      console.error("Error generating market research:", error);
+      res.status(500).json({
+        message: "Failed to generate market research",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // AI chat for idea Q&A
   app.post('/api/ai/chat', async (req, res) => {
     try {
@@ -785,6 +1544,150 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Real-time market data endpoints
+  
+  // Get market validation data for a keyword
+  app.get('/api/market/validation', async (req, res) => {
+    try {
+      const keyword = req.query.keyword as string;
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      const validation = await externalDataService.getMarketValidation(keyword);
+      res.json(validation);
+    } catch (error) {
+      console.error("Error fetching market validation:", error);
+      res.status(500).json({ message: "Failed to fetch market validation data" });
+    }
+  });
+
+  // Get trend data for a keyword
+  app.get('/api/market/trends', async (req, res) => {
+    try {
+      const keyword = req.query.keyword as string;
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+      
+      const trends = await externalDataService.getTrendData(keyword);
+      res.json(trends);
+    } catch (error) {
+      console.error("Error fetching trend data:", error);
+      res.status(500).json({ message: "Failed to fetch trend data" });
+    }
+  });
+
+  // Get market insights for a topic
+  app.get('/api/market/insights', async (req, res) => {
+    try {
+      const topic = req.query.topic as string;
+      if (!topic) {
+        return res.status(400).json({ message: "Topic is required" });
+      }
+      
+      const insights = await externalDataService.getMarketInsights(topic);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching market insights:", error);
+      res.status(500).json({ message: "Failed to fetch market insights" });
+    }
+  });
+
+  // Search Reddit for a topic
+  app.get('/api/market/reddit', async (req, res) => {
+    try {
+      const query = req.query.query as string;
+      const subreddit = req.query.subreddit as string | undefined;
+      
+      if (!query) {
+        return res.status(400).json({ message: "Query is required" });
+      }
+      
+      const results = await externalDataService.searchReddit(query, subreddit);
+      res.json(results);
+    } catch (error) {
+      console.error("Error searching Reddit:", error);
+      res.status(500).json({ message: "Failed to search Reddit" });
+    }
+  });
+
+  // Get community insights
+  app.get('/api/market/community', async (req, res) => {
+    try {
+      const topic = req.query.topic as string;
+      if (!topic) {
+        return res.status(400).json({ message: "Topic is required" });
+      }
+      
+      const insights = await externalDataService.getCommunityInsights(topic);
+      res.json(insights);
+    } catch (error) {
+      console.error("Error fetching community insights:", error);
+      res.status(500).json({ message: "Failed to fetch community insights" });
+    }
+  });
+
+  // Google Trends - Get trend data for a single keyword
+  app.get('/api/google-trends/keyword', async (req, res) => {
+    try {
+      const keyword = req.query.keyword as string;
+      const growth = req.query.growth ? parseInt(req.query.growth as string) : undefined;
+      const timeRange = (req.query.timeRange as '6m' | '1y' | '2y' | 'all') || '1y';
+      
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+
+      const trendData = await getTrendData(keyword, growth, timeRange);
+      res.json(trendData);
+    } catch (error) {
+      console.error("Error fetching trend data:", error);
+      res.status(500).json({ message: "Failed to fetch trend data" });
+    }
+  });
+
+  // Google Trends - Get trend data for multiple keywords
+  app.post('/api/google-trends/batch', async (req, res) => {
+    try {
+      const { keywords } = req.body;
+      if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
+        return res.status(400).json({ message: "Keywords array is required" });
+      }
+
+      // Limit to 10 keywords to avoid rate limiting
+      const limitedKeywords = keywords.slice(0, 10);
+      const trendsMap = await getMultipleTrends(limitedKeywords);
+      
+      // Convert Map to object for JSON response
+      const result: Record<string, any> = {};
+      trendsMap.forEach((value, key) => {
+        result[key] = value;
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error fetching batch Google Trends data:", error);
+      res.status(500).json({ message: "Failed to fetch trend data" });
+    }
+  });
+
+  // Google Trends - Get related queries for a keyword
+  app.get('/api/google-trends/related', async (req, res) => {
+    try {
+      const keyword = req.query.keyword as string;
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword is required" });
+      }
+
+      const relatedQueries = await getRelatedQueries(keyword);
+      res.json({ keyword, relatedQueries });
+    } catch (error) {
+      console.error("Error fetching related queries:", error);
+      res.status(500).json({ message: "Failed to fetch related queries" });
+    }
+  });
+
   // AI Idea Generator - Personalized idea generation
   app.post('/api/generate-ideas', async (req, res) => {
     try {
@@ -925,6 +1828,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching score details:", error);
       res.status(500).json({ message: "Failed to fetch score details" });
+    }
+  });
+
+  // Generate Builder Prompts on-demand
+  app.post('/api/ai/generate-build-prompts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const promptsSchema = z.object({
+        ideaId: z.string().optional(),
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+        type: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+      });
+
+      const params = promptsSchema.parse(req.body);
+
+      console.log(`User ${userId} generating builder prompts for: ${params.ideaTitle}`);
+
+      // Generate builder prompts using AI service
+      const builderPrompts = await aiService.generateBuilderPrompts(params);
+
+      // If ideaId is provided, save the prompts to the idea
+      if (params.ideaId) {
+        await storage.updateIdea(params.ideaId, { builderPrompts });
+        console.log(`Builder prompts saved to idea ${params.ideaId}`);
+      }
+
+      res.json(builderPrompts);
+    } catch (error) {
+      console.error("Error generating builder prompts:", error);
+      res.status(500).json({
+        message: "Failed to generate builder prompts",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 
