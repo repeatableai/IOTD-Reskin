@@ -2891,35 +2891,117 @@ Be practical, encouraging, and focus on helping them make real progress.`;
 
       console.log(`[Bulk Import] File contains ${exportData.ideas.length} ideas`);
 
-      // Import using the importIdeas function
-      const { importIdeas } = await import('../scripts/importIdeas');
+      // Inline import logic (to avoid build issues with script imports)
+      const allTags = await db.select().from(tags);
+      const existingTagNames = new Set(allTags.map(t => t.name));
       
-      // Save to temp file for import function
-      const fs = await import('fs');
-      const path = await import('path');
-      const tempPath = path.join(process.cwd(), 'temp-import.json');
-      fs.writeFileSync(tempPath, fileContent);
-
-      try {
-        const result = await importIdeas(tempPath, true); // skipExisting = true
-        
-        // Clean up temp file
-        fs.unlinkSync(tempPath);
-        
-        res.json({
-          message: "Bulk import completed successfully",
-          imported: result.importedCount,
-          skipped: result.skippedCount,
-          updated: result.updatedCount,
-          total: exportData.ideas.length,
-        });
-      } catch (importError: any) {
-        // Clean up temp file on error
-        if (fs.existsSync(tempPath)) {
-          fs.unlinkSync(tempPath);
+      // Import tags first
+      if (exportData.tags && Array.isArray(exportData.tags)) {
+        const tagsToInsert = exportData.tags.filter((t: any) => !existingTagNames.has(t.name));
+        if (tagsToInsert.length > 0) {
+          await db.insert(tags).values(tagsToInsert);
+          console.log(`[Bulk Import] Imported ${tagsToInsert.length} new tags`);
         }
-        throw importError;
       }
+      
+      // Get all tags again (including newly inserted) for mapping
+      const allTagsAfter = await db.select().from(tags);
+      const tagMap = new Map(allTagsAfter.map(t => [t.name, t.id]));
+      
+      // Get existing ideas
+      const existingIdeas = await db.select().from(ideas);
+      const existingSlugs = new Set(existingIdeas.map(i => i.slug));
+      const existingRelationships = await db.select().from(ideaTags);
+      const existingRelationshipKeys = new Set(
+        existingRelationships.map(r => `${r.ideaId}-${r.tagId}`)
+      );
+      const existingSignals = await db.select().from(communitySignals);
+      const existingSignalKeys = new Set(
+        existingSignals.map(s => `${s.ideaId}-${s.platform}-${s.name}`)
+      );
+      
+      let importedCount = 0;
+      let skippedCount = 0;
+      
+      // Import ideas
+      for (const ideaData of exportData.ideas) {
+        const { tags: ideaTagsData, communitySignals: ideaSignalsData, ...ideaFields } = ideaData;
+        const { id, createdAt, updatedAt, ...ideaToInsert } = ideaFields;
+        
+        // Ensure isPublished is true
+        ideaToInsert.isPublished = true;
+        
+        if (existingSlugs.has(ideaToInsert.slug)) {
+          skippedCount++;
+          continue;
+        }
+        
+        // Insert new idea
+        const [insertedIdea] = await db.insert(ideas).values(ideaToInsert).returning();
+        importedCount++;
+        
+        // Import tags for this idea
+        if (ideaTagsData && Array.isArray(ideaTagsData) && ideaTagsData.length > 0) {
+          const tagRelationships = ideaTagsData
+            .map((tag: any) => {
+              const tagId = tagMap.get(tag.name);
+              return tagId ? { ideaId: insertedIdea.id, tagId } : null;
+            })
+            .filter((r: any) => r !== null)
+            .filter((r: any) => {
+              const key = `${r.ideaId}-${r.tagId}`;
+              return !existingRelationshipKeys.has(key);
+            });
+          
+          if (tagRelationships.length > 0) {
+            await db.insert(ideaTags).values(tagRelationships);
+            tagRelationships.forEach((r: any) => {
+              existingRelationshipKeys.add(`${r.ideaId}-${r.tagId}`);
+            });
+          }
+        }
+        
+        // Import community signals
+        if (ideaSignalsData && Array.isArray(ideaSignalsData) && ideaSignalsData.length > 0) {
+          const signalsToInsert = ideaSignalsData
+            .map((signal: any) => ({
+              ideaId: insertedIdea.id,
+              platform: signal.platform,
+              signalType: signal.signalType,
+              name: signal.name,
+              memberCount: signal.memberCount,
+              engagementScore: signal.engagementScore,
+              url: signal.url,
+              description: signal.description,
+            }))
+            .filter((signal: any) => {
+              const key = `${signal.ideaId}-${signal.platform}-${signal.name}`;
+              return !existingSignalKeys.has(key);
+            });
+          
+          if (signalsToInsert.length > 0) {
+            await db.insert(communitySignals).values(signalsToInsert);
+            signalsToInsert.forEach((s: any) => {
+              existingSignalKeys.add(`${s.ideaId}-${s.platform}-${s.name}`);
+            });
+          }
+        }
+        
+        // Log progress every 50 ideas
+        if (importedCount % 50 === 0) {
+          console.log(`[Bulk Import] Progress: ${importedCount} imported, ${skippedCount} skipped`);
+        }
+      }
+      
+      console.log(`[Bulk Import] Complete: ${importedCount} imported, ${skippedCount} skipped`);
+      
+      res.json({
+        message: "Bulk import completed successfully",
+        imported: importedCount,
+        skipped: skippedCount,
+        updated: 0,
+        total: exportData.ideas.length,
+      });
     } catch (error: any) {
       console.error("Error bulk importing ideas:", error);
       res.status(500).json({ 
