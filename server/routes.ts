@@ -18,6 +18,9 @@ import { spreadsheetMapper } from './spreadsheetMapper';
 import { slugService } from './slugService';
 import { imageProcessor } from './imageProcessor';
 import puppeteer from 'puppeteer';
+import { db } from './db';
+import { ideas, tags, ideaTags, communitySignals } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -2735,6 +2738,152 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     } catch (error: any) {
       console.error("Error starting bulk image generation:", error);
       res.status(500).json({ message: "Failed to start image generation", error: error.message });
+    }
+  });
+
+  // Export all ideas to JSON
+  app.get('/api/admin/export-ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow if explicitly enabled
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_BULK_EXPORT) {
+        return res.status(403).json({ 
+          message: "Bulk export is disabled in production. Set ALLOW_BULK_EXPORT=true to enable." 
+        });
+      }
+
+      console.log("[Bulk Export] Starting export...");
+      
+      // Get all ideas (including unpublished)
+      const allIdeas = await db.select().from(ideas);
+      console.log(`[Bulk Export] Found ${allIdeas.length} ideas`);
+      
+      // Get all tags
+      const allTags = await db.select().from(tags);
+      console.log(`[Bulk Export] Found ${allTags.length} tags`);
+      
+      // Get all idea-tag relationships
+      const allIdeaTags = await db.select().from(ideaTags);
+      console.log(`[Bulk Export] Found ${allIdeaTags.length} idea-tag relationships`);
+      
+      // Get all community signals
+      const allSignals = await db.select().from(communitySignals);
+      console.log(`[Bulk Export] Found ${allSignals.length} community signals`);
+      
+      // Build export data structure
+      const exportData = {
+        exportedAt: new Date().toISOString(),
+        totalIdeas: allIdeas.length,
+        ideas: allIdeas.map(idea => {
+          // Get tags for this idea
+          const ideaTagIds = allIdeaTags
+            .filter(it => it.ideaId === idea.id)
+            .map(it => it.tagId);
+          const ideaTags = allTags
+            .filter(t => ideaTagIds.includes(t.id))
+            .map(t => ({ id: t.id, name: t.name, color: t.color }));
+          
+          // Get community signals for this idea
+          const ideaSignals = allSignals
+            .filter(s => s.ideaId === idea.id)
+            .map(s => ({
+              platform: s.platform,
+              signalType: s.signalType,
+              name: s.name,
+              memberCount: s.memberCount,
+              engagementScore: s.engagementScore,
+              url: s.url,
+              description: s.description,
+            }));
+          
+          return {
+            ...idea,
+            tags: ideaTags,
+            communitySignals: ideaSignals,
+          };
+        }),
+        tags: allTags,
+      };
+      
+      console.log(`[Bulk Export] Export complete: ${allIdeas.length} ideas`);
+      
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', `attachment; filename="ideas-export-${Date.now()}.json"`);
+      res.json(exportData);
+    } catch (error: any) {
+      console.error("Error exporting ideas:", error);
+      res.status(500).json({ 
+        message: "Failed to export ideas",
+        error: error.message 
+      });
+    }
+  });
+
+  // Bulk import ideas from JSON export file
+  app.post('/api/admin/import-ideas', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      // Only allow if explicitly enabled
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_BULK_IMPORT) {
+        return res.status(403).json({ 
+          message: "Bulk import is disabled in production. Set ALLOW_BULK_IMPORT=true to enable." 
+        });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      if (!file.mimetype.includes('json') && !file.originalname.endsWith('.json')) {
+        return res.status(400).json({ message: "File must be JSON format" });
+      }
+
+      console.log(`[Bulk Import] Received file: ${file.originalname}, size: ${file.size} bytes`);
+
+      // Parse JSON from buffer
+      const fileContent = file.buffer.toString('utf-8');
+      const exportData = JSON.parse(fileContent);
+
+      if (!exportData.ideas || !Array.isArray(exportData.ideas)) {
+        return res.status(400).json({ message: "Invalid export file format" });
+      }
+
+      console.log(`[Bulk Import] File contains ${exportData.ideas.length} ideas`);
+
+      // Import using the importIdeas function
+      const { importIdeas } = await import('../scripts/importIdeas');
+      
+      // Save to temp file for import function
+      const fs = await import('fs');
+      const path = await import('path');
+      const tempPath = path.join(process.cwd(), 'temp-import.json');
+      fs.writeFileSync(tempPath, fileContent);
+
+      try {
+        const result = await importIdeas(tempPath, true); // skipExisting = true
+        
+        // Clean up temp file
+        fs.unlinkSync(tempPath);
+        
+        res.json({
+          message: "Bulk import completed successfully",
+          imported: result.importedCount,
+          skipped: result.skippedCount,
+          updated: result.updatedCount,
+          total: exportData.ideas.length,
+        });
+      } catch (importError: any) {
+        // Clean up temp file on error
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+        throw importError;
+      }
+    } catch (error: any) {
+      console.error("Error bulk importing ideas:", error);
+      res.status(500).json({ 
+        message: "Failed to bulk import ideas",
+        error: error.message 
+      });
     }
   });
 
