@@ -80,6 +80,8 @@ export default function CreateIdea() {
   const [activeTab, setActiveTab] = useState('manual');
   const [importText, setImportText] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedHTMLContent, setUploadedHTMLContent] = useState<string | null>(null);
+  const [isAnalyzingHTML, setIsAnalyzingHTML] = useState(false);
 
   // Redirect if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -152,10 +154,90 @@ export default function CreateIdea() {
         const reader = new FileReader();
         reader.onload = (e) => {
           const htmlContent = e.target?.result as string;
+          setUploadedHTMLContent(htmlContent);
           parseImportedContent(htmlContent, 'html');
         };
         reader.readAsText(file);
       }
+    }
+  };
+
+  const handleGenerateFromHTML = async () => {
+    if (!uploadedHTMLContent || !isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use AI-powered HTML analysis.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAnalyzingHTML(true);
+    
+    try {
+      const response = await apiRequest('POST', '/api/ai/generate-from-html', {
+        htmlContent: uploadedHTMLContent,
+      });
+      const generatedIdea = await response.json();
+      
+      // Map AI response to form data with all comprehensive fields
+      setFormData(prev => ({
+        ...prev,
+        title: generatedIdea.title,
+        subtitle: generatedIdea.subtitle,
+        description: generatedIdea.description,
+        content: generatedIdea.content,
+        type: generatedIdea.type,
+        market: generatedIdea.market,
+        targetAudience: generatedIdea.targetAudience,
+        keyword: generatedIdea.keyword,
+        mainCompetitor: generatedIdea.mainCompetitor,
+        revenuePotential: generatedIdea.revenuePotential,
+        executionDifficulty: generatedIdea.executionDifficulty,
+        gtmStrength: generatedIdea.gtmStrength,
+        opportunityScore: generatedIdea.opportunityScore,
+        problemScore: generatedIdea.problemScore,
+        feasibilityScore: generatedIdea.feasibilityScore,
+        timingScore: generatedIdea.timingScore,
+        executionScore: generatedIdea.executionScore,
+        gtmScore: generatedIdea.gtmScore,
+        opportunityLabel: generatedIdea.opportunityLabel,
+        problemLabel: generatedIdea.problemLabel,
+        feasibilityLabel: generatedIdea.feasibilityLabel,
+        timingLabel: generatedIdea.timingLabel,
+        keywordVolume: generatedIdea.keywordVolume,
+        keywordGrowth: generatedIdea.keywordGrowth,
+        offerTiers: generatedIdea.offerTiers,
+        whyNowAnalysis: generatedIdea.whyNowAnalysis,
+        proofSignals: generatedIdea.proofSignals,
+        marketGap: generatedIdea.marketGap,
+        executionPlan: generatedIdea.executionPlan,
+        frameworkData: generatedIdea.frameworkData,
+        trendAnalysis: generatedIdea.trendAnalysis,
+        keywordData: generatedIdea.keywordData,
+        builderPrompts: generatedIdea.builderPrompts,
+        communitySignals: generatedIdea.communitySignals,
+        signalBadges: generatedIdea.signalBadges,
+        sourceType: 'user_import',
+        sourceData: uploadedHTMLContent,
+      }));
+      
+      // Switch to manual tab to review/edit the generated idea
+      setActiveTab('manual');
+      
+      toast({
+        title: "Solution Generated from HTML!",
+        description: "Your solution has been analyzed and generated. Review and edit as needed.",
+      });
+    } catch (error) {
+      console.error('Error generating from HTML:', error);
+      toast({
+        title: "Generation Failed",
+        description: "Failed to generate solution from HTML. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzingHTML(false);
     }
   };
 
@@ -371,13 +453,42 @@ export default function CreateIdea() {
                     className="mb-4"
                     data-testid="input-file-upload"
                   />
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Upload an HTML file to automatically extract solution details
                   </p>
                   {uploadedFile && (
-                    <Badge variant="secondary" className="mt-2">
-                      {uploadedFile.name}
-                    </Badge>
+                    <div className="space-y-3">
+                      <Badge variant="secondary" className="mt-2">
+                        {uploadedFile.name}
+                      </Badge>
+                      {uploadedHTMLContent && (
+                        <div>
+                          <Button 
+                            onClick={handleGenerateFromHTML} 
+                            disabled={isAnalyzingHTML || !isAuthenticated}
+                            className="w-full"
+                            data-testid="button-generate-from-html"
+                          >
+                            {isAnalyzingHTML ? (
+                              <>
+                                <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                                Analyzing HTML...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-4 h-4 mr-2" />
+                                Generate Solution from HTML
+                              </>
+                            )}
+                          </Button>
+                          {!isAuthenticated && (
+                            <p className="text-xs text-muted-foreground mt-2 text-center">
+                              Please log in to use AI-powered analysis
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </CardContent>
               </Card>

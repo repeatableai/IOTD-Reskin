@@ -1083,6 +1083,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate solution from HTML content
+  app.post('/api/ai/generate-from-html', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const htmlSchema = z.object({
+        htmlContent: z.string().min(1),
+      });
+      
+      const { htmlContent } = htmlSchema.parse(req.body);
+      
+      // Generate idea from HTML using AI service
+      const generatedIdea = await aiService.generateIdeaFromHTML(htmlContent);
+      
+      res.json(generatedIdea);
+    } catch (error) {
+      console.error("Error generating idea from HTML:", error);
+      res.status(500).json({ 
+        message: "Failed to generate idea from HTML",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // AI-powered research report generation
   app.post('/api/ai/research-report', isAuthenticated, async (req: any, res) => {
     try {

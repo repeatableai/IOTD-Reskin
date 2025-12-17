@@ -395,6 +395,156 @@ Make it realistic, innovative, and comprehensive. Use real market insights. Gene
     }
   }
 
+  async generateIdeaFromHTML(htmlContent: string): Promise<GeneratedIdea> {
+    // Extract text content from HTML by removing tags
+    const textContent = htmlContent
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove scripts
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Remove styles
+      .replace(/<[^>]+>/g, ' ') // Remove all HTML tags
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+
+    const prompt = `Analyze this HTML content and generate a comprehensive startup solution analysis following the ideabrowser.com format.
+
+HTML Content:
+${textContent.substring(0, 5000)}${textContent.length > 5000 ? '...' : ''}
+
+Extract all relevant information from the HTML and generate a complete startup analysis including ALL of the following sections:
+
+1. BASIC INFO: Title, subtitle, description, main content, keyword, competitors, scoring
+2. OFFER/VALUE LADDER: Complete 5-tier pricing structure (Lead Magnet, Frontend, Core, Backend, Continuity)
+3. WHY NOW ANALYSIS: 2-3 paragraphs explaining market timing, trends, and catalysts
+4. PROOF & SIGNALS: Evidence of market demand, early indicators, community signals
+5. MARKET GAP: What's missing in the current market that this solves
+6. EXECUTION PLAN: Step-by-step roadmap for building and launching
+7. FRAMEWORK ANALYSIS: Value Equation, Market Matrix, A.C.P. Framework
+8. TREND ANALYSIS: Current trends supporting this idea
+9. KEYWORD DATA: 3 categories with 5 keywords each (Fastest Growing, Highest Volume, Most Relevant)
+10. BUILDER PROMPTS: Ready-to-use prompts for 6 different use cases
+
+Return as JSON with this EXACT structure (same as generateIdea):
+{
+  "title": "Startup name extracted from HTML",
+  "subtitle": "One-line value proposition",
+  "description": "2-3 sentence problem and solution",
+  "content": "4-5 paragraph detailed analysis",
+  "type": "web_app",
+  "market": "B2C",
+  "targetAudience": "target audience",
+  "keyword": "primary SEO keyword",
+  "revenuePotential": "High/Medium/Low explanation",
+  "executionDifficulty": "High/Medium/Low explanation",
+  "gtmStrength": "Strong/Medium/Weak explanation",
+  "mainCompetitor": "Primary competitor",
+  "opportunityScore": 8,
+  "problemScore": 7,
+  "feasibilityScore": 6,
+  "timingScore": 9,
+  "executionScore": 7,
+  "gtmScore": 8,
+  "opportunityLabel": "Excellent Market Fit",
+  "problemLabel": "Clear Pain Point",
+  "feasibilityLabel": "Achievable Build",
+  "timingLabel": "Perfect Timing",
+  "keywordVolume": 50000,
+  "keywordGrowth": 35,
+  "offerTiers": {
+    "leadMagnet": {"name": "Free resource name", "description": "What they get", "price": "$0"},
+    "frontend": {"name": "Entry product", "description": "First paid offer", "price": "$47"},
+    "core": {"name": "Main product", "description": "Core value", "price": "$497"},
+    "backend": {"name": "Premium service", "description": "High-ticket", "price": "$2997"},
+    "continuity": {"name": "Subscription", "description": "Recurring revenue", "price": "$97/mo"}
+  },
+  "whyNowAnalysis": "2-3 paragraph analysis",
+  "proofSignals": "Evidence and signals",
+  "marketGap": "Detailed explanation",
+  "executionPlan": "Step-by-step roadmap",
+  "frameworkData": {
+    "valueEquation": {
+      "dreamOutcome": "What customers want",
+      "perceivedLikelihood": "Why they believe it works",
+      "timeDelay": "How quickly results",
+      "effortSacrifice": "How easy to use"
+    },
+    "marketMatrix": {
+      "marketSize": "Size assessment",
+      "painLevel": "Severity",
+      "targetingEase": "How easy to reach",
+      "purchasingPower": "Ability to pay"
+    },
+    "acpFramework": {
+      "avatar": "Customer avatar",
+      "catalyst": "Purchase trigger",
+      "promise": "Transformation promise"
+    }
+  },
+  "trendAnalysis": "Trend analysis",
+  "keywordData": {
+    "fastestGrowing": [{"keyword": "kw1", "volume": 10000, "growth": "+150%", "competition": "Low"}, ...],
+    "highestVolume": [{"keyword": "kw1", "volume": 500000, "growth": "+10%", "competition": "High"}, ...],
+    "mostRelevant": [{"keyword": "kw1", "volume": 30000, "growth": "+25%", "competition": "Medium"}, ...]
+  },
+  "builderPrompts": {
+    "adCreatives": "prompt text",
+    "brandPackage": "prompt text",
+    "landingPage": "prompt text",
+    "emailSequence": "prompt text",
+    "socialMedia": "prompt text",
+    "productDemo": "prompt text"
+  },
+  "communitySignals": ["signal1", "signal2"],
+  "signalBadges": ["badge1", "badge2"]
+}
+
+Extract as much information as possible from the HTML. If information is missing, make reasonable inferences based on the content.`;
+
+    try {
+      const response = await getAnthropic().messages.create({
+        model: "claude-3-5-sonnet-20241022",
+        max_tokens: 8000,
+        system: "You are an expert business analyst. Analyze HTML content and extract comprehensive startup solution data. Always respond with valid JSON matching the exact structure specified.",
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+      
+      // Parse JSON from response
+      let jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const generatedIdea = JSON.parse(jsonMatch[0]) as GeneratedIdea;
+      
+      // Ensure all required fields have defaults
+      return {
+        ...generatedIdea,
+        type: generatedIdea.type || 'web_app',
+        market: generatedIdea.market || 'B2C',
+        targetAudience: generatedIdea.targetAudience || 'general users',
+        keyword: generatedIdea.keyword || 'startup solution',
+        opportunityScore: generatedIdea.opportunityScore || 7,
+        problemScore: generatedIdea.problemScore || 7,
+        feasibilityScore: generatedIdea.feasibilityScore || 6,
+        timingScore: generatedIdea.timingScore || 8,
+        executionScore: generatedIdea.executionScore || 6,
+        gtmScore: generatedIdea.gtmScore || 7,
+        opportunityLabel: generatedIdea.opportunityLabel || 'Good Opportunity',
+        problemLabel: generatedIdea.problemLabel || 'Clear Problem',
+        feasibilityLabel: generatedIdea.feasibilityLabel || 'Moderate Complexity',
+        timingLabel: generatedIdea.timingLabel || 'Good Timing',
+      };
+    } catch (error) {
+      console.error('Error generating idea from HTML:', error);
+      throw new Error(`Failed to generate idea from HTML: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
   async generateResearchReport(ideaTitle: string, ideaDescription: string): Promise<ResearchReport> {
     const prompt = `Generate a comprehensive business research report for this startup idea:
 
