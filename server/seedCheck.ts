@@ -19,14 +19,27 @@ async function seedDatabaseSafe() {
       console.log(`Tags already exist (${existingTags.length} found)`);
     }
 
-    // Insert ideas (only if they don't exist)
+    // Insert ideas - check by slug to avoid duplicates
     const existingIdeas = await db.select().from(ideas);
-    if (existingIdeas.length === 0) {
-      const insertedIdeas = await db.insert(ideas).values(sampleIdeas).returning();
-      console.log(`Inserted ${insertedIdeas.length} ideas`);
+    const existingSlugs = new Set(existingIdeas.map(i => i.slug));
+    
+    // Filter out ideas that already exist
+    const ideasToInsert = sampleIdeas.filter(idea => !existingSlugs.has(idea.slug));
+    
+    if (ideasToInsert.length > 0) {
+      const insertedIdeas = await db.insert(ideas).values(ideasToInsert).returning();
+      console.log(`Inserted ${insertedIdeas.length} new ideas (${existingIdeas.length} already existed)`);
+      
+      // Get all ideas (existing + newly inserted) for tag relationships
+      const allIdeas = [...existingIdeas, ...insertedIdeas];
 
-      // Create idea-tag relationships
-      const insertedTags = await db.select().from(tags);
+      // Create idea-tag relationships (only for newly inserted ideas to avoid duplicates)
+      const allTags = await db.select().from(tags);
+      const existingRelationships = await db.select().from(ideaTags);
+      const existingRelationshipKeys = new Set(
+        existingRelationships.map(r => `${r.ideaId}-${r.tagId}`)
+      );
+      
       const ideaTagRelationships = [];
       
       const tagMappings = [
@@ -42,15 +55,18 @@ async function seedDatabaseSafe() {
       ];
 
       for (const mapping of tagMappings) {
-        const idea = insertedIdeas.find(i => i.slug === mapping.ideaSlug);
+        const idea = allIdeas.find(i => i.slug === mapping.ideaSlug);
         if (idea) {
           for (const tagName of mapping.tagNames) {
-            const tag = insertedTags.find(t => t.name === tagName);
+            const tag = allTags.find(t => t.name === tagName);
             if (tag) {
-              ideaTagRelationships.push({
-                ideaId: idea.id,
-                tagId: tag.id,
-              });
+              const relationshipKey = `${idea.id}-${tag.id}`;
+              if (!existingRelationshipKeys.has(relationshipKey)) {
+                ideaTagRelationships.push({
+                  ideaId: idea.id,
+                  tagId: tag.id,
+                });
+              }
             }
           }
         }
@@ -58,25 +74,35 @@ async function seedDatabaseSafe() {
 
       if (ideaTagRelationships.length > 0) {
         await db.insert(ideaTags).values(ideaTagRelationships);
-        console.log(`Created ${ideaTagRelationships.length} idea-tag relationships`);
+        console.log(`Created ${ideaTagRelationships.length} new idea-tag relationships`);
       }
 
-      // Insert community signals
-      const communitySignalsWithIdeaIds = sampleCommunitySignals.map((signal, index) => {
-        const ideaIndex = Math.floor(index / 2);
-        const idea = insertedIdeas[ideaIndex];
-        return {
-          ...signal,
-          ideaId: idea?.id || insertedIdeas[0].id,
-        };
-      });
+      // Insert community signals (only for newly inserted ideas)
+      if (insertedIdeas.length > 0) {
+        const existingSignals = await db.select().from(communitySignals);
+        const existingSignalKeys = new Set(existingSignals.map(s => `${s.ideaId}-${s.platform}-${s.name}`));
+        
+        const communitySignalsWithIdeaIds = sampleCommunitySignals
+          .map((signal, index) => {
+            const ideaIndex = Math.floor(index / 2);
+            const idea = insertedIdeas[ideaIndex] || insertedIdeas[0];
+            return {
+              ...signal,
+              ideaId: idea?.id || insertedIdeas[0].id,
+            };
+          })
+          .filter(signal => {
+            const signalKey = `${signal.ideaId}-${signal.platform}-${signal.name}`;
+            return !existingSignalKeys.has(signalKey);
+          });
 
-      if (communitySignalsWithIdeaIds.length > 0) {
-        await db.insert(communitySignals).values(communitySignalsWithIdeaIds);
-        console.log(`Inserted ${communitySignalsWithIdeaIds.length} community signals`);
+        if (communitySignalsWithIdeaIds.length > 0) {
+          await db.insert(communitySignals).values(communitySignalsWithIdeaIds);
+          console.log(`Inserted ${communitySignalsWithIdeaIds.length} new community signals`);
+        }
       }
     } else {
-      console.log(`Ideas already exist (${existingIdeas.length} found)`);
+      console.log(`All seed ideas already exist (${existingIdeas.length} found)`);
     }
 
     console.log("Database seeding completed successfully!");
@@ -98,8 +124,19 @@ export async function checkAndSeedDatabase() {
       console.log("Seeding completed successfully");
       return true;
     } else {
-      console.log(`Database already has data (${existingIdeas.length} ideas found), skipping seed`);
-      return false;
+      // Check if we have the expected number of seed ideas (9)
+      const ideaCount = await db.select().from(ideas);
+      const expectedSeedIdeas = 9; // Number of ideas in sampleIdeas
+      
+      if (ideaCount.length < expectedSeedIdeas) {
+        console.log(`Database has ${ideaCount.length} ideas but expected ${expectedSeedIdeas} seed ideas. Seeding missing data...`);
+        await seedDatabaseSafe();
+        console.log("Seeding completed successfully");
+        return true;
+      } else {
+        console.log(`Database already has data (${ideaCount.length} ideas found), skipping seed`);
+        return false;
+      }
     }
   } catch (error) {
     console.error("Error checking/seeding database:", error);
