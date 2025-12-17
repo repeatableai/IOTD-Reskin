@@ -1,11 +1,14 @@
 /**
  * Seed Check - Automatically seeds database if empty
  * This runs at startup to ensure the database has data
+ * If ideas-export.json exists, imports all ideas from it automatically
  */
 import { db } from "./db";
 import { ideas, tags, ideaTags, communitySignals } from "@shared/schema";
 import { sampleIdeas, sampleTags, sampleCommunitySignals } from "./seedData";
 import { eq } from "drizzle-orm";
+import * as fs from "fs";
+import * as path from "path";
 
 export async function seedDatabaseSafe() {
   try {
@@ -132,6 +135,118 @@ export async function seedDatabaseSafe() {
   }
 }
 
+async function importIdeasFromExport(exportData: any) {
+  console.log("[Import] Starting import from ideas-export.json...");
+  
+  // Import tags first
+  const allTags = await db.select().from(tags);
+  const existingTagNames = new Set(allTags.map(t => t.name));
+  
+  if (exportData.tags && Array.isArray(exportData.tags)) {
+    const tagsToInsert = exportData.tags.filter((t: any) => !existingTagNames.has(t.name));
+    if (tagsToInsert.length > 0) {
+      await db.insert(tags).values(tagsToInsert);
+      console.log(`[Import] Imported ${tagsToInsert.length} new tags`);
+    }
+  }
+  
+  // Get all tags for mapping
+  const allTagsAfter = await db.select().from(tags);
+  const tagMap = new Map(allTagsAfter.map(t => [t.name, t.id]));
+  
+  // Get existing data
+  const existingIdeas = await db.select().from(ideas);
+  const existingSlugs = new Set(existingIdeas.map(i => i.slug));
+  const existingRelationships = await db.select().from(ideaTags);
+  const existingRelationshipKeys = new Set(
+    existingRelationships.map(r => `${r.ideaId}-${r.tagId}`)
+  );
+  const existingSignals = await db.select().from(communitySignals);
+  const existingSignalKeys = new Set(
+    existingSignals.map(s => `${s.ideaId}-${s.platform}-${s.name}`)
+  );
+  
+  let importedCount = 0;
+  let skippedCount = 0;
+  
+  // Import ideas
+  for (const ideaData of exportData.ideas) {
+    const { tags: ideaTagsData, communitySignals: ideaSignalsData, ...ideaFields } = ideaData;
+    const { id, createdAt, updatedAt, ...ideaToInsert } = ideaFields;
+    
+    // Ensure isPublished is true
+    ideaToInsert.isPublished = true;
+    
+    if (existingSlugs.has(ideaToInsert.slug)) {
+      skippedCount++;
+      continue;
+    }
+    
+    try {
+      // Insert new idea
+      const [insertedIdea] = await db.insert(ideas).values(ideaToInsert).returning();
+      importedCount++;
+      
+      // Import tags
+      if (ideaTagsData && Array.isArray(ideaTagsData) && ideaTagsData.length > 0) {
+        const tagRelationships = ideaTagsData
+          .map((tag: any) => {
+            const tagId = tagMap.get(tag.name);
+            return tagId ? { ideaId: insertedIdea.id, tagId } : null;
+          })
+          .filter((r: any) => r !== null)
+          .filter((r: any) => {
+            const key = `${r.ideaId}-${r.tagId}`;
+            return !existingRelationshipKeys.has(key);
+          });
+        
+        if (tagRelationships.length > 0) {
+          await db.insert(ideaTags).values(tagRelationships);
+          tagRelationships.forEach((r: any) => {
+            existingRelationshipKeys.add(`${r.ideaId}-${r.tagId}`);
+          });
+        }
+      }
+      
+      // Import community signals
+      if (ideaSignalsData && Array.isArray(ideaSignalsData) && ideaSignalsData.length > 0) {
+        const signalsToInsert = ideaSignalsData
+          .map((signal: any) => ({
+            ideaId: insertedIdea.id,
+            platform: signal.platform,
+            signalType: signal.signalType,
+            name: signal.name,
+            memberCount: signal.memberCount,
+            engagementScore: signal.engagementScore,
+            url: signal.url,
+            description: signal.description,
+          }))
+          .filter((signal: any) => {
+            const key = `${signal.ideaId}-${signal.platform}-${signal.name}`;
+            return !existingSignalKeys.has(key);
+          });
+        
+        if (signalsToInsert.length > 0) {
+          await db.insert(communitySignals).values(signalsToInsert);
+          signalsToInsert.forEach((s: any) => {
+            existingSignalKeys.add(`${s.ideaId}-${s.platform}-${s.name}`);
+          });
+        }
+      }
+      
+      // Log progress every 100 ideas
+      if (importedCount % 100 === 0) {
+        console.log(`[Import] Progress: ${importedCount} imported, ${skippedCount} skipped`);
+      }
+    } catch (error: any) {
+      console.error(`[Import] Error importing idea ${ideaToInsert.slug}:`, error.message);
+      skippedCount++;
+    }
+  }
+  
+  console.log(`[Import] Complete: ${importedCount} imported, ${skippedCount} skipped`);
+}
+
 export async function checkAndSeedDatabase() {
   try {
     console.log("[Seed Check] Starting database check...");
@@ -141,6 +256,36 @@ export async function checkAndSeedDatabase() {
     console.log(`[Seed Check] Found ${existingIdeas.length} ideas in database`);
     
     if (existingIdeas.length === 0) {
+      // Check if ideas-export.json exists
+      const exportPath = path.join(process.cwd(), 'ideas-export.json');
+      
+      if (fs.existsSync(exportPath)) {
+        console.log("[Seed Check] Found ideas-export.json, importing all ideas...");
+        try {
+          const fileContent = fs.readFileSync(exportPath, 'utf-8');
+          const exportData = JSON.parse(fileContent);
+          
+          if (exportData.ideas && Array.isArray(exportData.ideas) && exportData.ideas.length > 0) {
+            console.log(`[Seed Check] Importing ${exportData.ideas.length} ideas from export file...`);
+            await importIdeasFromExport(exportData);
+            console.log("[Seed Check] Import from ideas-export.json completed successfully");
+            
+            // Verify import worked
+            const verifyIdeas = await db.select().from(ideas);
+            const publishedIdeas = verifyIdeas.filter(i => i.isPublished);
+            console.log(`[Seed Check] Verification: ${verifyIdeas.length} total ideas, ${publishedIdeas.length} published`);
+            
+            return true;
+          } else {
+            console.log("[Seed Check] ideas-export.json exists but has no ideas, falling back to seed data...");
+          }
+        } catch (importError: any) {
+          console.error("[Seed Check] Failed to import from ideas-export.json:", importError.message);
+          console.log("[Seed Check] Falling back to seed data...");
+        }
+      }
+      
+      // Fallback to seed data if no export file or import failed
       console.log("[Seed Check] Database is empty, seeding with sample data...");
       await seedDatabaseSafe();
       console.log("[Seed Check] Seeding completed successfully");
