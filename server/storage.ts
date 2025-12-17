@@ -140,12 +140,13 @@ export class DatabaseStorage implements IStorage {
 
   // Ideas operations
   async getIdeas(filters: IdeaFilters, userId?: string): Promise<{ ideas: Idea[]; total: number }> {
-    // Handle For You personalized recommendations
-    if (filters.forYou && userId) {
-      return this.getForYouIdeas(userId, filters.limit, filters.offset);
-    }
-    
-    const conditions = [eq(ideas.isPublished, true)];
+    try {
+      // Handle For You personalized recommendations
+      if (filters.forYou && userId) {
+        return this.getForYouIdeas(userId, filters.limit, filters.offset);
+      }
+      
+      const conditions = [eq(ideas.isPublished, true)];
 
     if (filters.search) {
       const searchCondition = or(
@@ -228,7 +229,7 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    const whereCondition = and(...conditions);
+    const whereCondition = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Determine ordering based on sortBy
     let orderByClause;
@@ -248,24 +249,32 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Build and execute the main query with all clauses in one chain
-    const ideasResult = await db
-      .select()
-      .from(ideas)
-      .where(whereCondition)
+    let query = db.select().from(ideas);
+    if (whereCondition) {
+      query = query.where(whereCondition) as any;
+    }
+    const ideasResult = await query
       .orderBy(...orderByClause)
-      .limit(filters.limit)
-      .offset(filters.offset);
+      .limit(filters.limit || 20)
+      .offset(filters.offset || 0);
 
     // Count query
-    const countResult = await db
-      .select({ count: sql`count(*)` })
-      .from(ideas)
-      .where(whereCondition);
+    let countQuery = db.select({ count: sql<number>`count(*)` }).from(ideas);
+    if (whereCondition) {
+      countQuery = countQuery.where(whereCondition) as any;
+    }
+    const countResult = await countQuery;
 
     return {
-      ideas: ideasResult,
+      ideas: ideasResult || [],
       total: Number(countResult[0]?.count || 0)
     };
+    } catch (error: any) {
+      console.error("[getIdeas] Database error:", error?.message);
+      console.error("[getIdeas] Error stack:", error?.stack);
+      console.error("[getIdeas] Filters:", JSON.stringify(filters, null, 2));
+      throw error;
+    }
   }
 
   async getIdeaBySlug(slug: string): Promise<Idea | undefined> {
@@ -297,30 +306,44 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getFeaturedIdea(date?: string): Promise<Idea | undefined> {
-    // Get all published ideas
-    const allIdeas = await db
-      .select()
-      .from(ideas)
-      .where(eq(ideas.isPublished, true))
-      .orderBy(asc(ideas.createdAt)); // Consistent ordering
-    
-    if (allIdeas.length === 0) {
-      return undefined;
+    try {
+      // Get all published ideas
+      const allIdeas = await db
+        .select()
+        .from(ideas)
+        .where(eq(ideas.isPublished, true))
+        .orderBy(asc(ideas.createdAt)); // Consistent ordering
+      
+      if (!allIdeas || allIdeas.length === 0) {
+        console.warn("[getFeaturedIdea] No published ideas found in database");
+        return undefined;
+      }
+      
+      // Use date to deterministically select an idea
+      const dateStr = date || new Date().toISOString().split('T')[0];
+      
+      // Simple hash function to convert date string to a number
+      let hash = 0;
+      for (let i = 0; i < dateStr.length; i++) {
+        hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
+        hash = hash & hash; // Convert to 32-bit integer
+      }
+      
+      // Use absolute value and modulo to get an index
+      const index = Math.abs(hash) % allIdeas.length;
+      const selectedIdea = allIdeas[index];
+      
+      if (!selectedIdea) {
+        console.warn("[getFeaturedIdea] Selected idea is undefined, returning first idea");
+        return allIdeas[0];
+      }
+      
+      return selectedIdea;
+    } catch (error: any) {
+      console.error("[getFeaturedIdea] Database error:", error?.message);
+      console.error("[getFeaturedIdea] Error stack:", error?.stack);
+      throw error;
     }
-    
-    // Use date to deterministically select an idea
-    const dateStr = date || new Date().toISOString().split('T')[0];
-    
-    // Simple hash function to convert date string to a number
-    let hash = 0;
-    for (let i = 0; i < dateStr.length; i++) {
-      hash = ((hash << 5) - hash) + dateStr.charCodeAt(i);
-      hash = hash & hash; // Convert to 32-bit integer
-    }
-    
-    // Use absolute value and modulo to get an index
-    const index = Math.abs(hash) % allIdeas.length;
-    return allIdeas[index];
   }
 
   async getTopIdeas(limit: number): Promise<Idea[]> {
