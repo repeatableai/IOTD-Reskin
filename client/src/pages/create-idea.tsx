@@ -174,7 +174,17 @@ export default function CreateIdea() {
       };
       reader.readAsText(file);
     } else {
-      // For PDF, DOCX, Excel, JSON - upload to backend for parsing
+      // For PDF, DOCX, Excel - upload to backend for parsing
+      if (!isAuthenticated) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to parse PDF, DOCX, and Excel files.",
+          variant: "destructive",
+        });
+        setUploadedFile(null);
+        return;
+      }
+      
       setIsParsingDocument(true);
       try {
         const formData = new FormData();
@@ -188,7 +198,31 @@ export default function CreateIdea() {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to parse document');
+          // Check if response is JSON or HTML
+          const contentType = response.headers.get('content-type');
+          let errorMessage = 'Failed to parse document';
+          
+          if (contentType?.includes('application/json')) {
+            try {
+              const errorData = await response.json();
+              errorMessage = errorData.message || errorData.error || errorMessage;
+            } catch {
+              errorMessage = `${response.status}: ${response.statusText}`;
+            }
+          } else {
+            // If it's HTML (like an error page), get status text
+            errorMessage = `${response.status}: ${response.statusText}. Please ensure you're logged in.`;
+          }
+          
+          throw new Error(errorMessage);
+        }
+        
+        // Ensure response is JSON before parsing
+        const contentType = response.headers.get('content-type');
+        if (!contentType?.includes('application/json')) {
+          const text = await response.text();
+          console.error('Non-JSON response:', text.substring(0, 200));
+          throw new Error('Server returned non-JSON response. Please check authentication.');
         }
         
         const parsed = await response.json();
@@ -205,9 +239,10 @@ export default function CreateIdea() {
         });
       } catch (error) {
         console.error('Error parsing document:', error);
+        const errorMessage = error instanceof Error ? error.message : 'Failed to parse document';
         toast({
           title: "Parse Failed",
-          description: "Failed to parse document. Please try again.",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {

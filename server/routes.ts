@@ -1118,7 +1118,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Parse document and extract text content
-  app.post('/api/documents/parse', isAuthenticated, upload.single('file'), async (req: any, res) => {
+  // Note: Multer must come before isAuthenticated to parse multipart/form-data
+  app.post('/api/documents/parse', upload.single('file'), isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       
