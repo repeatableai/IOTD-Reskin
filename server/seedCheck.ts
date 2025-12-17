@@ -5,6 +5,7 @@
 import { db } from "./db";
 import { ideas, tags, ideaTags, communitySignals } from "@shared/schema";
 import { sampleIdeas, sampleTags, sampleCommunitySignals } from "./seedData";
+import { eq } from "drizzle-orm";
 
 export async function seedDatabaseSafe() {
   try {
@@ -23,8 +24,26 @@ export async function seedDatabaseSafe() {
     const existingIdeas = await db.select().from(ideas);
     const existingSlugs = new Set(existingIdeas.map(i => i.slug));
     
-    // Filter out ideas that already exist
-    const ideasToInsert = sampleIdeas.filter(idea => !existingSlugs.has(idea.slug));
+    // Ensure all existing seed ideas are published
+    const seedSlugs = new Set(sampleIdeas.map(i => i.slug));
+    const unpublishedSeedIdeas = existingIdeas.filter(
+      idea => seedSlugs.has(idea.slug) && !idea.isPublished
+    );
+    
+    if (unpublishedSeedIdeas.length > 0) {
+      console.log(`Found ${unpublishedSeedIdeas.length} unpublished seed ideas, publishing them...`);
+      for (const idea of unpublishedSeedIdeas) {
+        await db.update(ideas)
+          .set({ isPublished: true })
+          .where(eq(ideas.id, idea.id));
+      }
+      console.log(`Published ${unpublishedSeedIdeas.length} seed ideas`);
+    }
+    
+    // Filter out ideas that already exist and ensure isPublished is true
+    const ideasToInsert = sampleIdeas
+      .filter(idea => !existingSlugs.has(idea.slug))
+      .map(idea => ({ ...idea, isPublished: true })); // Explicitly set isPublished to true
     
     if (ideasToInsert.length > 0) {
       const insertedIdeas = await db.insert(ideas).values(ideasToInsert).returning();
@@ -115,31 +134,52 @@ export async function seedDatabaseSafe() {
 
 export async function checkAndSeedDatabase() {
   try {
+    console.log("[Seed Check] Starting database check...");
+    
     // Check if database has any ideas
     const existingIdeas = await db.select().from(ideas).limit(1);
+    console.log(`[Seed Check] Found ${existingIdeas.length} ideas in database`);
     
     if (existingIdeas.length === 0) {
-      console.log("Database is empty, seeding with sample data...");
+      console.log("[Seed Check] Database is empty, seeding with sample data...");
       await seedDatabaseSafe();
-      console.log("Seeding completed successfully");
+      console.log("[Seed Check] Seeding completed successfully");
+      
+      // Verify seeding worked
+      const verifyIdeas = await db.select().from(ideas);
+      const publishedIdeas = verifyIdeas.filter(i => i.isPublished);
+      console.log(`[Seed Check] Verification: ${verifyIdeas.length} total ideas, ${publishedIdeas.length} published`);
+      
       return true;
     } else {
       // Check if we have the expected number of seed ideas (9)
       const ideaCount = await db.select().from(ideas);
+      const publishedCount = ideaCount.filter(i => i.isPublished).length;
       const expectedSeedIdeas = 9; // Number of ideas in sampleIdeas
       
+      console.log(`[Seed Check] Database has ${ideaCount.length} total ideas, ${publishedCount} published`);
+      
       if (ideaCount.length < expectedSeedIdeas) {
-        console.log(`Database has ${ideaCount.length} ideas but expected ${expectedSeedIdeas} seed ideas. Seeding missing data...`);
+        console.log(`[Seed Check] Database has ${ideaCount.length} ideas but expected ${expectedSeedIdeas} seed ideas. Seeding missing data...`);
         await seedDatabaseSafe();
-        console.log("Seeding completed successfully");
+        console.log("[Seed Check] Seeding completed successfully");
+        
+        // Verify again
+        const verifyIdeas = await db.select().from(ideas);
+        const verifyPublished = verifyIdeas.filter(i => i.isPublished);
+        console.log(`[Seed Check] Verification: ${verifyIdeas.length} total ideas, ${verifyPublished.length} published`);
+        
         return true;
       } else {
-        console.log(`Database already has data (${ideaCount.length} ideas found), skipping seed`);
+        console.log(`[Seed Check] Database already has ${ideaCount.length} ideas (${publishedCount} published), running seed check to ensure published status...`);
+        // Still run seedDatabaseSafe to ensure existing seed ideas are published
+        await seedDatabaseSafe();
         return false;
       }
     }
   } catch (error) {
-    console.error("Error checking/seeding database:", error);
+    console.error("[Seed Check] Error checking/seeding database:", error);
+    console.error("[Seed Check] Error details:", error instanceof Error ? error.stack : error);
     // Don't throw - allow app to start even if seeding fails
     return false;
   }
