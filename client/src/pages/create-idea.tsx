@@ -81,7 +81,9 @@ export default function CreateIdea() {
   const [importText, setImportText] = useState('');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadedHTMLContent, setUploadedHTMLContent] = useState<string | null>(null);
+  const [uploadedDocumentContent, setUploadedDocumentContent] = useState<string | null>(null);
   const [isAnalyzingHTML, setIsAnalyzingHTML] = useState(false);
+  const [isParsingDocument, setIsParsingDocument] = useState(false);
 
   // Redirect if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -145,28 +147,82 @@ export default function CreateIdea() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      setUploadedFile(file);
-      if (file.type === 'text/html' || file.name.endsWith('.html')) {
-        // Read HTML file
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          const htmlContent = e.target?.result as string;
-          setUploadedHTMLContent(htmlContent);
-          parseImportedContent(htmlContent, 'html');
-        };
-        reader.readAsText(file);
+    if (!file) return;
+
+    setUploadedFile(file);
+    
+    const fileExtension = file.name.split('.').pop()?.toLowerCase() || '';
+    const isHTML = file.type === 'text/html' || fileExtension === 'html' || fileExtension === 'htm';
+    const isText = file.type === 'text/plain' || fileExtension === 'txt' || fileExtension === 'md' || fileExtension === 'markdown';
+    const isJSON = file.type === 'application/json' || fileExtension === 'json';
+    
+    // Handle HTML, text, and JSON files directly in browser
+    if (isHTML || isText || isJSON) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        if (isHTML) {
+          setUploadedHTMLContent(content);
+        }
+        setUploadedDocumentContent(content);
+        if (isHTML) {
+          setUploadedHTMLContent(content);
+        }
+        parseImportedContent(content, isHTML ? 'html' : isJSON ? 'text' : 'text');
+      };
+      reader.readAsText(file);
+    } else {
+      // For PDF, DOCX, Excel, JSON - upload to backend for parsing
+      setIsParsingDocument(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/documents/parse', {
+          method: 'POST',
+          credentials: 'include', // Include cookies for authentication
+          // Don't set Content-Type - let browser set it with boundary for FormData
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to parse document');
+        }
+        
+        const parsed = await response.json();
+        setUploadedDocumentContent(parsed.text);
+        
+        // Also set HTML content for compatibility with existing generate function
+        if (fileExtension === 'html' || fileExtension === 'htm') {
+          setUploadedHTMLContent(parsed.text);
+        }
+        
+        toast({
+          title: "Document Parsed",
+          description: `Successfully extracted ${parsed.metadata?.wordCount || 0} words from ${parsed.type.toUpperCase()} file.`,
+        });
+      } catch (error) {
+        console.error('Error parsing document:', error);
+        toast({
+          title: "Parse Failed",
+          description: "Failed to parse document. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsParsingDocument(false);
       }
     }
   };
 
   const handleGenerateFromHTML = async () => {
-    if (!uploadedHTMLContent || !isAuthenticated) {
+    const contentToAnalyze = uploadedHTMLContent || uploadedDocumentContent;
+    
+    if (!contentToAnalyze || !isAuthenticated) {
       toast({
         title: "Authentication Required",
-        description: "Please log in to use AI-powered HTML analysis.",
+        description: "Please log in to use AI-powered document analysis.",
         variant: "destructive",
       });
       return;
@@ -175,9 +231,16 @@ export default function CreateIdea() {
     setIsAnalyzingHTML(true);
     
     try {
-      const response = await apiRequest('POST', '/api/ai/generate-from-html', {
-        htmlContent: uploadedHTMLContent,
-      });
+      // Use the document endpoint if we have document content, otherwise use HTML endpoint
+      const endpoint = uploadedDocumentContent && !uploadedHTMLContent 
+        ? '/api/ai/generate-from-document'
+        : '/api/ai/generate-from-html';
+      
+      const payload = uploadedDocumentContent && !uploadedHTMLContent
+        ? { textContent: uploadedDocumentContent, documentType: uploadedFile?.name.split('.').pop() }
+        : { htmlContent: contentToAnalyze };
+      
+      const response = await apiRequest('POST', endpoint, payload);
       const generatedIdea = await response.json();
       
       // Map AI response to form data with all comprehensive fields
@@ -219,7 +282,7 @@ export default function CreateIdea() {
         communitySignals: generatedIdea.communitySignals,
         signalBadges: generatedIdea.signalBadges,
         sourceType: 'user_import',
-        sourceData: uploadedHTMLContent,
+        sourceData: uploadedHTMLContent || uploadedDocumentContent || '',
       }));
       
       // Switch to manual tab to review/edit the generated idea
@@ -442,42 +505,49 @@ export default function CreateIdea() {
                 <CardHeader>
                   <CardTitle className="flex items-center">
                     <Code className="w-5 h-5 mr-2" />
-                    Upload HTML File
+                    Upload Document
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <input
                     type="file"
-                    accept=".html,.htm"
+                    accept=".html,.htm,.pdf,.docx,.xlsx,.xls,.md,.markdown,.json,.txt"
                     onChange={handleFileUpload}
                     className="mb-4"
                     data-testid="input-file-upload"
+                    disabled={isParsingDocument}
                   />
                   <p className="text-sm text-muted-foreground mb-4">
-                    Upload an HTML file to automatically extract solution details
+                    Upload a document (HTML, PDF, DOCX, Excel, Markdown, JSON, or TXT) to extract and analyze content
                   </p>
+                  {isParsingDocument && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                      <Sparkles className="w-4 h-4 animate-spin" />
+                      Parsing document...
+                    </div>
+                  )}
                   {uploadedFile && (
                     <div className="space-y-3">
                       <Badge variant="secondary" className="mt-2">
                         {uploadedFile.name}
                       </Badge>
-                      {uploadedHTMLContent && (
+                      {(uploadedHTMLContent || uploadedDocumentContent) && !isParsingDocument && (
                         <div>
                           <Button 
                             onClick={handleGenerateFromHTML} 
                             disabled={isAnalyzingHTML || !isAuthenticated}
                             className="w-full"
-                            data-testid="button-generate-from-html"
+                            data-testid="button-generate-from-document"
                           >
                             {isAnalyzingHTML ? (
                               <>
                                 <Sparkles className="w-4 h-4 mr-2 animate-spin" />
-                                Analyzing HTML...
+                                Analyzing Document...
                               </>
                             ) : (
                               <>
                                 <Sparkles className="w-4 h-4 mr-2" />
-                                Generate Solution from HTML
+                                Generate Solution from {uploadedFile?.name.split('.').pop()?.toUpperCase() || 'Document'}
                               </>
                             )}
                           </Button>

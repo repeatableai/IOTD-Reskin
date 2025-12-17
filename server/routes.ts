@@ -11,6 +11,16 @@ import { externalDataService } from "./externalDataService";
 import { getTrendData, getMultipleTrends, getRelatedQueries } from "./googleTrendsService";
 import Anthropic from '@anthropic-ai/sdk';
 import PDFDocument from 'pdfkit';
+import { documentParser } from './documentParser';
+import multer from 'multer';
+
+// Configure multer for file uploads (memory storage)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+});
 
 // Initialize Claude AI client for building prompts
 // Note: Using claude-sonnet-4-20250514 (latest model)
@@ -1102,6 +1112,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating idea from HTML:", error);
       res.status(500).json({ 
         message: "Failed to generate idea from HTML",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Parse document and extract text content
+  app.post('/api/documents/parse', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      if (!req.file) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      const { buffer, originalname, mimetype } = req.file;
+      
+      // Parse the document
+      const parsed = await documentParser.parseDocument(buffer, originalname, mimetype);
+      
+      res.json(parsed);
+    } catch (error) {
+      console.error("Error parsing document:", error);
+      res.status(500).json({ 
+        message: "Failed to parse document",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Generate solution from parsed document content
+  app.post('/api/ai/generate-from-document', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const documentSchema = z.object({
+        textContent: z.string().min(1),
+        documentType: z.string().optional(),
+      });
+      
+      const { textContent, documentType } = documentSchema.parse(req.body);
+      
+      // Generate idea from document text using AI service (reuse HTML method as it works with any text)
+      const generatedIdea = await aiService.generateIdeaFromHTML(textContent);
+      
+      res.json(generatedIdea);
+    } catch (error) {
+      console.error("Error generating idea from document:", error);
+      res.status(500).json({ 
+        message: "Failed to generate idea from document",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
