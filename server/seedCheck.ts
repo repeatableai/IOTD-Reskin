@@ -6,7 +6,7 @@ import { db } from "./db";
 import { ideas, tags, ideaTags, communitySignals } from "@shared/schema";
 import { sampleIdeas, sampleTags, sampleCommunitySignals } from "./seedData";
 
-async function seedDatabaseSafe() {
+export async function seedDatabaseSafe() {
   try {
     console.log("Starting database seeding...");
 

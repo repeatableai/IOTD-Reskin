@@ -2738,6 +2738,32 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Manual re-seed endpoint (for emergencies - use with caution)
+  app.post('/api/admin/reseed', isAuthenticated, async (req: any, res) => {
+    try {
+      // Only allow in development or if explicitly enabled
+      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_RESEED) {
+        return res.status(403).json({ 
+          message: "Re-seeding is disabled in production. Set ALLOW_RESEED=true to enable." 
+        });
+      }
+
+      const { seedDatabaseSafe } = await import('./seedCheck');
+      await seedDatabaseSafe();
+      
+      res.json({ 
+        message: "Database re-seeded successfully",
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error("Error re-seeding database:", error);
+      res.status(500).json({ 
+        message: "Failed to re-seed database",
+        error: error.message 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
