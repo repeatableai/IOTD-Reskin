@@ -2842,17 +2842,30 @@ Be practical, encouraging, and focus on helping them make real progress.`;
   // Bulk import ideas from JSON export file
   app.post('/api/admin/import-ideas', upload.single('file'), async (req: any, res) => {
     try {
-      // In production, require auth and explicit flag
+      // One-time import token (for initial data sync)
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      // In production, require auth and explicit flag OR one-time token
       if (process.env.NODE_ENV === 'production') {
-        // Check auth
-        if (!req.user) {
-          return res.status(401).json({ message: "Authentication required" });
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        const hasFlag = !!process.env.ALLOW_BULK_IMPORT;
+        
+        // Allow if: (has auth AND has flag) OR (has valid token)
+        if (!hasValidToken && (!hasAuth || !hasFlag)) {
+          if (!hasAuth) {
+            return res.status(401).json({ message: "Authentication required" });
+          }
+          if (!hasFlag) {
+            return res.status(403).json({ 
+              message: "Bulk import is disabled in production. Set ALLOW_BULK_IMPORT=true to enable, or use importToken." 
+            });
+          }
         }
-        // Check flag
-        if (!process.env.ALLOW_BULK_IMPORT) {
-          return res.status(403).json({ 
-            message: "Bulk import is disabled in production. Set ALLOW_BULK_IMPORT=true to enable." 
-          });
+        
+        if (hasValidToken) {
+          console.log("[Bulk Import] Using one-time import token");
         }
       }
       // In development, allow without auth for easier testing
