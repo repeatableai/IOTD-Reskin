@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "wouter";
 import Header from "@/components/Header";
-import { ArrowLeft, TrendingUp, Calendar, BarChart3, Search, ExternalLink, Loader2, RefreshCw, DollarSign, Target, Users } from "lucide-react";
+import { ArrowLeft, TrendingUp, Calendar, BarChart3, Search, Loader2, RefreshCw, DollarSign, Target, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -612,16 +612,6 @@ export default function TrendDetail() {
               Find Related Ideas
             </Button>
           </Link>
-          <Button variant="outline" className="gap-2" asChild>
-            <a 
-              href={`https://trends.google.com/trends/explore?q=${encodeURIComponent(trend.title)}`} 
-              target="_blank" 
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="w-4 h-4" />
-              View on Google Trends
-            </a>
-          </Button>
         </div>
       </div>
     </div>

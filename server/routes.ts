@@ -13,6 +13,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import PDFDocument from 'pdfkit';
 import { documentParser } from './documentParser';
 import multer from 'multer';
+import { spreadsheetParser } from './spreadsheetParser';
+import { spreadsheetMapper } from './spreadsheetMapper';
+import { slugService } from './slugService';
+import { imageProcessor } from './imageProcessor';
+import puppeteer from 'puppeteer';
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -20,15 +25,32 @@ const upload = multer({
   limits: {
     fileSize: 50 * 1024 * 1024, // 50MB limit
   },
+  fileFilter: (req, file, cb) => {
+    // Accept all file types for parsing
+    cb(null, true);
+  },
 });
 
 // Initialize Claude AI client for building prompts
-// Note: Using claude-sonnet-4-20250514 (latest model)
+// Note: Using claude-opus-4-5-20251101 (latest model)
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // CRITICAL: Early API request logger - runs before everything else
+  // Use a function to match all API routes
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api/') || req.originalUrl.startsWith('/api/')) {
+      console.log(`[API Request] ${req.method} ${req.originalUrl} - ${new Date().toISOString()}`);
+      console.log(`[API Request] Path: ${req.path}`);
+      console.log(`[API Request] Content-Type: ${req.headers['content-type']}`);
+      // Ensure JSON response for API routes
+      res.setHeader('Content-Type', 'application/json');
+    }
+    next();
+  });
+  
   // Health check endpoint (for Render/load balancers)
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -1001,6 +1023,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const ideaData = req.body;
       
+      // Validate required fields
+      if (!ideaData.title || !ideaData.description || !ideaData.content) {
+        return res.status(400).json({ 
+          message: "Missing required fields: title, description, and content are required" 
+        });
+      }
+      
       // Generate slug from title
       const slug = ideaData.title
         .toLowerCase()
@@ -1009,33 +1038,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .replace(/-+/g, '-')
         .trim();
       
+      // Ensure signalBadges is an array (schema expects array)
+      const signalBadges = Array.isArray(ideaData.signalBadges) 
+        ? ideaData.signalBadges 
+        : (ideaData.signalBadges ? [ideaData.signalBadges] : []);
+      
       // Set default scores for user-created ideas
       const newIdea = {
         ...ideaData,
         slug,
         createdBy: userId,
-        opportunityScore: 7,
-        opportunityLabel: "Good",
-        problemScore: 7,
-        problemLabel: "Good",
-        feasibilityScore: 7,
-        feasibilityLabel: "Good",
-        timingScore: 7,
-        timingLabel: "Good",
-        executionScore: 7,
-        gtmScore: 7,
-        revenuePotential: "TBD",
-        revenuePotentialNum: 1000000,
-        executionDifficulty: "Medium",
-        gtmStrength: "TBD",
-        isPublished: true,
+        opportunityScore: ideaData.opportunityScore ?? 7,
+        opportunityLabel: ideaData.opportunityLabel ?? "Good",
+        problemScore: ideaData.problemScore ?? 7,
+        problemLabel: ideaData.problemLabel ?? "Good",
+        feasibilityScore: ideaData.feasibilityScore ?? 7,
+        feasibilityLabel: ideaData.feasibilityLabel ?? "Good",
+        timingScore: ideaData.timingScore ?? 7,
+        timingLabel: ideaData.timingLabel ?? "Good",
+        executionScore: ideaData.executionScore ?? 7,
+        gtmScore: ideaData.gtmScore ?? 7,
+        revenuePotential: ideaData.revenuePotential ?? "TBD",
+        revenuePotentialNum: ideaData.revenuePotentialNum ?? 1000000,
+        executionDifficulty: ideaData.executionDifficulty ?? "Medium",
+        gtmStrength: ideaData.gtmStrength ?? "TBD",
+        isPublished: ideaData.isPublished !== undefined ? ideaData.isPublished : true,
+        signalBadges, // Use processed array
       };
 
       const createdIdea = await storage.createIdea(newIdea);
       res.json(createdIdea);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating idea:", error);
-      res.status(500).json({ message: "Failed to create idea" });
+      console.error("Error details:", {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+        column: error.column,
+      });
+      console.error("Request body keys:", Object.keys(req.body));
+      console.error("Title:", req.body.title);
+      console.error("Description length:", req.body.description?.length);
+      console.error("Content length:", req.body.content?.length);
+      res.status(500).json({ 
+        message: "Failed to create idea",
+        error: error.message || "Unknown error",
+        ...(process.env.NODE_ENV === 'development' && {
+          details: error.detail,
+          constraint: error.constraint,
+        })
+      });
+    }
+  });
+
+  // Update idea endpoint
+  app.put('/api/ideas/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const updateData = req.body;
+      
+      // Verify user owns the idea or is admin
+      const idea = await storage.getIdeaById(id);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      if (idea.createdBy !== userId) {
+        return res.status(403).json({ message: "You can only update your own ideas" });
+      }
+      
+      const updatedIdea = await storage.updateIdea(id, updateData);
+      res.json(updatedIdea);
+    } catch (error) {
+      console.error("Error updating idea:", error);
+      res.status(500).json({ message: "Failed to update idea" });
     }
   });
 
@@ -1117,30 +1196,211 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test route to verify routing works
+  app.get('/api/documents/test', (req, res) => {
+    console.log('[Document Test] Route hit!');
+    res.json({ message: 'Document parse route is accessible', timestamp: new Date().toISOString() });
+  });
+  
+  // Test POST route to verify POST requests work
+  app.post('/api/documents/test', (req, res) => {
+    console.log('[Document Test POST] Route hit!');
+    console.log('[Document Test POST] Content-Type:', req.headers['content-type']);
+    console.log('[Document Test POST] Body:', req.body);
+    res.json({ message: 'Document parse POST route is accessible', timestamp: new Date().toISOString() });
+  });
+
   // Parse document and extract text content
   // Note: Multer must come before isAuthenticated to parse multipart/form-data
-  app.post('/api/documents/parse', upload.single('file'), isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
+  // Wrap entire route in error handler to ensure JSON responses
+  app.post('/api/documents/parse', 
+    // Step 0: Comprehensive logging and JSON response wrapper
+    (req, res, next) => {
+      console.log('[Document Parse] ===== ROUTE HIT =====');
+      console.log('[Document Parse] Method:', req.method);
+      console.log('[Document Parse] Path:', req.path);
+      console.log('[Document Parse] Original URL:', req.originalUrl);
+      console.log('[Document Parse] Content-Type:', req.headers['content-type']);
+      console.log('[Document Parse] Content-Length:', req.headers['content-length']);
+      console.log('[Document Parse] User:', (req as any).user ? 'Present' : 'Missing');
+      console.log('[Document Parse] User details:', JSON.stringify((req as any).user?.claims || {}, null, 2));
       
-      if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-      }
-
-      const { buffer, originalname, mimetype } = req.file;
+      // Ensure response is JSON if an error occurs
+      const originalJson = res.json;
+      const originalSend = res.send;
+      const originalEnd = res.end;
       
-      // Parse the document
-      const parsed = await documentParser.parseDocument(buffer, originalname, mimetype);
+      res.json = function(body: any) {
+        console.log('[Document Parse] Sending JSON response:', typeof body === 'object' ? JSON.stringify(body).substring(0, 200) : body);
+        res.setHeader('Content-Type', 'application/json');
+        return originalJson.call(this, body);
+      };
       
-      res.json(parsed);
-    } catch (error) {
-      console.error("Error parsing document:", error);
-      res.status(500).json({ 
-        message: "Failed to parse document",
-        error: error instanceof Error ? error.message : 'Unknown error'
+      res.send = function(body: any) {
+        console.log('[Document Parse] Sending response (send):', typeof body === 'string' ? body.substring(0, 200) : typeof body);
+        if (typeof body === 'object') {
+          res.setHeader('Content-Type', 'application/json');
+        }
+        return originalSend.call(this, body);
+      };
+      
+      res.end = function(chunk?: any, encoding?: any) {
+        console.log('[Document Parse] Ending response');
+        return originalEnd.call(this, chunk, encoding);
+      };
+      
+      // Catch any unhandled errors
+      res.on('error', (err) => {
+        console.error('[Document Parse] Response error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({ message: 'Internal server error', error: err.message });
+        }
       });
+      
+      next();
+    },
+    // Step 1: Handle file upload with multer
+    (req, res, next) => {
+      console.log('[Document Parse] ----- Step 1: Multer Middleware -----');
+      console.log('[Document Parse] Content-Type header:', req.headers['content-type']);
+      console.log('[Document Parse] Has body:', !!req.body);
+      
+      upload.single('file')(req, res, (err) => {
+        if (err) {
+          console.error('[Document Parse] Multer error:', err);
+          console.error('[Document Parse] Multer error stack:', err.stack);
+          return res.status(400).json({ 
+            message: 'File upload error',
+            error: err.message 
+          });
+        }
+        console.log('[Document Parse] Multer success');
+        console.log('[Document Parse] File:', req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          fieldname: req.file.fieldname
+        } : 'NO FILE');
+        next();
+      });
+    },
+    // Step 2: Check authentication - ensure JSON response
+    async (req, res, next) => {
+      console.log('[Document Parse] ----- Step 2: Authentication Check -----');
+      try {
+        const user = (req as any).user;
+        
+        // Check if we're actually running on Replit (not just local dev with vars set)
+        // Only use Replit OIDC if we're actually on a Replit domain
+        const isActuallyReplit = process.env.REPLIT_DOMAINS && 
+                                 process.env.REPL_ID && 
+                                 !process.env.REPLIT_DOMAINS.includes('localhost') &&
+                                 !process.env.REPLIT_DOMAINS.includes('127.0.0.1');
+        const hasReplitOIDC = !!isActuallyReplit;
+        
+        console.log('[Document Parse] Has Replit OIDC:', hasReplitOIDC);
+        console.log('[Document Parse] User object:', user ? 'Present' : 'Missing');
+        console.log('[Document Parse] User claims:', user?.claims ? JSON.stringify(user.claims, null, 2) : 'None');
+        console.log('[Document Parse] Is authenticated:', req.isAuthenticated ? req.isAuthenticated() : 'N/A');
+        
+        if (!hasReplitOIDC) {
+          // For non-Replit environments, check if user has claims
+          if (user?.claims?.sub) {
+            console.log('[Document Parse] Auth passed (non-Replit), user ID:', user.claims.sub);
+            return next();
+          }
+          // Return JSON error
+          console.log('[Document Parse] Auth failed (non-Replit) - no user claims');
+          console.log('[Document Parse] User object:', JSON.stringify(user || {}, null, 2));
+          return res.status(401).json({ message: "Unauthorized", details: "No user claims found" });
+        }
+        
+        // For Replit, check authentication explicitly
+        if (!req.isAuthenticated() || !user?.expires_at) {
+          console.log('[Document Parse] Auth failed (Replit)');
+          console.log('[Document Parse] Is authenticated:', req.isAuthenticated());
+          console.log('[Document Parse] Has expires_at:', !!user?.expires_at);
+          return res.status(401).json({ message: "Unauthorized", details: "Not authenticated or token expired" });
+        }
+        
+        // Check token expiration for Replit
+        const now = Math.floor(Date.now() / 1000);
+        if (now > user.expires_at) {
+          console.log('[Document Parse] Token expired');
+          return res.status(401).json({ message: "Unauthorized", details: "Token expired" });
+        }
+        
+        // Authentication passed
+        console.log('[Document Parse] Auth passed (Replit)');
+        next();
+      } catch (error) {
+        console.error('[Document Parse] Auth check error:', error);
+        console.error('[Document Parse] Auth check error stack:', error instanceof Error ? error.stack : 'No stack');
+        return res.status(500).json({ 
+          message: "Authentication check failed",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    },
+    // Step 3: Handle document parsing with comprehensive error handling
+    async (req: any, res) => {
+      console.log('[Document Parse] ----- Step 3: Document Parsing Handler -----');
+      try {
+        console.log('[Document Parse] Handler executing');
+        console.log('[Document Parse] User:', req.user?.claims?.sub || 'No user');
+        console.log('[Document Parse] File present:', !!req.file);
+        
+        if (!req.file) {
+          console.log('[Document Parse] ERROR: No file in request');
+          console.log('[Document Parse] Request body keys:', Object.keys(req.body || {}));
+          console.log('[Document Parse] Request files:', Object.keys((req as any).files || {}));
+          return res.status(400).json({ message: 'No file uploaded', details: 'File not found in request' });
+        }
+
+        const { buffer, originalname, mimetype } = req.file;
+        console.log('[Document Parse] File details:', {
+          originalname,
+          mimetype,
+          size: buffer.length,
+          firstBytes: buffer.slice(0, 50).toString('hex')
+        });
+        
+        console.log('[Document Parse] Starting document parsing...');
+        // Parse the document
+        const parsed = await documentParser.parseDocument(buffer, originalname, mimetype);
+        console.log('[Document Parse] Parsed successfully');
+        console.log('[Document Parse] Parsed type:', parsed.type);
+        console.log('[Document Parse] Text length:', parsed.text.length);
+        console.log('[Document Parse] Metadata:', JSON.stringify(parsed.metadata || {}, null, 2));
+        
+        // Return in the format expected by frontend
+        const response = {
+          text: parsed.text,
+          textContent: parsed.text, // Also include textContent for compatibility
+          type: parsed.type,
+          metadata: parsed.metadata,
+        };
+        
+        console.log('[Document Parse] Sending success response');
+        res.json(response);
+        console.log('[Document Parse] ===== SUCCESS =====');
+      } catch (error) {
+        console.error("[Document Parse] ERROR in handler:", error);
+        console.error("[Document Parse] Error stack:", error instanceof Error ? error.stack : 'No stack');
+        console.error("[Document Parse] Error name:", error instanceof Error ? error.name : 'Unknown');
+        
+        if (!res.headersSent) {
+          res.status(500).json({ 
+            message: "Failed to parse document",
+            error: error instanceof Error ? error.message : 'Unknown error',
+            details: error instanceof Error ? error.stack : undefined
+          });
+        } else {
+          console.error("[Document Parse] Headers already sent, cannot send error response");
+        }
+      }
     }
-  });
+  );
 
   // Generate solution from parsed document content
   app.post('/api/ai/generate-from-document', isAuthenticated, async (req: any, res) => {
@@ -1154,6 +1414,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { textContent, documentType } = documentSchema.parse(req.body);
       
+      // Log content length for debugging
+      console.log(`[Generate from Document] Received textContent length: ${textContent?.length || 0} chars`);
+      console.log(`[Generate from Document] Document type: ${documentType || 'unknown'}`);
+      console.log(`[Generate from Document] Content preview: ${textContent?.substring(0, 200) || 'empty'}`);
+      
       // Generate idea from document text using AI service (reuse HTML method as it works with any text)
       const generatedIdea = await aiService.generateIdeaFromHTML(textContent);
       
@@ -1162,6 +1427,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error generating idea from document:", error);
       res.status(500).json({ 
         message: "Failed to generate idea from document",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Generate solution from URL (fetch live website)
+  app.post('/api/ai/generate-from-url', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const urlSchema = z.object({
+        url: z.string().min(1),
+      });
+      
+      let { url } = urlSchema.parse(req.body);
+      
+      // Normalize URL: add https:// if protocol is missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        url = `https://${url}`;
+      }
+      
+      // Validate the normalized URL
+      try {
+        new URL(url);
+      } catch {
+        throw new Error(`Invalid URL format: ${url}`);
+      }
+      
+      console.log(`[Generate from URL] Fetching website with Puppeteer: ${url}`);
+      
+      let htmlContent;
+      let browser;
+      
+      try {
+        // Launch headless browser to bypass bot protection
+        browser = await puppeteer.launch({
+          headless: true,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--disable-gpu',
+          ],
+        });
+        
+        const page = await browser.newPage();
+        
+        // Set a realistic viewport and user agent
+        await page.setViewport({ width: 1920, height: 1080 });
+        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+        
+        // Navigate to the URL with timeout
+        console.log(`[Generate from URL] Navigating to ${url}...`);
+        await page.goto(url, {
+          waitUntil: 'networkidle2',
+          timeout: 30000, // 30 second timeout
+        });
+        
+        // Wait a bit for any dynamic content to load
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Get the full HTML content
+        htmlContent = await page.content();
+        console.log(`[Generate from URL] Fetched ${htmlContent.length} characters of HTML`);
+        
+        await browser.close();
+        
+        if (!htmlContent || htmlContent.length < 100) {
+          return res.status(400).json({ 
+            message: "Insufficient content",
+            error: `Website returned insufficient content (${htmlContent.length} characters). Please try downloading the HTML file and uploading it directly instead.`
+          });
+        }
+      } catch (puppeteerError: any) {
+        // Ensure browser is closed even on error
+        if (browser) {
+          try {
+            await browser.close();
+          } catch (closeError) {
+            console.error("Error closing browser:", closeError);
+          }
+        }
+        
+        console.error("Puppeteer error details:", puppeteerError);
+        
+        // Handle specific Puppeteer errors
+        if (puppeteerError.name === 'TimeoutError') {
+          return res.status(408).json({ 
+            message: "Request timeout",
+            error: "The website took too long to load (30 seconds). Please try again or upload the HTML file directly."
+          });
+        }
+        if (puppeteerError.message && puppeteerError.message.includes('net::ERR')) {
+          return res.status(400).json({ 
+            message: "Network error",
+            error: `Unable to connect to ${url}. Please check the URL and your internet connection.`
+          });
+        }
+        // Re-throw for generic error handling below
+        throw puppeteerError;
+      }
+      
+      // Generate idea from fetched HTML
+      const generatedIdea = await aiService.generateIdeaFromHTML(htmlContent);
+      
+      res.json(generatedIdea);
+    } catch (error) {
+      console.error("Error generating idea from URL:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      res.status(500).json({ 
+        message: "Failed to fetch or analyze URL",
+        error: errorMessage
+      });
+    }
+  });
+
+  // Generate AI image for an idea
+  app.post('/api/ai/generate-image', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      
+      const imageSchema = z.object({
+        title: z.string().min(1),
+        description: z.string().optional(),
+      });
+      
+      const { title, description } = imageSchema.parse(req.body);
+      
+      console.log(`[Generate Image] Generating image for: ${title}`);
+      
+      // Generate image using AI service
+      const imageUrl = await aiService.generateIdeaImage(title, description);
+      
+      if (!imageUrl) {
+        return res.status(500).json({ 
+          message: "Failed to generate image",
+          error: "Image generation service unavailable"
+        });
+      }
+      
+      res.json({ imageUrl });
+    } catch (error) {
+      console.error("Error generating image:", error);
+      res.status(500).json({ 
+        message: "Failed to generate image",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
@@ -1357,7 +1768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use Claude to generate comprehensive market insights
       const response = await anthropic.messages.create({
-        model: "claude-3-5-haiku-20241022",
+        model: "claude-opus-4-5-20251101",
         max_tokens: 4000,
         messages: [{
           role: "user",
@@ -1986,7 +2397,7 @@ Provide:
 Be practical, encouraging, and focus on helping them make real progress.`;
 
       const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-20250514", // Latest Claude model
+        model: "claude-opus-4-5-20251101", // Latest Claude model
         max_tokens: 4000,
         system: systemPrompt,
         messages: messages.map((msg: any) => ({
@@ -2003,6 +2414,327 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     } catch (error) {
       console.error("Error in Claude chat:", error);
       res.status(500).json({ message: "Failed to get AI response" });
+    }
+  });
+
+  // Helper: Sleep/delay function
+  function sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  // Helper: Retry with exponential backoff
+  async function retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    maxAttempts: number,
+    delays: number[]
+  ): Promise<T> {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error: any) {
+        if (attempt === maxAttempts - 1) throw error;
+        
+        // Handle 529 Overloaded errors with much longer backoff
+        if (error?.status === 529 || error?.error?.error?.type === 'overloaded_error') {
+          const delay = delays[attempt] || 30000; // Default 30 seconds for overloaded
+          await sleep(delay);
+          continue;
+        }
+        
+        // Handle rate limit errors (429)
+        if (error?.status === 429 || error?.message?.includes('rate limit')) {
+          const delay = delays[attempt] || 10000; // Default 10 seconds for rate limit
+          await sleep(delay);
+          continue;
+        }
+        
+        // Handle connection timeouts
+        if (error?.code === 'ETIMEDOUT' || error?.cause?.code === 'ETIMEDOUT') {
+          const delay = delays[attempt] || 5000; // Default 5 seconds for timeout
+          await sleep(delay);
+          continue;
+        }
+        
+        // For other errors, retry with delay
+        if (attempt < maxAttempts - 1) {
+          await sleep(delays[attempt] || 2000);
+        } else {
+          throw error;
+        }
+      }
+    }
+    throw new Error('Max attempts reached');
+  }
+
+  // Helper: Limit concurrency
+  async function limitConcurrency<T>(
+    promises: Promise<T>[],
+    limit: number
+  ): Promise<PromiseSettledResult<T>[]> {
+    const results: PromiseSettledResult<T>[] = [];
+    
+    for (let i = 0; i < promises.length; i += limit) {
+      const batch = promises.slice(i, i + limit);
+      const batchResults = await Promise.allSettled(batch);
+      results.push(...batchResults);
+    }
+    
+    return results;
+  }
+
+  // Background processing function for bulk import
+  async function processBulkImport(jobId: string, fileBuffer: Buffer, userId: string, filename?: string) {
+    // Optimized settings for Sonnet 4 - faster model allows higher concurrency
+    const batchSize = 20; // Keep same batch size
+    const aiConcurrency = 4; // Increased from 2 to 4 (Sonnet handles more concurrent requests)
+    const delayBetweenBatches = 3000; // Reduced from 5000 to 3000ms (Sonnet is faster)
+    const delayBetweenItems = 1000; // Reduced from 2000 to 1000ms (faster processing)
+    
+    const jobStartTime = Date.now();
+    console.log(`[Bulk Import ${jobId}] 🚀 Starting bulk import at ${new Date().toISOString()}`);
+    
+    try {
+      // Parse spreadsheet
+      const parseStartTime = Date.now();
+      const rows = await spreadsheetParser.parse(fileBuffer, filename);
+      const parseDuration = Date.now() - parseStartTime;
+      console.log(`[Bulk Import ${jobId}] 📊 Parsed ${rows.length} rows in ${parseDuration}ms`);
+      await storage.updateImportJob(jobId, { totalRows: rows.length });
+      
+      const existingSlugs = new Set<string>();
+      const results: string[] = [];
+      const errors: Array<{row: number, error: string}> = [];
+      
+      // Process in batches
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batchStartTime = Date.now();
+        const batchNumber = Math.floor(i/batchSize) + 1;
+        const batch = rows.slice(i, i + batchSize);
+        console.log(`[Bulk Import ${jobId}] 📦 Batch ${batchNumber}/${Math.ceil(rows.length/batchSize)}: Processing rows ${i+1}-${Math.min(i+batchSize, rows.length)}`);
+        
+        // Process batch with concurrency limit AND delay between items
+        const batchPromises = batch.map(async (row, batchIndex) => {
+          const rowNumber = i + batchIndex + 1;
+          const rowStartTime = Date.now();
+          
+          // Add delay between items to avoid overwhelming API
+          if (batchIndex > 0) {
+            await sleep(delayBetweenItems);
+          }
+          
+          try {
+            // Extract and validate data
+            const mappingStartTime = Date.now();
+            const mappedData = await spreadsheetMapper.mapRow(row);
+            const mappingDuration = Date.now() - mappingStartTime;
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: ✅ Mapped in ${mappingDuration}ms | Title: "${(mappedData.title || 'N/A').substring(0, 40)}" | URL: ${mappedData.previewUrl ? '✓' : '✗'}`);
+            
+            // Validate mapped data
+            const validation = spreadsheetMapper.validateMappedData(mappedData);
+            if (!validation.valid) {
+              throw new Error(`Validation failed: ${validation.errors.join(', ')}`);
+            }
+            
+            // Generate unique slug - use title if available, otherwise extract from URL or use timestamp
+            const slugStartTime = Date.now();
+            const slugBase = mappedData.title || 
+              mappedData.previewUrl?.split('/').pop()?.split('?')[0] || 
+              `idea-${Date.now()}`;
+            const slug = await slugService.generateUniqueSlug(
+              slugBase,
+              existingSlugs
+            );
+            const slugDuration = Date.now() - slugStartTime;
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: 🔗 Slug generated in ${slugDuration}ms: "${slug}"`);
+            
+            // AI generation with retry (handles 529 errors and timeouts with longer backoff)
+            const aiStartTime = Date.now();
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: 🤖 Starting AI generation...`);
+            const generatedIdea = await retryWithBackoff(
+              () => aiService.generateIdeaFromSpreadsheetRow(mappedData),
+              5, // Increased attempts from 3 to 5
+              [5000, 10000, 30000, 60000, 120000] // Much longer delays, especially for 529 errors
+            );
+            const aiDuration = Date.now() - aiStartTime;
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: ✅ AI complete in ${aiDuration}ms (${(aiDuration/1000).toFixed(1)}s) | Title: "${generatedIdea.title?.substring(0, 40)}"`);
+            
+            // Validate and create idea
+            const dbStartTime = Date.now();
+            const ideaData = {
+              ...generatedIdea,
+              slug,
+              createdBy: userId,
+              previewUrl: mappedData.previewUrl || null,
+              imageUrl: mappedData.imageUrl || null, // From spreadsheet or null
+              sourceType: 'user_import' as const,
+              sourceData: JSON.stringify(row), // Store original row data
+            };
+            
+            const createdIdea = await storage.createIdea(ideaData);
+            const dbDuration = Date.now() - dbStartTime;
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: 💾 Saved to DB in ${dbDuration}ms | ID: ${createdIdea.id}`);
+            
+            results.push(createdIdea.id);
+            
+            const rowDuration = Date.now() - rowStartTime;
+            console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: ✅✅ SUCCESS in ${rowDuration}ms (${(rowDuration/1000).toFixed(1)}s) | Progress: ${results.length}/${rows.length} successful`);
+            
+            // Update progress
+            await storage.updateImportJob(jobId, {
+              processedRows: rowNumber,
+              successfulRows: results.length,
+            });
+            
+          } catch (error: any) {
+            const rowDuration = Date.now() - rowStartTime;
+            const errorMessage = error.message || 'Unknown error';
+            const errorType = error?.status === 529 ? 'OVERLOADED' : 
+                            error?.status === 429 ? 'RATE_LIMIT' :
+                            error?.code === 'ETIMEDOUT' ? 'TIMEOUT' : 'ERROR';
+            
+            console.error(`[Bulk Import ${jobId}] Row ${rowNumber}: ❌❌ FAILED in ${rowDuration}ms (${(rowDuration/1000).toFixed(1)}s) | ${errorType} | ${errorMessage.substring(0, 100)}`);
+            
+            errors.push({
+              row: rowNumber,
+              error: errorMessage
+            });
+            
+            await storage.updateImportJob(jobId, {
+              processedRows: rowNumber,
+              failedRows: errors.length,
+              errors: errors,
+            });
+          }
+        });
+        
+        // Wait for batch with concurrency limit
+        await limitConcurrency(batchPromises, aiConcurrency);
+        
+        const batchDuration = Date.now() - batchStartTime;
+        const batchSuccessRate = ((results.length / (results.length + errors.length)) * 100).toFixed(1);
+        console.log(`[Bulk Import ${jobId}] 📦 Batch ${batchNumber} complete in ${batchDuration}ms (${(batchDuration/1000).toFixed(1)}s) | ✅ ${results.length} successful | ❌ ${errors.length} failed | Success rate: ${batchSuccessRate}%`);
+        
+        // Delay between batches
+        if (i + batchSize < rows.length) {
+          console.log(`[Bulk Import ${jobId}] ⏳ Waiting ${delayBetweenBatches}ms before next batch...`);
+          await sleep(delayBetweenBatches);
+        }
+      }
+      
+      const totalDuration = Date.now() - jobStartTime;
+      const totalSuccessRate = ((results.length / rows.length) * 100).toFixed(1);
+      console.log(`[Bulk Import ${jobId}] 🎉🎉 COMPLETED in ${totalDuration}ms (${(totalDuration/1000/60).toFixed(1)} minutes) | ✅ ${results.length}/${rows.length} successful (${totalSuccessRate}%) | ❌ ${errors.length} failed`);
+      
+      // Mark job as completed
+      await storage.updateImportJob(jobId, {
+        status: 'completed',
+        completedAt: new Date(),
+        results: results,
+        errors: errors,
+      });
+      
+    } catch (error: any) {
+      const totalDuration = Date.now() - jobStartTime;
+      console.error(`[Bulk Import ${jobId}] 💥💥 JOB FAILED after ${totalDuration}ms:`, error);
+      await storage.updateImportJob(jobId, {
+        status: 'failed',
+        completedAt: new Date(),
+        errors: [{ row: 0, error: error.message || 'Unknown error' }],
+      });
+    }
+  }
+
+  // Bulk import endpoint
+  app.post('/api/ideas/bulk-import', isAuthenticated, upload.single('file'), async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      // Validate file type
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = file.originalname?.toLowerCase().match(/\.[^.]+$/)?.[0];
+      if (!fileExtension || !validExtensions.includes(fileExtension)) {
+        return res.status(400).json({ 
+          message: `Invalid file type. Supported formats: ${validExtensions.join(', ')}` 
+        });
+      }
+      
+      // Create job record
+      const job = await storage.createImportJob({
+        userId,
+        status: 'processing',
+        totalRows: 0, // Will be updated after parsing
+      });
+      
+      // Start background processing (don't await)
+      processBulkImport(job.id, file.buffer, userId, file.originalname).catch(error => {
+        console.error(`[Bulk Import] Job ${job.id} failed:`, error);
+        storage.updateImportJob(job.id, {
+          status: 'failed',
+          completedAt: new Date(),
+        });
+      });
+      
+      // Return job ID immediately
+      res.json({ jobId: job.id, status: 'processing' });
+    } catch (error: any) {
+      console.error("Error starting bulk import:", error);
+      res.status(500).json({ message: "Failed to start bulk import", error: error.message });
+    }
+  });
+
+  // Get job status endpoint
+  app.get('/api/import-jobs/:jobId', isAuthenticated, async (req: any, res) => {
+    try {
+      const job = await storage.getImportJob(req.params.jobId);
+      if (!job) {
+        return res.status(404).json({ message: "Job not found" });
+      }
+      
+      // Verify user owns the job
+      if (job.userId !== req.user.claims.sub) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      res.json(job);
+    } catch (error: any) {
+      console.error("Error fetching import job:", error);
+      res.status(500).json({ message: "Failed to fetch import job" });
+    }
+  });
+
+  // Bulk image generation endpoint
+  app.post('/api/ideas/bulk-generate-images', isAuthenticated, async (req: any, res) => {
+    try {
+      const { batchSize = 50, delay = 2000, limit } = req.body;
+      
+      // Start background processing (don't await)
+      if (limit) {
+        imageProcessor.processLimited(limit, batchSize, delay).catch(error => {
+          console.error('[Bulk Image Generation] Failed:', error);
+        });
+        res.json({ 
+          message: `Started processing ${limit} ideas for images`,
+          batchSize,
+          delay 
+        });
+      } else {
+        imageProcessor.processAll(batchSize, delay).catch(error => {
+          console.error('[Bulk Image Generation] Failed:', error);
+        });
+        res.json({ 
+          message: 'Started processing all ideas without images',
+          batchSize,
+          delay 
+        });
+      }
+    } catch (error: any) {
+      console.error("Error starting bulk image generation:", error);
+      res.status(500).json({ message: "Failed to start image generation", error: error.message });
     }
   });
 

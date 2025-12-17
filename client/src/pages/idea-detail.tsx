@@ -51,9 +51,38 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import RoastDialog from "@/components/RoastDialog";
+import { PreviewModal } from "@/components/PreviewModal";
 import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
 import ExportDialog from "@/components/ExportDialog";
+
+function PreviewTabContent({ previewUrl, title }: { previewUrl: string; title: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  return (
+    <>
+      <div className="border rounded-lg p-4">
+        <p className="text-sm text-muted-foreground mb-4">
+          Click the button below to preview the application in a modal window.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => setIsOpen(true)}
+          className="w-full"
+        >
+          <ExternalLink className="w-4 h-4 mr-2" />
+          Open Preview
+        </Button>
+      </div>
+      <PreviewModal
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        previewUrl={previewUrl}
+        title={title}
+      />
+    </>
+  );
+}
 
 export default function IdeaDetail() {
   const { slug } = useParams();
@@ -520,6 +549,35 @@ export default function IdeaDetail() {
               <ThumbsUp className="w-4 h-4" />
               <span data-testid="text-vote-count">{idea.voteCount || 0} votes</span>
             </div>
+            {(() => {
+              // Check previewUrl first, then fallback to sourceData
+              const previewLink = idea.previewUrl || (
+                idea.sourceData && 
+                (idea.sourceData.startsWith('http://') || idea.sourceData.startsWith('https://') || 
+                 /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(idea.sourceData.trim()))
+                ? idea.sourceData
+                : null
+              );
+              
+              if (!previewLink) return null;
+              
+              const displayUrl = previewLink.length > 40 ? `${previewLink.substring(0, 40)}...` : previewLink;
+              const fullUrl = previewLink.startsWith('http') ? previewLink : `https://${previewLink}`;
+              
+              return (
+                <div className="flex items-center gap-1">
+                  <span className="text-sm text-muted-foreground">App preview:</span>
+                  <a 
+                    href={fullUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {displayUrl}
+                  </a>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="flex flex-wrap gap-3 items-center">
@@ -605,7 +663,7 @@ export default function IdeaDetail() {
               idea.executionPlan || idea.frameworkData || idea.trendAnalysis || idea.keywordData || idea.builderPrompts) && (
               <Card>
                 <CardHeader>
-                  <CardTitle>In-Depth Analysis</CardTitle>
+                  <CardTitle>Quick Analysis</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Tabs defaultValue="offer" className="w-full">
@@ -618,7 +676,7 @@ export default function IdeaDetail() {
                       {idea.frameworkData && <TabsTrigger value="framework" className="px-4">Framework</TabsTrigger>}
                       {idea.trendAnalysis && <TabsTrigger value="trends" className="px-4">Trends</TabsTrigger>}
                       {idea.keywordData && <TabsTrigger value="keywords" className="px-4">Keywords</TabsTrigger>}
-                      {idea.builderPrompts && <TabsTrigger value="builders" className="px-4">Builders</TabsTrigger>}
+                      {idea.previewUrl && <TabsTrigger value="preview" className="px-4">Preview</TabsTrigger>}
                     </TabsList>
 
                     {idea.offerTiers && (
@@ -959,77 +1017,15 @@ export default function IdeaDetail() {
                       </TabsContent>
                     )}
 
-                    {idea.builderPrompts && (
-                      <TabsContent value="builders" className="space-y-4">
-                        <div className="flex items-center mb-4">
-                          <Code className="w-5 h-5 mr-2 text-primary" />
-                          <h3 className="text-lg font-semibold">AI Builder Integrations</h3>
+                    {idea.previewUrl && (
+                      <TabsContent value="preview" className="space-y-4">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center">
+                            <ExternalLink className="w-5 h-5 mr-2 text-primary" />
+                            <h3 className="text-lg font-semibold">App Preview</h3>
+                          </div>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-4">
-                          Use these pre-built prompts with your favorite AI builders to bring this idea to life.
-                        </p>
-                        <div className="grid gap-4">
-                          {Object.entries(idea.builderPrompts).map(([key, prompt]: [string, any]) => (
-                            <div key={key} className="border rounded-lg p-4">
-                              <h4 className="font-semibold capitalize mb-2">{key.replace(/([A-Z])/g, ' $1').trim()}</h4>
-                              <p className="text-sm text-muted-foreground mb-3">{prompt}</p>
-                              <div className="flex flex-wrap gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(prompt);
-                                    toast({ title: "Copied!", description: "Prompt copied to clipboard" });
-                                  }}
-                                >
-                                  Copy Prompt
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => window.open(`https://claude.ai/?prompt=${encodeURIComponent(prompt)}`, '_blank')}
-                                >
-                                  Claude Codex
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => window.open(`https://lovable.dev/create?prompt=${encodeURIComponent(prompt)}`, '_blank')}
-                                >
-                                  Lovable
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => window.open(`https://v0.dev/?prompt=${encodeURIComponent(prompt)}`, '_blank')}
-                                >
-                                  v0.dev
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => window.open(`https://chat.openai.com/?q=${encodeURIComponent(prompt)}`, '_blank')}
-                                >
-                                  ChatGPT
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline"
-                                  onClick={() => {
-                                    navigator.clipboard.writeText(prompt);
-                                    window.open('https://claude.ai/new', '_blank');
-                                    toast({ 
-                                      title: "Prompt Copied!", 
-                                      description: "Paste it into Claude to get started" 
-                                    });
-                                  }}
-                                >
-                                  Claude
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
+                        <PreviewTabContent previewUrl={idea.previewUrl} title={idea.title} />
                       </TabsContent>
                     )}
                   </Tabs>
@@ -1754,164 +1750,62 @@ export default function IdeaDetail() {
 
       {/* Builder Options Dialog */}
       <Dialog open={showBuilderDialog} onOpenChange={setShowBuilderDialog}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-2xl">Start Building in 1-click</DialogTitle>
+            <DialogTitle className="text-2xl">Choose Your Build Method</DialogTitle>
             <DialogDescription>
-              Turn this idea into your business with pre-built prompts for any AI platform
+              Select how you want to build this solution
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-6 mt-4">
-            {/* Works With Section */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <span>Works with:</span>
-              <div className="flex gap-3">
-                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
-                  <span className="text-pink-500">♥</span> Lovable
-                </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
-                  <span>⚡</span> v0
-                </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
-                  <span className="text-orange-500">◎</span> Replit
-                </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
-                  ChatGPT
-                </div>
-                <div className="flex items-center gap-1 px-2 py-1 bg-muted rounded text-xs font-medium">
-                  Claude
-                </div>
-                <span className="text-xs">+more</span>
-              </div>
-            </div>
-
-            {/* Build Prompt Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Replit */}
-              <Card 
-                className="cursor-pointer hover:border-orange-400 hover:shadow-md transition-all group"
-                onClick={() => {
-                  setLocation(`/idea/${slug}/build/replit`);
-                  setShowBuilderDialog(false);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-orange-100 dark:bg-orange-900/50 rounded-lg">
-                      <span className="text-orange-500 text-xl">◎</span>
-                    </div>
-                    <h3 className="font-semibold">Replit Agent</h3>
+          <div className="space-y-4 mt-4">
+            {/* No Code Option */}
+            <Card 
+              className="cursor-pointer hover:border-primary hover:shadow-md transition-all group"
+              onClick={() => {
+                setLocation(`/idea/${slug}/build/bolt`);
+                setShowBuilderDialog(false);
+              }}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Sparkles className="w-6 h-6 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    AI-powered full-stack development platform
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* v0 */}
-              <Card 
-                className="cursor-pointer hover:border-purple-400 hover:shadow-md transition-all group"
-                onClick={() => {
-                  setLocation(`/idea/${slug}/build/v0`);
-                  setShowBuilderDialog(false);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                      <span className="text-purple-500 text-xl">⚡</span>
-                    </div>
-                    <h3 className="font-semibold">v0 by Vercel</h3>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">No Code</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Build with visual tools like Lovable, v0, and ChatGPT
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    AI UI component generator for React/Next.js
-                  </p>
-                </CardContent>
-              </Card>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
 
-              {/* Lovable */}
-              <Card 
-                className="cursor-pointer hover:border-pink-400 hover:shadow-md transition-all group"
-                onClick={() => {
-                  setLocation(`/idea/${slug}/build/bolt`);
-                  setShowBuilderDialog(false);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-pink-100 dark:bg-pink-900/50 rounded-lg">
-                      <span className="text-pink-500 text-xl">♥</span>
-                    </div>
-                    <h3 className="font-semibold">Lovable</h3>
+            {/* CLI Option */}
+            <Card 
+              className="cursor-pointer hover:border-primary hover:shadow-md transition-all group"
+              onClick={() => {
+                setLocation(`/idea/${slug}/build/cursor`);
+                setShowBuilderDialog(false);
+              }}
+            >
+              <CardContent className="p-6">
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="p-3 bg-primary/10 rounded-lg">
+                    <Code className="w-6 h-6 text-primary" />
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    Build full-stack apps with natural language
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Cursor */}
-              <Card 
-                className="cursor-pointer hover:border-green-400 hover:shadow-md transition-all group"
-                onClick={() => {
-                  setLocation(`/idea/${slug}/build/cursor`);
-                  setShowBuilderDialog(false);
-                }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
-                      <Target className="w-5 h-5 text-green-500" />
-                    </div>
-                    <h3 className="font-semibold">Cursor IDE</h3>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">CLI</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Build with code using Cursor, Replit, and command-line tools
+                    </p>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    AI-first code editor with intelligent suggestions
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Additional Prompt Types */}
-            <div className="border-t pt-4">
-              <h4 className="text-sm font-semibold mb-3">More prompts...</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <Button 
-                  variant="outline" 
-                  className="justify-start"
-                  onClick={() => {
-                    setLocation(`/idea/${slug}/build/ad-creatives`);
-                    setShowBuilderDialog(false);
-                  }}
-                >
-                  <Sparkles className="w-4 h-4 mr-2 text-pink-500" />
-                  Ad Creatives
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="justify-start"
-                  onClick={() => {
-                    setLocation(`/idea/${slug}/build/brand-package`);
-                    setShowBuilderDialog(false);
-                  }}
-                >
-                  <Star className="w-4 h-4 mr-2 text-indigo-500" />
-                  Brand Package
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="justify-start"
-                  onClick={() => {
-                    setLocation(`/idea/${slug}/build/replit`);
-                    setShowBuilderDialog(false);
-                  }}
-                >
-                  <FileText className="w-4 h-4 mr-2 text-blue-500" />
-                  Landing Page
-                </Button>
-              </div>
-            </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </DialogContent>
       </Dialog>

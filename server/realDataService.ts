@@ -56,6 +56,52 @@ export interface CommunityInsight {
   opportunities: string[];
 }
 
+export interface TwitterSearchResult {
+  tweets: Array<{
+    text: string;
+    author: string;
+    likes: number;
+    retweets: number;
+    url: string;
+    date?: string;
+  }>;
+  hashtags: string[];
+  totalEngagement: number;
+}
+
+export interface YouTubeSearchResult {
+  videos: Array<{
+    title: string;
+    channel: string;
+    views: number;
+    likes: number;
+    url: string;
+    publishedDate?: string;
+    description: string;
+  }>;
+  channels: Array<{
+    name: string;
+    subscribers: string;
+    url: string;
+  }>;
+  totalViews: number;
+}
+
+export interface FacebookSearchResult {
+  groups: Array<{
+    name: string;
+    members: string;
+    url: string;
+    description: string;
+  }>;
+  posts: Array<{
+    text: string;
+    url: string;
+    engagement: number;
+  }>;
+  totalGroups: number;
+}
+
 // Lazy-load Anthropic client
 let anthropicClient: Anthropic | null = null;
 
@@ -353,7 +399,7 @@ Provide article titles and publication dates.`,
       };
 
       const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-opus-4-5-20251101',
         max_tokens: 2000,
         tools: [
           {
@@ -397,7 +443,143 @@ Provide article titles and publication dates.`,
   }
 
   /**
-   * Get comprehensive community insights
+   * Search Twitter/X using SerpAPI
+   */
+  async searchTwitter(query: string): Promise<TwitterSearchResult> {
+    const cacheKey = `twitter:${query}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      console.warn('SERP_API_KEY not set, skipping Twitter search');
+      return { tweets: [], hashtags: [], totalEngagement: 0 };
+    }
+
+    try {
+      const results = await getJson({
+        engine: 'twitter',
+        q: query,
+        api_key: apiKey,
+      });
+
+      const tweets = (results.tweets || []).map((tweet: any) => ({
+        text: tweet.text || tweet.tweet_text || '',
+        author: tweet.author || tweet.user || '',
+        likes: parseInt(tweet.likes || tweet.favorite_count || '0', 10),
+        retweets: parseInt(tweet.retweets || tweet.retweet_count || '0', 10),
+        url: tweet.link || `https://twitter.com/${tweet.author}/status/${tweet.tweet_id}`,
+        date: tweet.date,
+      }));
+
+      const hashtags = this.extractHashtags(tweets.map(t => t.text).join(' '));
+      const totalEngagement = tweets.reduce((sum: number, t: any) => sum + t.likes + t.retweets, 0);
+
+      const result = { tweets, hashtags, totalEngagement };
+      this.setCache(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('Twitter search error:', error);
+      return { tweets: [], hashtags: [], totalEngagement: 0 };
+    }
+  }
+
+  /**
+   * Search YouTube using SerpAPI
+   */
+  async searchYouTube(query: string): Promise<YouTubeSearchResult> {
+    const cacheKey = `youtube:${query}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      console.warn('SERP_API_KEY not set, skipping YouTube search');
+      return { videos: [], channels: [], totalViews: 0 };
+    }
+
+    try {
+      const results = await getJson({
+        engine: 'youtube',
+        search_query: query,
+        api_key: apiKey,
+      });
+
+      const videos = (results.video_results || []).map((video: any) => ({
+        title: video.title || '',
+        channel: video.channel?.name || video.channel_name || '',
+        views: this.parseViews(video.views || video.view_count || '0'),
+        likes: this.parseViews(video.likes || '0'),
+        url: video.link || `https://youtube.com/watch?v=${video.video_id}`,
+        publishedDate: video.published_date || video.published_time,
+        description: video.description || video.snippet || '',
+      }));
+
+      const channels = (results.channel_results || []).map((channel: any) => ({
+        name: channel.title || channel.name || '',
+        subscribers: channel.subscribers || '0',
+        url: channel.link || `https://youtube.com/${channel.channel_id}`,
+      }));
+
+      const totalViews = videos.reduce((sum: number, v: any) => sum + v.views, 0);
+
+      const result = { videos, channels, totalViews };
+      this.setCache(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('YouTube search error:', error);
+      return { videos: [], channels: [], totalViews: 0 };
+    }
+  }
+
+  /**
+   * Search Facebook using SerpAPI
+   */
+  async searchFacebook(query: string): Promise<FacebookSearchResult> {
+    const cacheKey = `facebook:${query}`;
+    const cached = this.getFromCache(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+      console.warn('SERP_API_KEY not set, skipping Facebook search');
+      return { groups: [], posts: [], totalGroups: 0 };
+    }
+
+    try {
+      // Search for Facebook groups and posts
+      const results = await getJson({
+        engine: 'facebook',
+        q: query,
+        api_key: apiKey,
+      });
+
+      const groups = (results.groups || []).map((group: any) => ({
+        name: group.title || group.name || '',
+        members: group.members || group.member_count || '0',
+        url: group.link || group.url || '',
+        description: group.description || group.about || '',
+      }));
+
+      const posts = (results.posts || []).map((post: any) => ({
+        text: post.text || post.content || '',
+        url: post.link || post.url || '',
+        engagement: parseInt(post.reactions || post.likes || '0', 10) + 
+                    parseInt(post.comments || '0', 10) + 
+                    parseInt(post.shares || '0', 10),
+      }));
+
+      const result = { groups, posts, totalGroups: groups.length };
+      this.setCache(cacheKey, result);
+      return result;
+    } catch (error) {
+      console.error('Facebook search error:', error);
+      return { groups: [], posts: [], totalGroups: 0 };
+    }
+  }
+
+  /**
+   * Get comprehensive community insights from multiple platforms
    */
   async getCommunityInsights(topic: string): Promise<CommunityInsight[]> {
     const cacheKey = `community:${topic}`;
@@ -405,14 +587,12 @@ Provide article titles and publication dates.`,
     if (cached) return cached;
 
     try {
-      // Get Reddit data
-      const redditData = await this.searchReddit(topic);
-      
-      // Try to get additional context from Claude
-      const claudeData = await this.searchWithClaude(topic, 'trends');
+      const insights: CommunityInsight[] = [];
 
-      const insights: CommunityInsight[] = [
-        {
+      // Get Reddit data
+      const redditData = await this.searchReddit(topic).catch(() => null);
+      if (redditData && redditData.posts.length > 0) {
+        insights.push({
           platform: 'Reddit',
           discussions: redditData.posts.slice(0, 10).map(post => ({
             title: post.title,
@@ -423,11 +603,72 @@ Provide article titles and publication dates.`,
           })),
           painPoints: this.extractPainPoints(redditData.posts),
           opportunities: this.extractOpportunities(redditData.posts),
-        },
-      ];
+        });
+      }
+
+      // Get Twitter/X data
+      const twitterData = await this.searchTwitter(topic).catch(() => null);
+      if (twitterData && twitterData.tweets.length > 0) {
+        insights.push({
+          platform: 'Twitter/X',
+          discussions: twitterData.tweets.slice(0, 10).map(tweet => ({
+            title: tweet.text.substring(0, 100),
+            url: tweet.url,
+            engagement: tweet.likes + tweet.retweets,
+            sentiment: tweet.likes > 100 ? 'positive' : 'neutral',
+            keyPoints: this.extractKeyPoints(tweet.text),
+          })),
+          painPoints: this.extractPainPointsFromText(twitterData.tweets.map(t => t.text)),
+          opportunities: this.extractOpportunitiesFromText(twitterData.tweets.map(t => t.text)),
+        });
+      }
+
+      // Get YouTube data
+      const youtubeData = await this.searchYouTube(topic).catch(() => null);
+      if (youtubeData && youtubeData.videos.length > 0) {
+        insights.push({
+          platform: 'YouTube',
+          discussions: youtubeData.videos.slice(0, 10).map(video => ({
+            title: video.title,
+            url: video.url,
+            engagement: video.views + video.likes,
+            sentiment: video.likes > 1000 ? 'positive' : 'neutral',
+            keyPoints: this.extractKeyPoints(video.description),
+          })),
+          painPoints: [],
+          opportunities: youtubeData.channels.map(ch => `Active channel: ${ch.name} (${ch.subscribers} subscribers)`),
+        });
+      }
+
+      // Get Facebook data
+      const facebookData = await this.searchFacebook(topic).catch(() => null);
+      if (facebookData && (facebookData.groups.length > 0 || facebookData.posts.length > 0)) {
+        insights.push({
+          platform: 'Facebook',
+          discussions: [
+            ...facebookData.groups.slice(0, 5).map(group => ({
+              title: group.name,
+              url: group.url,
+              engagement: this.parseMembers(group.members),
+              sentiment: 'neutral' as const,
+              keyPoints: [group.description],
+            })),
+            ...facebookData.posts.slice(0, 5).map(post => ({
+              title: post.text.substring(0, 100),
+              url: post.url,
+              engagement: post.engagement,
+              sentiment: 'neutral' as const,
+              keyPoints: this.extractKeyPoints(post.text),
+            })),
+          ],
+          painPoints: [],
+          opportunities: facebookData.groups.map(g => `Group: ${g.name} (${g.members} members)`),
+        });
+      }
 
       // Add web search insights if available
-      if (claudeData.newsArticles.length > 0) {
+      const claudeData = await this.searchWithClaude(topic, 'trends').catch(() => null);
+      if (claudeData && claudeData.newsArticles.length > 0) {
         insights.push({
           platform: 'Web News',
           discussions: claudeData.newsArticles.map(article => ({
@@ -440,6 +681,11 @@ Provide article titles and publication dates.`,
           painPoints: [],
           opportunities: claudeData.marketTrends,
         });
+      }
+
+      // Fallback if no insights found
+      if (insights.length === 0) {
+        return this.getMockCommunityInsights(topic);
       }
 
       this.setCache(cacheKey, insights);
@@ -557,6 +803,66 @@ Provide article titles and publication dates.`,
     });
 
     return [...new Set(opportunities)].slice(0, 5);
+  }
+
+  private extractPainPointsFromText(texts: string[]): string[] {
+    const painKeywords = ['problem', 'issue', 'frustrat', 'annoying', 'wish', 'need', 'help', 'struggling', 'difficult'];
+    const painPoints: string[] = [];
+
+    texts.forEach(text => {
+      const lowerText = text.toLowerCase();
+      painKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) {
+          const sentences = text.split(/[.!?]/);
+          sentences.forEach(sentence => {
+            if (sentence.toLowerCase().includes(keyword) && sentence.length > 20 && sentence.length < 200) {
+              painPoints.push(sentence.trim());
+            }
+          });
+        }
+      });
+    });
+
+    return [...new Set(painPoints)].slice(0, 5);
+  }
+
+  private extractOpportunitiesFromText(texts: string[]): string[] {
+    const opportunityKeywords = ['want', 'would pay', 'looking for', 'need', 'wish there was', 'market', 'business'];
+    const opportunities: string[] = [];
+
+    texts.forEach(text => {
+      const lowerText = text.toLowerCase();
+      opportunityKeywords.forEach(keyword => {
+        if (lowerText.includes(keyword)) {
+          opportunities.push(`Interest: ${text.substring(0, 100)}`);
+        }
+      });
+    });
+
+    return [...new Set(opportunities)].slice(0, 5);
+  }
+
+  private extractHashtags(text: string): string[] {
+    const hashtagRegex = /#(\w+)/g;
+    const matches = text.match(hashtagRegex) || [];
+    return [...new Set(matches.map(m => m.substring(1)))].slice(0, 10);
+  }
+
+  private parseViews(viewString: string): number {
+    if (!viewString) return 0;
+    const cleaned = viewString.toString().replace(/[^\d.KMB]/g, '');
+    if (cleaned.includes('K')) {
+      return Math.floor(parseFloat(cleaned) * 1000);
+    } else if (cleaned.includes('M')) {
+      return Math.floor(parseFloat(cleaned) * 1000000);
+    } else if (cleaned.includes('B')) {
+      return Math.floor(parseFloat(cleaned) * 1000000000);
+    }
+    return parseInt(cleaned, 10) || 0;
+  }
+
+  private parseMembers(memberString: string): number {
+    return this.parseViews(memberString);
   }
 
   private parseClaudeResponse(response: string, query: string, searchType: string): TrendSearchResult {

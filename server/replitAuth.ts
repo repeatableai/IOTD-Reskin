@@ -69,10 +69,18 @@ async function upsertUser(
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   
-  // Check if we're running on Replit with OIDC available
-  const hasReplitOIDC = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
+  // Check if we're actually running on Replit (not just local dev with vars set)
+  // Only use Replit OIDC if we're actually on a Replit domain
+  const isActuallyReplit = process.env.REPLIT_DOMAINS && 
+                           process.env.REPL_ID && 
+                           !process.env.REPLIT_DOMAINS.includes('localhost') &&
+                           !process.env.REPLIT_DOMAINS.includes('127.0.0.1');
+  const hasReplitOIDC = !!isActuallyReplit;
+  
+  console.log(`[setupAuth] Starting auth setup - hasReplitOIDC: ${hasReplitOIDC}, REPLIT_DOMAINS: ${process.env.REPLIT_DOMAINS}`);
 
   if (!hasReplitOIDC) {
+    console.log(`[setupAuth] Setting up non-Replit auth (demo mode)`);
     // Use session-based auth for non-Replit environments (Render, local, etc.)
     const isProduction = process.env.NODE_ENV === 'production';
     const MemoryStore = (await import('memorystore')).default(session);
@@ -107,8 +115,20 @@ export async function setupAuth(app: Express) {
     }
 
     // Auto-login middleware for demo mode
+    // This MUST run after passport.session() but before routes
+    console.log(`[setupAuth] Adding auto-login middleware`);
     app.use((req: any, res, next) => {
-      if (!req.user && !req.path.startsWith('/api/logout')) {
+      // Always log for debugging
+      if (req.path.startsWith('/api/')) {
+        console.log(`[Auth Middleware] ${req.method} ${req.path} - req.user:`, req.user ? 'Present' : 'Missing');
+      }
+      
+      // Check if user is missing or doesn't have claims (except for logout)
+      const needsDemoUser = !req.path.startsWith('/api/logout') && 
+                            (!req.user || !req.user.claims || !req.user.claims.sub);
+      
+      if (needsDemoUser) {
+        console.log(`[Auth] Setting demo user for ${req.method} ${req.path}`);
         req.user = {
           claims: {
             sub: demoUser.id,
@@ -118,9 +138,13 @@ export async function setupAuth(app: Express) {
             profile_image_url: demoUser.profileImageUrl,
           }
         };
+        // Also mark as authenticated for passport
+        req.login(req.user, () => {});
+        console.log(`[Auth] Demo user set - ID: ${req.user.claims.sub}`);
       }
       next();
     });
+    console.log(`[setupAuth] Auto-login middleware added`);
 
     passport.serializeUser((user: Express.User, cb) => cb(null, user));
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
@@ -196,14 +220,22 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  // Check if we're in non-Replit environment (Render, local, etc.)
-  const hasReplitOIDC = !!process.env.REPLIT_DOMAINS && !!process.env.REPL_ID;
+  // Check if we're actually running on Replit (not just local dev with vars set)
+  // Only use Replit OIDC if we're actually on a Replit domain
+  const isActuallyReplit = process.env.REPLIT_DOMAINS && 
+                           process.env.REPL_ID && 
+                           !process.env.REPLIT_DOMAINS.includes('localhost') &&
+                           !process.env.REPLIT_DOMAINS.includes('127.0.0.1');
+  const hasReplitOIDC = !!isActuallyReplit;
   
   // For non-Replit environments, just check if user has claims
   if (!hasReplitOIDC) {
+    console.log(`[isAuthenticated] Non-Replit check - user:`, user ? 'Present' : 'Missing', 'claims:', user?.claims?.sub || 'None');
     if (user?.claims?.sub) {
+      console.log(`[isAuthenticated] Auth passed - user ID: ${user.claims.sub}`);
       return next();
     }
+    console.log(`[isAuthenticated] Auth failed - no user claims`);
     return res.status(401).json({ message: "Unauthorized" });
   }
 

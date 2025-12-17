@@ -90,6 +90,7 @@ export const ideas = pgTable("ideas", {
   sourceType: varchar("source_type").default('curated'), // 'curated', 'user_import', 'user_generated'
   sourceData: text("source_data"), // Original imported HTML/instructions
   builderUrl: varchar("builder_url"), // URL to no-code builder project
+  previewUrl: varchar("preview_url"), // Preview URL from spreadsheet (for app previews)
   
   // Detailed analysis sections (for 1:1 ideabrowser.com copy)
   offerTiers: jsonb("offer_tiers"), // Value ladder with lead magnet, frontend, core, backend, continuity
@@ -288,6 +289,23 @@ export const exportHistory = pgTable("export_history", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Import jobs - tracks bulk import progress
+export const importJobs = pgTable("import_jobs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  status: varchar("status").notNull(), // 'processing', 'completed', 'failed', 'cancelled'
+  totalRows: integer("total_rows").notNull(),
+  processedRows: integer("processed_rows").default(0),
+  successfulRows: integer("successful_rows").default(0),
+  failedRows: integer("failed_rows").default(0),
+  errors: jsonb("errors"), // Array of {row: number, error: string}
+  results: jsonb("results"), // Array of created idea IDs
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   savedIdeas: many(userSavedIdeas),
@@ -400,6 +418,9 @@ export type IdeaClaim = typeof ideaClaims.$inferSelect;
 
 export type InsertExportHistory = typeof exportHistory.$inferInsert;
 export type ExportHistory = typeof exportHistory.$inferSelect;
+
+export type InsertImportJob = typeof importJobs.$inferInsert;
+export type ImportJob = typeof importJobs.$inferSelect;
 
 // Input schemas
 export const insertIdeaSchema = createInsertSchema(ideas).omit({

@@ -6,14 +6,12 @@ import ScoreDisplay from "@/components/ScoreDisplay";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Bell,
   Eye,
   Bookmark,
   ThumbsUp,
@@ -39,8 +37,6 @@ import { format, subDays, addDays, isAfter } from "date-fns";
 export default function TopIdeas() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [, setLocation] = useLocation();
-  const [email, setEmail] = useState("");
-  const [showReminder, setShowReminder] = useState(false);
   const [selectedRating, setSelectedRating] = useState<number | null>(null);
   const [selectedPromptTab, setSelectedPromptTab] = useState<'claude' | 'gemini' | 'gpt'>('claude');
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -81,24 +77,6 @@ export default function TopIdeas() {
     if (!isAfter(nextDate, new Date())) {
       setSelectedDate(nextDate);
     }
-  };
-
-  const handleSetReminder = () => {
-    if (!email) {
-      toast({
-        title: "Email Required",
-        description: "Please enter your email address.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    toast({
-      title: "Reminder Set!",
-      description: "You'll receive tomorrow's Solution of the Day via email.",
-    });
-    setShowReminder(false);
-    setEmail("");
   };
 
   const handleRating = (rating: number) => {
@@ -183,44 +161,6 @@ export default function TopIdeas() {
             <ChevronRight className="w-5 h-5" />
           </Button>
         </div>
-
-        {/* Reminder Section */}
-        {isToday && !showReminder && (
-          <div className="text-center mb-8">
-            <Button
-              variant="outline"
-              onClick={() => setShowReminder(true)}
-              data-testid="button-show-reminder"
-            >
-              <Bell className="w-4 h-4 mr-2" />
-              Get Tomorrow's Solution via Email
-            </Button>
-          </div>
-        )}
-
-        {showReminder && (
-          <Card className="mb-8 max-w-md mx-auto">
-            <CardContent className="p-6">
-              <h3 className="font-semibold mb-2">Set Email Reminder</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Get tomorrow's Solution of the Day delivered to your inbox
-              </p>
-              <div className="flex gap-2">
-                <Input
-                  type="email"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  data-testid="input-reminder-email"
-                />
-                <Button onClick={handleSetReminder} data-testid="button-set-reminder">
-                  <Bell className="w-4 h-4 mr-2" />
-                  Set
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Featured Idea of the Day */}
         {isLoading ? (
@@ -487,6 +427,19 @@ export default function TopIdeas() {
                     <ThumbsUp className="w-4 h-4" />
                     <span>{featuredIdea.voteCount || 0} votes</span>
                   </div>
+                  {featuredIdea.sourceData && (featuredIdea.sourceData.startsWith('http://') || featuredIdea.sourceData.startsWith('https://') || /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(featuredIdea.sourceData.trim())) && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">App preview:</span>
+                      <a 
+                        href={featuredIdea.sourceData.startsWith('http') ? featuredIdea.sourceData : `https://${featuredIdea.sourceData}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {featuredIdea.sourceData.length > 40 ? `${featuredIdea.sourceData.substring(0, 40)}...` : featuredIdea.sourceData}
+                      </a>
+                    </div>
+                  )}
                   {featuredIdea.averageRating && (
                     <div className="flex items-center gap-2">
                       <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />

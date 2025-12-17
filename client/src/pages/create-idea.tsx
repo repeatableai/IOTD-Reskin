@@ -1,9 +1,9 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect } from "react";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Upload, Lightbulb, FileText, Image, Sparkles, Code } from "lucide-react";
+import { Upload, Lightbulb, FileText, Image, Sparkles, Code, FileSpreadsheet, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface IdeaFormData {
   title: string;
@@ -84,6 +86,9 @@ export default function CreateIdea() {
   const [uploadedDocumentContent, setUploadedDocumentContent] = useState<string | null>(null);
   const [isAnalyzingHTML, setIsAnalyzingHTML] = useState(false);
   const [isParsingDocument, setIsParsingDocument] = useState(false);
+  const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
+  const [bulkImportJobId, setBulkImportJobId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Redirect if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -92,9 +97,10 @@ export default function CreateIdea() {
   }
 
   const createIdeaMutation = useMutation({
-    mutationFn: async (data: IdeaFormData) => {
-      // First, upload image if provided
-      let imageUrl = '';
+    mutationFn: async (data: IdeaFormData & { imageUrl?: string }) => {
+      // Handle image: either upload file or use provided URL
+      let imageUrl = data.imageUrl || '';
+      
       if (data.imageFile) {
         const uploadResponse = await apiRequest('POST', '/api/objects/upload');
         const uploadData = await uploadResponse.json();
@@ -115,6 +121,11 @@ export default function CreateIdea() {
         });
         const aclData = await aclResponse.json();
         imageUrl = aclData.objectPath;
+      } else if (data.imageUrl && data.imageUrl.startsWith('http')) {
+        // If it's a direct URL (like from DALL-E), use it directly
+        // Note: External URLs may need to be downloaded and uploaded to storage
+        // For now, we'll pass it directly and let the backend handle it
+        imageUrl = data.imageUrl;
       }
 
       // Create the idea
@@ -141,6 +152,82 @@ export default function CreateIdea() {
       });
       console.error('Error creating idea:', error);
     },
+  });
+
+  // Bulk import mutation
+  const bulkImportMutation = useMutation({
+    mutationFn: async (file: File) => {
+      console.log(`[Bulk Import] 🚀 Starting bulk import upload: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`);
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await apiRequest('POST', '/api/ideas/bulk-import', formData);
+      return res.json();
+    },
+    onSuccess: (data) => {
+      console.log(`[Bulk Import] ✅ Upload successful! Job ID: ${data.jobId}`);
+      setBulkImportJobId(data.jobId);
+      toast({
+        title: "Bulk Import Started",
+        description: `Job ${data.jobId} has been queued for processing.`,
+      });
+    },
+    onError: (error: any) => {
+      console.error(`[Bulk Import] ❌ Upload failed:`, error);
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload file",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Job status query
+  const { data: bulkImportJobStatus } = useQuery({
+    queryKey: ['/api/import-jobs', bulkImportJobId],
+    queryFn: async () => {
+      if (!bulkImportJobId) return null;
+      const res = await apiRequest('GET', `/api/import-jobs/${bulkImportJobId}`);
+      const status = await res.json();
+      
+      // Log progress updates
+      if (status) {
+        const progress = status.totalRows > 0 
+          ? Math.round((status.processedRows / status.totalRows) * 100)
+          : 0;
+        const successRate = status.processedRows > 0
+          ? Math.round((status.successfulRows / status.processedRows) * 100)
+          : 0;
+        
+        console.log(
+          `[Bulk Import ${bulkImportJobId}] 📊 Status: ${status.status} | ` +
+          `Progress: ${status.processedRows}/${status.totalRows} (${progress}%) | ` +
+          `✅ ${status.successfulRows || 0} successful | ` +
+          `❌ ${status.failedRows || 0} failed | ` +
+          `Success rate: ${successRate}%`
+        );
+        
+        // Log errors if any
+        if (status.errors && status.errors.length > 0) {
+          const recentErrors = status.errors.slice(-5); // Last 5 errors
+          recentErrors.forEach((err: any) => {
+            console.error(`[Bulk Import ${bulkImportJobId}] Row ${err.row} failed: ${err.error.substring(0, 100)}`);
+          });
+        }
+      }
+      
+      return status;
+    },
+    enabled: !!bulkImportJobId,
+    refetchInterval: (query) => {
+      // Always refetch if status is 'processing', even if data is null/undefined
+      const status = query.state.data?.status;
+      if (!query.state.data || status === 'processing') {
+        return 2000; // 2 seconds
+      }
+      return false;
+    },
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const handleInputChange = (field: keyof IdeaFormData, value: string) => {
@@ -190,41 +277,8 @@ export default function CreateIdea() {
         const formData = new FormData();
         formData.append('file', file);
         
-        const response = await fetch('/api/documents/parse', {
-          method: 'POST',
-          credentials: 'include', // Include cookies for authentication
-          // Don't set Content-Type - let browser set it with boundary for FormData
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          // Check if response is JSON or HTML
-          const contentType = response.headers.get('content-type');
-          let errorMessage = 'Failed to parse document';
-          
-          if (contentType?.includes('application/json')) {
-            try {
-              const errorData = await response.json();
-              errorMessage = errorData.message || errorData.error || errorMessage;
-            } catch {
-              errorMessage = `${response.status}: ${response.statusText}`;
-            }
-          } else {
-            // If it's HTML (like an error page), get status text
-            errorMessage = `${response.status}: ${response.statusText}. Please ensure you're logged in.`;
-          }
-          
-          throw new Error(errorMessage);
-        }
-        
-        // Ensure response is JSON before parsing
-        const contentType = response.headers.get('content-type');
-        if (!contentType?.includes('application/json')) {
-          const text = await response.text();
-          console.error('Non-JSON response:', text.substring(0, 200));
-          throw new Error('Server returned non-JSON response. Please check authentication.');
-        }
-        
+        // Use apiRequest for consistency - it handles FormData correctly
+        const response = await apiRequest('POST', '/api/documents/parse', formData);
         const parsed = await response.json();
         setUploadedDocumentContent(parsed.text);
         
@@ -266,6 +320,104 @@ export default function CreateIdea() {
     setIsAnalyzingHTML(true);
     
     try {
+      // Check if content is just a URL (with or without protocol)
+      const trimmedContent = contentToAnalyze.trim();
+      // Match URLs with protocol (http:// or https://) or domain names (domain.com, subdomain.domain.com)
+      const urlPattern = /^(https?:\/\/)?[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i;
+      const isURL = urlPattern.test(trimmedContent) && !trimmedContent.includes(' ');
+      
+      // If it's a URL, normalize it (add https:// if missing) and use the URL endpoint
+      if (isURL) {
+        // Normalize URL: add https:// if protocol is missing
+        const normalizedUrl = trimmedContent.startsWith('http://') || trimmedContent.startsWith('https://')
+          ? trimmedContent
+          : `https://${trimmedContent}`;
+        
+        const response = await apiRequest('POST', '/api/ai/generate-from-url', { url: normalizedUrl });
+        const generatedIdea = await response.json();
+        
+        // Automatically create the idea in the database (don't wait for image)
+        const ideaData: IdeaFormData = {
+          title: generatedIdea.title,
+          subtitle: generatedIdea.subtitle,
+          description: generatedIdea.description,
+          content: generatedIdea.content,
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+          mainCompetitor: generatedIdea.mainCompetitor,
+          revenuePotential: generatedIdea.revenuePotential,
+          executionDifficulty: generatedIdea.executionDifficulty,
+          gtmStrength: generatedIdea.gtmStrength,
+          opportunityScore: generatedIdea.opportunityScore,
+          problemScore: generatedIdea.problemScore,
+          feasibilityScore: generatedIdea.feasibilityScore,
+          timingScore: generatedIdea.timingScore,
+          executionScore: generatedIdea.executionScore,
+          gtmScore: generatedIdea.gtmScore,
+          opportunityLabel: generatedIdea.opportunityLabel,
+          problemLabel: generatedIdea.problemLabel,
+          feasibilityLabel: generatedIdea.feasibilityLabel,
+          timingLabel: generatedIdea.timingLabel,
+          keywordVolume: generatedIdea.keywordVolume,
+          keywordGrowth: generatedIdea.keywordGrowth,
+          offerTiers: generatedIdea.offerTiers,
+          whyNowAnalysis: generatedIdea.whyNowAnalysis,
+          proofSignals: generatedIdea.proofSignals,
+          marketGap: generatedIdea.marketGap,
+          executionPlan: generatedIdea.executionPlan,
+          frameworkData: generatedIdea.frameworkData,
+          trendAnalysis: generatedIdea.trendAnalysis,
+          keywordData: generatedIdea.keywordData,
+          builderPrompts: generatedIdea.builderPrompts,
+          communitySignals: generatedIdea.communitySignals,
+          signalBadges: generatedIdea.signalBadges,
+          sourceType: 'user_import',
+          sourceData: trimmedContent,
+        };
+        
+        // Create the idea immediately (non-blocking)
+        createIdeaMutation.mutate(ideaData, {
+          onSuccess: async (createdIdea) => {
+            // Generate image in background (non-blocking) with timeout
+            const imagePromise = Promise.race([
+              apiRequest('POST', '/api/ai/generate-image', {
+                title: generatedIdea.title,
+                description: generatedIdea.description,
+              })
+                .then(res => res.json())
+                .then(data => data.imageUrl || ''),
+              new Promise<string>((_, reject) => 
+                setTimeout(() => reject(new Error('Image generation timeout')), 10000)
+              )
+            ]).catch(error => {
+              console.warn('Image generation failed or timed out:', error);
+              return null;
+            });
+
+            const imageUrl = await imagePromise;
+            
+            // Update idea with image if we got one
+            if (imageUrl && createdIdea?.id) {
+              try {
+                // If it's an external URL, we might need to handle it differently
+                // For now, just update the imageUrl field directly
+                await apiRequest('PUT', `/api/ideas/${createdIdea.id}`, { imageUrl });
+                console.log('Idea image updated successfully');
+                // Invalidate queries to refresh the UI
+                queryClient.invalidateQueries({ queryKey: ['/api/ideas', createdIdea.slug] });
+              } catch (updateError) {
+                console.warn('Failed to update idea with image:', updateError);
+              }
+            }
+          }
+        });
+        
+        setIsAnalyzingHTML(false);
+        return;
+      }
+      
       // Use the document endpoint if we have document content, otherwise use HTML endpoint
       const endpoint = uploadedDocumentContent && !uploadedHTMLContent 
         ? '/api/ai/generate-from-document'
@@ -278,9 +430,8 @@ export default function CreateIdea() {
       const response = await apiRequest('POST', endpoint, payload);
       const generatedIdea = await response.json();
       
-      // Map AI response to form data with all comprehensive fields
-      setFormData(prev => ({
-        ...prev,
+      // Automatically create the idea in the database (don't wait for image)
+      const ideaData: IdeaFormData = {
         title: generatedIdea.title,
         subtitle: generatedIdea.subtitle,
         description: generatedIdea.description,
@@ -318,14 +469,39 @@ export default function CreateIdea() {
         signalBadges: generatedIdea.signalBadges,
         sourceType: 'user_import',
         sourceData: uploadedHTMLContent || uploadedDocumentContent || '',
-      }));
+      };
       
-      // Switch to manual tab to review/edit the generated idea
-      setActiveTab('manual');
-      
-      toast({
-        title: "Solution Generated from HTML!",
-        description: "Your solution has been analyzed and generated. Review and edit as needed.",
+      // Create the idea immediately (non-blocking)
+      createIdeaMutation.mutate(ideaData, {
+        onSuccess: async (createdIdea) => {
+          // Generate image in background (non-blocking) with timeout
+          const imagePromise = Promise.race([
+            apiRequest('POST', '/api/ai/generate-image', {
+              title: generatedIdea.title,
+              description: generatedIdea.description,
+            })
+              .then(res => res.json())
+              .then(data => data.imageUrl || ''),
+            new Promise<string>((_, reject) => 
+              setTimeout(() => reject(new Error('Image generation timeout')), 10000)
+            )
+          ]).catch(error => {
+            console.warn('Image generation failed or timed out:', error);
+            return null;
+          });
+
+          const imageUrl = await imagePromise;
+          
+          // Update idea with image if we got one
+          if (imageUrl && createdIdea?.id) {
+            try {
+              await apiRequest('PUT', `/api/ideas/${createdIdea.id}`, { imageUrl });
+              console.log('Idea image updated successfully');
+            } catch (updateError) {
+              console.warn('Failed to update idea with image:', updateError);
+            }
+          }
+        }
       });
     } catch (error) {
       console.error('Error generating from HTML:', error);
@@ -394,6 +570,102 @@ export default function CreateIdea() {
       setImportText('');
     }
   };
+
+  // Drag and drop handlers for bulk import
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = file.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+      
+      if (!fileExtension || !validExtensions.includes(fileExtension)) {
+        toast({
+          title: "Invalid File Type",
+          description: `Please select a ${validExtensions.join(', ')} file`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setBulkImportFile(file);
+    }
+  };
+
+  const handleBulkFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (selectedFile) {
+      const validExtensions = ['.csv', '.xlsx', '.xls'];
+      const fileExtension = selectedFile.name.toLowerCase().match(/\.[^.]+$/)?.[0];
+      
+      if (!fileExtension || !validExtensions.includes(fileExtension)) {
+        toast({
+          title: "Invalid File Type",
+          description: `Please select a ${validExtensions.join(', ')} file`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setBulkImportFile(selectedFile);
+    }
+  };
+
+  const handleBulkUpload = () => {
+    if (!bulkImportFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    bulkImportMutation.mutate(bulkImportFile);
+  };
+
+  // Calculate progress percentage
+  const bulkProgressPercentage = bulkImportJobStatus
+    ? Math.round((bulkImportJobStatus.processedRows / bulkImportJobStatus.totalRows) * 100)
+    : 0;
+
+  // Log completion status
+  useEffect(() => {
+    if (!bulkImportJobStatus || !bulkImportJobId) return;
+    
+    if (bulkImportJobStatus.status === 'completed') {
+      const totalRows = bulkImportJobStatus.totalRows || 0;
+      const successfulRows = bulkImportJobStatus.successfulRows || 0;
+      const failedRows = bulkImportJobStatus.failedRows || 0;
+      const successRate = totalRows > 0 ? Math.round((successfulRows / totalRows) * 100) : 0;
+      
+      console.log(
+        `[Bulk Import ${bulkImportJobId}] 🎉🎉 COMPLETED! ` +
+        `✅ ${successfulRows}/${totalRows} successful (${successRate}%) | ` +
+        `❌ ${failedRows} failed`
+      );
+    } else if (bulkImportJobStatus.status === 'failed') {
+      console.error(`[Bulk Import ${bulkImportJobId}] 💥💥 JOB FAILED`);
+      if (bulkImportJobStatus.errors && bulkImportJobStatus.errors.length > 0) {
+        bulkImportJobStatus.errors.forEach((err: any) => {
+          console.error(`[Bulk Import ${bulkImportJobId}] Error: ${err.error}`);
+        });
+      }
+    }
+  }, [bulkImportJobStatus, bulkImportJobId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -535,11 +807,10 @@ export default function CreateIdea() {
 
           {/* Import Tab */}
           <TabsContent value="import" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
+            <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center">
-                    <Code className="w-5 h-5 mr-2" />
+                    <Upload className="w-5 h-5 mr-2" />
                     Upload Document
                   </CardTitle>
                 </CardHeader>
@@ -553,8 +824,58 @@ export default function CreateIdea() {
                     disabled={isParsingDocument}
                   />
                   <p className="text-sm text-muted-foreground mb-4">
-                    Upload a document (HTML, PDF, DOCX, Excel, Markdown, JSON, or TXT) to extract and analyze content
+                    Upload a document (HTML, PDF, DOCX, Excel, Markdown, JSON, or TXT) to extract and analyze content. You can also paste a URL or content directly below.
                   </p>
+                  
+                  <div className="mb-4 space-y-2">
+                    <Textarea
+                      placeholder="Or paste a URL (e.g., https://example.com) or HTML/content here..."
+                      value={importText}
+                      onChange={(e) => {
+                        setImportText(e.target.value);
+                        // Auto-detect if it's a URL or content and set it
+                        const text = e.target.value.trim();
+                        if (text) {
+                          const urlPattern = /^(https?:\/\/)?[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i;
+                          const isURL = urlPattern.test(text) && !text.includes(' ');
+                          if (isURL) {
+                            setUploadedHTMLContent(text);
+                            setUploadedDocumentContent(text);
+                          } else {
+                            setUploadedHTMLContent(text);
+                            setUploadedDocumentContent(text);
+                          }
+                        } else {
+                          setUploadedHTMLContent(null);
+                          setUploadedDocumentContent(null);
+                        }
+                      }}
+                      className="min-h-24"
+                    />
+                    {importText && (
+                      <Button 
+                        onClick={() => {
+                          handleGenerateFromHTML();
+                        }}
+                        disabled={isAnalyzingHTML || !isAuthenticated || !importText.trim()}
+                        className="w-full"
+                        variant="outline"
+                      >
+                        {isAnalyzingHTML ? (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4 mr-2" />
+                            Generate from Pasted Content
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                  
                   {isParsingDocument && (
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                       <Sparkles className="w-4 h-4 animate-spin" />
@@ -598,31 +919,176 @@ export default function CreateIdea() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <FileText className="w-5 h-5 mr-2" />
-                    Paste Instructions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Paste your solution description, business plan, or instructions here..."
-                    value={importText}
-                    onChange={(e) => setImportText(e.target.value)}
-                    className="min-h-32 mb-4"
-                    data-testid="textarea-import-text"
-                  />
-                  <Button 
-                    onClick={handleImportText} 
-                    disabled={!importText.trim()}
-                    data-testid="button-import-text"
-                  >
-                    Parse Content
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+            {/* Bulk Import Section */}
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <FileSpreadsheet className="w-5 h-5 mr-2" />
+                  Bulk Import from Spreadsheet
+                </CardTitle>
+                <CardDescription>
+                  Upload a CSV or Excel file to import multiple ideas at once. Each row will be processed and added to the database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Drag and Drop Zone */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                    isDragging
+                      ? 'border-primary bg-primary/5'
+                      : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                  }`}
+                >
+                  <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <p className="text-sm font-medium mb-2">
+                    Drag and drop your spreadsheet here, or click to browse
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Supports CSV, XLSX, and XLS files
+                  </p>
+                  <label htmlFor="bulk-file-upload" className="cursor-pointer">
+                    <input
+                      id="bulk-file-upload"
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleBulkFileSelect}
+                      className="hidden"
+                    />
+                    <Button variant="outline" asChild>
+                      <span>Select Spreadsheet</span>
+                    </Button>
+                  </label>
+                  {bulkImportFile && (
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <FileSpreadsheet className="h-5 w-5 text-green-600" />
+                      <span className="text-sm font-medium">{bulkImportFile.name}</span>
+                      <span className="text-sm text-muted-foreground">
+                        ({(bulkImportFile.size / 1024).toFixed(2)} KB)
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Upload Button */}
+                <Button
+                  onClick={handleBulkUpload}
+                  disabled={!bulkImportFile || bulkImportMutation.isPending}
+                  className="w-full"
+                >
+                  {bulkImportMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Start Bulk Import
+                    </>
+                  )}
+                </Button>
+
+                {/* Job Status */}
+                {bulkImportJobStatus && (
+                  <div className="space-y-4 mt-6 pt-6 border-t">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold">Import Progress</h4>
+                      <span className="text-sm text-muted-foreground">
+                        {bulkImportJobStatus.status === 'processing' && (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Processing...
+                          </span>
+                        )}
+                        {bulkImportJobStatus.status === 'completed' && (
+                          <span className="flex items-center gap-2 text-green-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            Completed
+                          </span>
+                        )}
+                        {bulkImportJobStatus.status === 'failed' && (
+                          <span className="flex items-center gap-2 text-red-600">
+                            <XCircle className="h-4 w-4" />
+                            Failed
+                          </span>
+                        )}
+                      </span>
+                    </div>
+
+                    <Progress value={bulkProgressPercentage} className="h-2" />
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Total Rows</p>
+                        <p className="text-2xl font-bold">{bulkImportJobStatus.totalRows}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Processed</p>
+                        <p className="text-2xl font-bold">{bulkImportJobStatus.processedRows}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-muted-foreground">Successful</p>
+                        <p className="text-2xl font-bold text-green-600">{bulkImportJobStatus.successfulRows}</p>
+                      </div>
+                    </div>
+
+                    {bulkImportJobStatus.failedRows > 0 && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-2">Failed</p>
+                        <p className="text-2xl font-bold text-red-600">{bulkImportJobStatus.failedRows}</p>
+                      </div>
+                    )}
+
+                    {/* Errors */}
+                    {bulkImportJobStatus.errors && bulkImportJobStatus.errors.length > 0 && (
+                      <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>
+                          <div className="mt-2 space-y-1 max-h-40 overflow-y-auto">
+                            {bulkImportJobStatus.errors.slice(0, 10).map((error: any, idx: number) => (
+                              <div key={idx} className="text-sm">
+                                Row {error.row}: {error.error}
+                              </div>
+                            ))}
+                            {bulkImportJobStatus.errors.length > 10 && (
+                              <div className="text-sm text-muted-foreground">
+                                ... and {bulkImportJobStatus.errors.length - 10} more errors
+                              </div>
+                            )}
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    )}
+
+                    {/* Success Message */}
+                    {bulkImportJobStatus.status === 'completed' && (
+                      <Alert>
+                        <CheckCircle2 className="h-4 w-4" />
+                        <AlertDescription>
+                          Import completed successfully! {bulkImportJobStatus.successfulRows} ideas were created.
+                          {bulkImportJobStatus.results && bulkImportJobStatus.results.length > 0 && (
+                            <div className="mt-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setLocation('/database');
+                                }}
+                              >
+                                View Imported Ideas
+                              </Button>
+                            </div>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Manual Entry Tab */}

@@ -80,12 +80,30 @@ class ExternalDataService {
             // Get Google Search results for sources
             const googleResults = await realDataService.searchGoogle(keyword, { num: 5 }).catch(() => null);
 
+            // Get social signals for whyTrending
+            const [twitterData, youtubeData] = await Promise.all([
+              (realDataService as any).searchTwitter(keyword).catch(() => null),
+              (realDataService as any).searchYouTube(keyword).catch(() => null),
+            ]);
+
+            const socialSignals = [];
+            if (twitterData?.tweets.length > 0) {
+              socialSignals.push(`${twitterData.tweets.length} tweets, ${twitterData.totalEngagement.toLocaleString()} engagement`);
+            }
+            if (youtubeData?.videos.length > 0) {
+              socialSignals.push(`${youtubeData.videos.length} videos, ${youtubeData.totalViews.toLocaleString()} views`);
+            }
+
+            const whyTrending = socialSignals.length > 0
+              ? `Growing interest in ${keyword}. ${socialSignals.join('. ')}`
+              : trendsData.relatedQueries[0] || `Growing interest in ${keyword}`;
+
             return {
               keyword,
               volume: Math.floor(avgValue * 1000),
               growth: `+${Math.floor(growth)}%`,
               relatedApps: trendsData.relatedTopics.slice(0, 3),
-              whyTrending: trendsData.relatedQueries[0] || `Growing interest in ${keyword}`,
+              whyTrending,
               trendingIndustries: this.generateTrendingIndustries(keyword),
               sources: googleResults?.organic?.slice(0, 5).map(r => ({
                 title: r.title,
@@ -100,23 +118,50 @@ class ExternalDataService {
         }
       }
 
-      // Fallback to existing Reddit + Claude approach
-      const [redditData, claudeData] = await Promise.all([
+      // Fallback to multi-platform approach
+      const [redditData, twitterData, youtubeData, claudeData] = await Promise.all([
         realDataService.searchReddit(keyword).catch(() => null),
+        apiKey ? (realDataService as any).searchTwitter(keyword).catch(() => null) : null,
+        apiKey ? (realDataService as any).searchYouTube(keyword).catch(() => null) : null,
         realDataService.searchWithClaude(keyword, 'trends').catch(() => null),
       ]);
+
+      // Calculate volume from multiple sources
+      let volume = Math.floor(Math.random() * 50000) + 10000;
+      if (redditData?.totalEngagement) {
+        volume += redditData.totalEngagement * 10;
+      }
+      if (twitterData?.totalEngagement) {
+        volume += twitterData.totalEngagement * 5;
+      }
+      if (youtubeData?.totalViews) {
+        volume += Math.floor(youtubeData.totalViews / 100);
+      }
+
+      // Build whyTrending from multiple sources
+      const whyTrendingParts = [];
+      if (twitterData?.tweets.length > 0) {
+        whyTrendingParts.push(`${twitterData.tweets.length} tweets with ${twitterData.totalEngagement.toLocaleString()} engagement`);
+      }
+      if (youtubeData?.videos.length > 0) {
+        whyTrendingParts.push(`${youtubeData.videos.length} videos with ${youtubeData.totalViews.toLocaleString()} views`);
+      }
+      if (redditData?.posts.length > 0) {
+        whyTrendingParts.push(`${redditData.posts.length} Reddit discussions`);
+      }
+      const whyTrending = whyTrendingParts.length > 0
+        ? `Growing interest in ${keyword}. ${whyTrendingParts.join(', ')}`
+        : claudeData?.marketTrends?.[0] || this.generateWhyTrending(keyword);
 
       // Build trend data from real sources when available
       const trendData: TrendData = {
         keyword,
-        volume: redditData?.totalEngagement 
-          ? redditData.totalEngagement * 10 // Scale up Reddit engagement as proxy for volume
-          : Math.floor(Math.random() * 50000) + 10000,
+        volume: Math.floor(volume),
         growth: claudeData?.marketTrends?.length 
           ? `+${Math.min(200, claudeData.marketTrends.length * 25)}%`
           : `+${Math.floor(Math.random() * 150) + 20}%`,
         relatedApps: claudeData?.relatedTopics?.slice(0, 3) || this.generateRelatedApps(keyword),
-        whyTrending: claudeData?.marketTrends?.[0] || this.generateWhyTrending(keyword),
+        whyTrending,
         trendingIndustries: this.generateTrendingIndustries(keyword),
         sources: claudeData?.newsArticles?.length 
           ? claudeData.newsArticles.map(article => ({
@@ -145,14 +190,14 @@ class ExternalDataService {
   }
 
   /**
-   * Get market insights from SerpAPI (Google Search/News), Reddit (real data) and other sources
+   * Get market insights from SerpAPI (Google Search/News), Reddit, Twitter, YouTube, Facebook and other sources
    */
   async getMarketInsights(topic: string): Promise<MarketInsight[]> {
     try {
       const insights: MarketInsight[] = [];
+      const apiKey = process.env.SERP_API_KEY;
 
       // Try SerpAPI for Google News first
-      const apiKey = process.env.SERP_API_KEY;
       if (apiKey) {
         try {
           const googleNews = await realDataService.searchGoogle(topic, { type: 'news', num: 10 });
@@ -220,6 +265,108 @@ class ExternalDataService {
           supportingData: this.generateSupportingData(topic, 'Reddit'),
           academicSources: this.generateAcademicSources(topic)
         });
+      }
+
+      // Fetch real Twitter/X data
+      if (apiKey) {
+        try {
+          const twitterData = await (realDataService as any).searchTwitter(topic).catch(() => null);
+          if (twitterData && twitterData.tweets.length > 0) {
+            insights.push({
+              topic,
+              platform: 'Twitter/X',
+              engagement: twitterData.totalEngagement,
+              sentiment: twitterData.totalEngagement > 1000 ? 'Very Positive' : 'Positive',
+              keyFindings: [
+                `${twitterData.tweets.length} relevant tweets found`,
+                `Total engagement: ${twitterData.totalEngagement.toLocaleString()} (likes + retweets)`,
+                `Trending hashtags: ${twitterData.hashtags.slice(0, 5).join(', ')}`,
+                `Active discussion around ${topic}`,
+              ],
+              supportingData: twitterData.tweets.slice(0, 5).map((tweet: any) => ({
+                title: tweet.text.substring(0, 100),
+                url: tweet.url,
+                snippet: tweet.text,
+                source: `@${tweet.author}`,
+                date: tweet.date,
+              })),
+              academicSources: []
+            });
+          }
+        } catch (error) {
+          console.error('Twitter search error:', error);
+        }
+      }
+
+      // Fetch real YouTube data
+      if (apiKey) {
+        try {
+          const youtubeData = await (realDataService as any).searchYouTube(topic).catch(() => null);
+          if (youtubeData && youtubeData.videos.length > 0) {
+            insights.push({
+              topic,
+              platform: 'YouTube',
+              engagement: youtubeData.totalViews,
+              sentiment: 'Positive',
+              keyFindings: [
+                `${youtubeData.videos.length} relevant videos found`,
+                `Total views: ${youtubeData.totalViews.toLocaleString()}`,
+                `${youtubeData.channels.length} active channels covering this topic`,
+                `Growing video content around ${topic}`,
+              ],
+              supportingData: youtubeData.videos.slice(0, 5).map((video: any) => ({
+                title: video.title,
+                url: video.url,
+                snippet: video.description.substring(0, 200),
+                source: video.channel,
+                date: video.publishedDate,
+              })),
+              academicSources: []
+            });
+          }
+        } catch (error) {
+          console.error('YouTube search error:', error);
+        }
+      }
+
+      // Fetch real Facebook data
+      if (apiKey) {
+        try {
+          const facebookData = await (realDataService as any).searchFacebook(topic).catch(() => null);
+          if (facebookData && (facebookData.groups.length > 0 || facebookData.posts.length > 0)) {
+            insights.push({
+              topic,
+              platform: 'Facebook',
+              engagement: facebookData.posts.reduce((sum: number, p: any) => sum + p.engagement, 0),
+              sentiment: 'Positive',
+              keyFindings: [
+                `${facebookData.totalGroups} relevant groups found`,
+                `${facebookData.posts.length} active posts`,
+                `Total members across groups: ${facebookData.groups.reduce((sum: number, g: any) => sum + this.parseMemberCount(g.members), 0).toLocaleString()}`,
+                `Active community discussions`,
+              ],
+              supportingData: [
+                ...facebookData.groups.slice(0, 3).map((group: any) => ({
+                  title: group.name,
+                  url: group.url,
+                  snippet: group.description,
+                  source: 'Facebook Group',
+                  date: undefined,
+                })),
+                ...facebookData.posts.slice(0, 2).map((post: any) => ({
+                  title: post.text.substring(0, 100),
+                  url: post.url,
+                  snippet: post.text,
+                  source: 'Facebook',
+                  date: undefined,
+                })),
+              ],
+              academicSources: []
+            });
+          }
+        } catch (error) {
+          console.error('Facebook search error:', error);
+        }
       }
 
       // Add Google Trends insights (using Claude web search when available)
@@ -416,6 +563,19 @@ class ExternalDataService {
       'Marketing & Advertising'
     ];
     return industries.slice(0, Math.floor(Math.random() * 3) + 2);
+  }
+
+  private parseMemberCount(memberString: string): number {
+    if (!memberString) return 0;
+    const cleaned = memberString.toString().replace(/[^\d.KMB]/g, '');
+    if (cleaned.includes('K')) {
+      return Math.floor(parseFloat(cleaned) * 1000);
+    } else if (cleaned.includes('M')) {
+      return Math.floor(parseFloat(cleaned) * 1000000);
+    } else if (cleaned.includes('B')) {
+      return Math.floor(parseFloat(cleaned) * 1000000000);
+    }
+    return parseInt(cleaned, 10) || 0;
   }
 
   private generateSources(keyword: string): Array<{title: string; url: string; snippet: string; source: string}> {

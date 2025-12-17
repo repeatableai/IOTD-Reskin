@@ -144,7 +144,7 @@ export default function Header() {
                       >
                         <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Solution of the Day</div>
+                          <div className="font-semibold">Featured Business Plan</div>
                           <div className="text-sm text-muted-foreground">Get daily curated startup solutions tailored to current trends</div>
                         </div>
                       </button>
@@ -155,7 +155,7 @@ export default function Header() {
                       >
                         <Database className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Solution Database</div>
+                          <div className="font-semibold">Business Incubator</div>
                           <div className="text-sm text-muted-foreground">Explore 400+ validated business opportunities with research</div>
                         </div>
                       </button>
@@ -166,8 +166,8 @@ export default function Header() {
                       >
                         <Trophy className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Solution Leaderboard</div>
-                          <div className="text-sm text-muted-foreground">Most popular solutions right now</div>
+                          <div className="font-semibold">Business Leaderboard</div>
+                          <div className="text-sm text-muted-foreground">Most looked at start-ups</div>
                         </div>
                       </button>
                     </div>
@@ -528,21 +528,21 @@ export default function Header() {
                           className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
                         >
                           <Calendar className="w-4 h-4 text-muted-foreground" />
-                          <span>Solution of the Day</span>
+                            <span>Featured Business Plan</span>
                         </button>
                         <button
                           onClick={() => navigateTo('/database')}
                           className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
                         >
                           <Database className="w-4 h-4 text-muted-foreground" />
-                          <span>Solution Database</span>
+                          <span>Business Incubator</span>
                         </button>
                         <button
                           onClick={() => navigateTo('/database?sort=popular')}
                           className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
                         >
                           <Trophy className="w-4 h-4 text-muted-foreground" />
-                          <span>Leaderboard</span>
+                          <span>Business Leaderboard</span>
                         </button>
                         <button
                           onClick={() => navigateTo('/trends')}

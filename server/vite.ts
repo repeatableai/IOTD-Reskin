@@ -43,8 +43,28 @@ export async function setupVite(app: Express, server: Server) {
     appType: "custom",
   });
 
+  // CRITICAL: Skip API routes BEFORE Vite middleware processes them
+  // Vite middleware will return HTML error pages for API routes if not skipped
+  app.use((req, res, next) => {
+    // Skip ALL API routes - let Express handle them
+    if (req.originalUrl.startsWith('/api/') || req.path.startsWith('/api/')) {
+      log(`[Vite Guard] Skipping API route: ${req.method} ${req.originalUrl}`);
+      return next(); // Pass to Express route handlers
+    }
+    // For non-API routes, continue to Vite
+    next();
+  });
+  
+  // Now add Vite middleware - it will only process non-API routes
   app.use(vite.middlewares);
+  
   app.use("*", async (req, res, next) => {
+    // Skip API routes - let Express handle them
+    if (req.originalUrl.startsWith('/api/')) {
+      log(`[Vite] Catch-all skipping API route: ${req.originalUrl}`);
+      return next();
+    }
+    
     const url = req.originalUrl;
 
     try {
@@ -65,6 +85,10 @@ export async function setupVite(app: Express, server: Server) {
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
       vite.ssrFixStacktrace(e as Error);
+      // If it's an API route error, don't let Vite handle it
+      if (req.originalUrl.startsWith('/api/')) {
+        return next(e);
+      }
       next(e);
     }
   });

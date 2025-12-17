@@ -5,7 +5,10 @@
 
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
-import pdfParse from 'pdf-parse';
+// pdf-parse is a CommonJS module, import it dynamically
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdfParse = require('pdf-parse');
 
 export interface ParsedDocument {
   text: string;
@@ -140,11 +143,13 @@ export class DocumentParser {
 
   /**
    * Parse HTML file
+   * Returns full HTML content (not just text) for deep analysis
    */
   async parseHtml(buffer: Buffer): Promise<ParsedDocument> {
     try {
       const html = buffer.toString('utf-8');
-      // Extract text from HTML
+      // Return full HTML content for deep analysis
+      // Also extract text for metadata purposes
       const text = html
         .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
         .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
@@ -153,7 +158,7 @@ export class DocumentParser {
         .trim();
       
       return {
-        text,
+        text: html, // Return full HTML for analysis, not just text
         type: 'html',
         metadata: {
           wordCount: text.split(/\s+/).length,

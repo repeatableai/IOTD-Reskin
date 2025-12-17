@@ -12,11 +12,11 @@ export default function PlanDetails() {
   const plans = [
     {
       id: "starter",
-      name: "Starter",
+      name: "Investor",
       icon: Zap,
-      price: "Free",
-      period: "Forever free",
-      description: "Perfect for exploring ideas and getting started",
+      price: "$125,000 Annually",
+      period: "",
+      description: "Market Test Solutions",
       features: [
         { text: "Browse 400+ curated startup solutions", included: true },
         { text: "View opportunity scores and metrics", included: true },
@@ -35,13 +35,13 @@ export default function PlanDetails() {
     },
     {
       id: "pro",
-      name: "Pro",
+      name: "Portfolio Manager",
       icon: Crown,
-      price: "$29",
-      period: "per month",
-      description: "For serious entrepreneurs ready to build",
+      price: "$275,000 Annually",
+      period: "",
+      description: "Exclusive Rights to Claimed Solutions",
       features: [
-        { text: "Everything in Starter, plus:", included: true, bold: true },
+        { text: "Everything in Investor, plus:", included: true, bold: true },
         { text: "Unlimited saved solutions", included: true },
         { text: "Custom research reports (24h turnaround)", included: true },
         { text: "Unlimited AI Chat with GPT-4", included: true },
@@ -52,7 +52,7 @@ export default function PlanDetails() {
         { text: "Early access to new features", included: true },
         { text: "Tools library (20+ resources)", included: true },
       ],
-      buttonText: "Upgrade to Pro",
+      buttonText: "Upgrade to Portfolio Manager",
       buttonVariant: "default" as const,
       highlighted: true,
       savings: "Save $60 with annual billing",
@@ -63,9 +63,9 @@ export default function PlanDetails() {
       icon: Building2,
       price: "Custom",
       period: "For teams",
-      description: "Advanced features for scaling organizations",
+      description: "Access to Development team",
       features: [
-        { text: "Everything in Pro, plus:", included: true, bold: true },
+        { text: "Everything in Portfolio Manager, plus:", included: true, bold: true },
         { text: "Team collaboration workspace", included: true },
         { text: "Custom research priorities & SLA", included: true },
         { text: "Dedicated account manager", included: true },
@@ -92,11 +92,11 @@ export default function PlanDetails() {
           </div>
           <h1 className="text-4xl font-bold mb-4">Choose Your Plan</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Select the perfect plan for your entrepreneurial journey
+            Investor Platform Fees
           </p>
           {user && (
             <Badge className="mt-4" variant="secondary">
-              Currently on {currentPlan.charAt(0).toUpperCase() + currentPlan.slice(1)} plan
+              Limited Licences Available
             </Badge>
           )}
         </div>
@@ -212,7 +212,7 @@ export default function PlanDetails() {
               <div>
                 <h3 className="font-semibold mb-2">Do you offer educational discounts?</h3>
                 <p className="text-sm text-muted-foreground">
-                  Yes! Students and educators get 50% off Pro plans. Contact us for verification.
+                  Yes! Students and educators get 50% off Portfolio Manager plans. Contact us for verification.
                 </p>
               </div>
             </div>

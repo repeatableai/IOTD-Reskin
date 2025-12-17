@@ -46,6 +46,7 @@ import ScoreAnalysis from "@/pages/score-analysis";
 import MarketInsightDetail from "@/pages/market-insight-detail";
 import TrendDetail from "@/pages/trend-detail";
 import MyIdeas from "@/pages/my-ideas";
+import BulkImport from "@/pages/bulk-import";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -105,6 +106,7 @@ function Router() {
         <>
           <Route path="/home" component={Home} />
           <Route path="/create-idea" component={CreateIdea} />
+          <Route path="/bulk-import" component={BulkImport} />
         </>
       )}
       <Route component={NotFound} />

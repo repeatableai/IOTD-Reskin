@@ -13,6 +13,7 @@ import {
   faqQuestions,
   toolsLibrary,
   userToolFavorites,
+  importJobs,
   type User,
   type UpsertUser,
   type Idea,
@@ -29,6 +30,8 @@ import {
   type FaqQuestion,
   type Tool,
   type UserIdeaInteraction,
+  type ImportJob,
+  type InsertImportJob,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
@@ -102,6 +105,15 @@ export interface IStorage {
   
   // For You personalized recommendations
   getForYouIdeas(userId: string, limit: number, offset: number): Promise<{ ideas: Idea[]; total: number }>;
+  
+  // Import jobs
+  createImportJob(job: InsertImportJob): Promise<ImportJob>;
+  getImportJob(jobId: string): Promise<ImportJob | undefined>;
+  updateImportJob(jobId: string, updates: Partial<ImportJob>): Promise<ImportJob>;
+  getIdeasWithoutImages(limit: number): Promise<Idea[]>;
+  
+  // Slug checking - check if ANY idea (published or unpublished) has this slug
+  slugExists(slug: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1001,6 +1013,46 @@ export class DatabaseStorage implements IStorage {
       ideas: recommendedIdeas,
       total: Number(countResult[0]?.count || 0)
     };
+  }
+
+  // Import jobs
+  async createImportJob(job: InsertImportJob): Promise<ImportJob> {
+    const [newJob] = await db.insert(importJobs).values(job).returning();
+    return newJob;
+  }
+
+  async getImportJob(jobId: string): Promise<ImportJob | undefined> {
+    const [job] = await db.select().from(importJobs).where(eq(importJobs.id, jobId));
+    return job;
+  }
+
+  async updateImportJob(jobId: string, updates: Partial<ImportJob>): Promise<ImportJob> {
+    const [updated] = await db
+      .update(importJobs)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(importJobs.id, jobId))
+      .returning();
+    return updated;
+  }
+
+  async getIdeasWithoutImages(limit: number): Promise<Idea[]> {
+    return await db
+      .select()
+      .from(ideas)
+      .where(and(
+        sql`${ideas.imageUrl} IS NULL`,
+        eq(ideas.isPublished, true)
+      ))
+      .limit(limit);
+  }
+
+  async slugExists(slug: string): Promise<boolean> {
+    const [idea] = await db
+      .select()
+      .from(ideas)
+      .where(eq(ideas.slug, slug))
+      .limit(1);
+    return !!idea;
   }
 }
 
