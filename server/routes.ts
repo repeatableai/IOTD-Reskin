@@ -20,7 +20,7 @@ import { imageProcessor } from './imageProcessor';
 import puppeteer from 'puppeteer';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
