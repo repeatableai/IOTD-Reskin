@@ -81,9 +81,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user?.claims?.sub; // Get userId if authenticated
       const result = await storage.getIdeas(filters, userId);
       res.json(result);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching ideas:", error);
-      res.status(500).json({ message: "Failed to fetch ideas" });
+      console.error("Error stack:", error?.stack);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      console.error("Request query:", req.query);
+      res.status(500).json({ 
+        message: "Failed to fetch ideas",
+        error: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      });
     }
   });
 
@@ -95,9 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "No featured idea found" });
       }
       res.json(idea);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching featured idea:", error);
-      res.status(500).json({ message: "Failed to fetch featured idea" });
+      console.error("Error stack:", error?.stack);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      res.status(500).json({ 
+        message: "Failed to fetch featured idea",
+        error: error?.message || 'Unknown error',
+        details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      });
     }
   });
 
@@ -2899,6 +2912,128 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       res.status(500).json({ 
         message: "Failed to bulk import ideas",
         error: error.message 
+      });
+    }
+  });
+
+  // Update preview URL for an idea
+  app.put('/api/ideas/:id/preview-url', async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { previewUrl } = req.body;
+      
+      if (!previewUrl || typeof previewUrl !== 'string') {
+        return res.status(400).json({ message: "previewUrl is required" });
+      }
+      
+      const [updated] = await db
+        .update(ideas)
+        .set({ 
+          previewUrl: previewUrl.trim(),
+          updatedAt: new Date()
+        })
+        .where(eq(ideas.id, id))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      res.json({ 
+        message: "Preview URL updated successfully",
+        idea: updated 
+      });
+    } catch (error: any) {
+      console.error("Error updating preview URL:", error);
+      res.status(500).json({ 
+        message: "Failed to update preview URL",
+        error: error?.message 
+      });
+    }
+  });
+
+  // Find and update preview URL by old URL pattern
+  app.post('/api/admin/update-preview-url', async (req: any, res) => {
+    try {
+      const { oldUrlPattern, newUrl } = req.body;
+      
+      if (!oldUrlPattern || !newUrl) {
+        return res.status(400).json({ 
+          message: "oldUrlPattern and newUrl are required" 
+        });
+      }
+      
+      // Get all ideas
+      const allIdeas = await db.select().from(ideas);
+      
+      // Find matching ideas
+      const matchingIdeas = allIdeas.filter(idea => 
+        (idea.previewUrl && idea.previewUrl.includes(oldUrlPattern)) ||
+        (idea.sourceData && idea.sourceData.includes(oldUrlPattern))
+      );
+      
+      if (matchingIdeas.length === 0) {
+        return res.status(404).json({ 
+          message: "No ideas found with matching URL pattern",
+          searched: oldUrlPattern
+        });
+      }
+      
+      // Update all matching ideas
+      const updated = [];
+      for (const idea of matchingIdeas) {
+        const [updatedIdea] = await db
+          .update(ideas)
+          .set({ 
+            previewUrl: newUrl,
+            updatedAt: new Date()
+          })
+          .where(eq(ideas.id, idea.id))
+          .returning();
+        updated.push(updatedIdea);
+      }
+      
+      res.json({
+        message: `Updated ${updated.length} idea(s)`,
+        updated: updated.map(i => ({ id: i.id, title: i.title, slug: i.slug, previewUrl: i.previewUrl }))
+      });
+    } catch (error: any) {
+      console.error("Error updating preview URLs:", error);
+      res.status(500).json({ 
+        message: "Failed to update preview URLs",
+        error: error?.message 
+      });
+    }
+  });
+
+  // Database diagnostic endpoint
+  app.get('/api/admin/db-status', async (req: any, res) => {
+    try {
+      // Check database connection
+      const totalIdeas = await db.select({ count: sql<number>`count(*)` }).from(ideas);
+      const publishedIdeas = await db.select({ count: sql<number>`count(*)` }).from(ideas).where(eq(ideas.isPublished, true));
+      const totalTags = await db.select({ count: sql<number>`count(*)` }).from(tags);
+      
+      // Get sample idea to check structure
+      const sampleIdea = await db.select().from(ideas).limit(1);
+      
+      res.json({
+        status: 'connected',
+        database: {
+          totalIdeas: Number(totalIdeas[0]?.count || 0),
+          publishedIdeas: Number(publishedIdeas[0]?.count || 0),
+          totalTags: Number(totalTags[0]?.count || 0),
+          hasSampleIdea: sampleIdea.length > 0,
+          sampleIdeaFields: sampleIdea[0] ? Object.keys(sampleIdea[0]) : [],
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("Database diagnostic error:", error);
+      res.status(500).json({
+        status: 'error',
+        error: error?.message || 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
       });
     }
   });
