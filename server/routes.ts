@@ -2742,14 +2742,22 @@ Be practical, encouraging, and focus on helping them make real progress.`;
   });
 
   // Export all ideas to JSON
-  app.get('/api/admin/export-ideas', isAuthenticated, async (req: any, res) => {
+  app.get('/api/admin/export-ideas', async (req: any, res) => {
     try {
-      // Only allow if explicitly enabled
-      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_BULK_EXPORT) {
-        return res.status(403).json({ 
-          message: "Bulk export is disabled in production. Set ALLOW_BULK_EXPORT=true to enable." 
-        });
+      // In production, require auth and explicit flag
+      if (process.env.NODE_ENV === 'production') {
+        // Check auth
+        if (!req.user) {
+          return res.status(401).json({ message: "Authentication required" });
+        }
+        // Check flag
+        if (!process.env.ALLOW_BULK_EXPORT) {
+          return res.status(403).json({ 
+            message: "Bulk export is disabled in production. Set ALLOW_BULK_EXPORT=true to enable." 
+          });
+        }
       }
+      // In development, allow without auth for easier testing
 
       console.log("[Bulk Export] Starting export...");
       
@@ -2819,14 +2827,22 @@ Be practical, encouraging, and focus on helping them make real progress.`;
   });
 
   // Bulk import ideas from JSON export file
-  app.post('/api/admin/import-ideas', isAuthenticated, upload.single('file'), async (req: any, res) => {
+  app.post('/api/admin/import-ideas', upload.single('file'), async (req: any, res) => {
     try {
-      // Only allow if explicitly enabled
-      if (process.env.NODE_ENV === 'production' && !process.env.ALLOW_BULK_IMPORT) {
-        return res.status(403).json({ 
-          message: "Bulk import is disabled in production. Set ALLOW_BULK_IMPORT=true to enable." 
-        });
+      // In production, require auth and explicit flag
+      if (process.env.NODE_ENV === 'production') {
+        // Check auth
+        if (!req.user) {
+          return res.status(401).json({ message: "Authentication required" });
+        }
+        // Check flag
+        if (!process.env.ALLOW_BULK_IMPORT) {
+          return res.status(403).json({ 
+            message: "Bulk import is disabled in production. Set ALLOW_BULK_IMPORT=true to enable." 
+          });
+        }
       }
+      // In development, allow without auth for easier testing
 
       const file = req.file;
       if (!file) {
