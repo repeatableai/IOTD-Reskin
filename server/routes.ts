@@ -21,7 +21,7 @@ import { imageProcessor } from './imageProcessor';
 import puppeteer from 'puppeteer';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
-import { eq, sql, desc, asc, inArray } from 'drizzle-orm';
+import { eq, sql, desc, asc, inArray, and } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
@@ -5477,10 +5477,107 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         conversationHistory
       );
 
+      // Save AI insight as a message (userId = null identifies it as AI)
+      const [savedMessage] = await db.insert(collaborationMessages).values({
+        ideaId: ideaId,
+        userId: null, // null userId identifies this as an AI message
+        content: insight,
+      }).returning();
+
+      // Broadcast AI message via Socket.io to all users in the room
+      const io = (global as any).socketIO;
+      if (io) {
+        io.to(`idea:${ideaId}`).emit('new_message', {
+          id: savedMessage.id,
+          ideaId: savedMessage.ideaId,
+          userId: null,
+          userName: 'AI Assistant',
+          userImage: null,
+          content: savedMessage.content,
+          createdAt: savedMessage.createdAt,
+          isAI: true,
+        });
+      }
+
       res.json({ insight });
     } catch (error: any) {
       console.error("Error generating AI insight:", error);
       res.status(500).json({ message: "Failed to generate AI insight", error: error.message });
+    }
+  });
+
+  // Collaboration Portal - Send user message
+  app.post('/api/ideas/:ideaId/collaboration/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ideaId } = req.params;
+      const userId = req.user.claims.sub;
+      const { content } = req.body;
+
+      if (!content || typeof content !== 'string' || content.trim().length === 0) {
+        return res.status(400).json({ message: "Message content is required" });
+      }
+
+      // Verify idea exists
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Create collaboration session if it doesn't exist
+      const existingSession = await db.select()
+        .from(collaborationSessions)
+        .where(and(
+          eq(collaborationSessions.ideaId, ideaId),
+          eq(collaborationSessions.userId, userId)
+        ))
+        .limit(1);
+
+      if (existingSession.length === 0) {
+        await db.insert(collaborationSessions).values({
+          ideaId: ideaId,
+          userId: userId,
+        });
+      }
+
+      // Save user message
+      const [savedMessage] = await db.insert(collaborationMessages).values({
+        ideaId: ideaId,
+        userId: userId,
+        content: content.trim(),
+      }).returning();
+
+      // Get user info for the response
+      const [user] = await db.select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        profileImageUrl: users.profileImageUrl,
+      })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+
+      const messageResponse = {
+        id: savedMessage.id,
+        ideaId: savedMessage.ideaId,
+        userId: savedMessage.userId,
+        userName: user?.firstName || 'Anonymous',
+        userImage: user?.profileImageUrl || null,
+        content: savedMessage.content,
+        createdAt: savedMessage.createdAt,
+        isAI: false,
+      };
+
+      // Broadcast message via Socket.io to all users in the room
+      const io = (global as any).socketIO;
+      if (io) {
+        io.to(`idea:${ideaId}`).emit('new_message', messageResponse);
+      }
+
+      res.json(messageResponse);
+    } catch (error: any) {
+      console.error("Error sending collaboration message:", error);
+      res.status(500).json({ message: "Failed to send message", error: error.message });
     }
   });
 

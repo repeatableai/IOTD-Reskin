@@ -19,11 +19,29 @@ export function setupSocketServer(httpServer: HttpServer, sessionMiddleware: Req
   io.on("connection", (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
 
+    // Handle joining collaboration room for an idea
+    socket.on("join_idea_room", (ideaId: string) => {
+      const room = `idea:${ideaId}`;
+      socket.join(room);
+      console.log(`[Socket] ${socket.id} joined room: ${room}`);
+      
+      // Notify others in the room (optional - for active user tracking)
+      socket.to(room).emit("user_joined", { socketId: socket.id });
+    });
+
+    // Handle leaving collaboration room
+    socket.on("leave_idea_room", (ideaId: string) => {
+      const room = `idea:${ideaId}`;
+      socket.leave(room);
+      console.log(`[Socket] ${socket.id} left room: ${room}`);
+      
+      // Notify others in the room
+      socket.to(room).emit("user_left", { socketId: socket.id });
+    });
+
     socket.on("disconnect", () => {
       console.log(`[Socket] Client disconnected: ${socket.id}`);
     });
-
-    // Add any socket event handlers here as needed
   });
 
   return io;

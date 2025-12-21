@@ -19,6 +19,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users } from "lucide-react";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
+import { CollaborationPortal } from "@/components/CollaborationPortal";
 
 interface Template {
   id: string;
@@ -244,6 +245,7 @@ export default function BuildPrompt() {
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [showRoastDialog, setShowRoastDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showCollaborationPortal, setShowCollaborationPortal] = useState(false);
   const [selectedBuildPrompt, setSelectedBuildPrompt] = useState<string | null>(null);
   const [buildPrompts, setBuildPrompts] = useState<any>(null);
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
@@ -635,7 +637,7 @@ ${idea?.description || 'Description of your solution'}
                       <Separator orientation="vertical" className="h-8 mx-2" />
                       <Button 
                         variant="outline" 
-                        onClick={() => setLocation(`/idea/${slug}/collaboration`)}
+                        onClick={() => setShowCollaborationPortal(true)}
                         data-testid="button-collaboration-portal"
                       >
                         <Users className="w-4 h-4 mr-2" />
@@ -893,6 +895,16 @@ ${idea?.description || 'Description of your solution'}
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Collaboration Portal */}
+      {idea?.id && (
+        <CollaborationPortal
+          ideaId={idea.id}
+          ideaTitle={idea.title}
+          open={showCollaborationPortal}
+          onOpenChange={setShowCollaborationPortal}
+        />
+      )}
     </div>
   );
 }

@@ -2548,3 +2548,148 @@ Be realistic, data-driven, and specific. Use actual market research insights. Sc
 }
 
 export const aiService = new AIService();
+  /**
+   * Generate collaboration insight - analyzes conversation and provides insights
+   */
+  async generateCollaborationInsight(
+    ideaId: string,
+    ideaTitle: string,
+    conversationHistory: Array<{ userName: string; content: string; createdAt: Date }>
+  ): Promise<string> {
+    const prompt = `You are an AI collaboration assistant helping a team discuss and refine a startup idea.
+
+IDEA: ${ideaTitle}
+IDEA ID: ${ideaId}
+
+CONVERSATION HISTORY:
+${conversationHistory.map(msg => `${msg.userName}: ${msg.content}`).join('\n\n')}
+
+Analyze this conversation and provide a comprehensive insight that:
+1. Summarizes key discussion points
+2. Identifies areas of consensus or disagreement
+3. Highlights important questions or concerns raised
+4. Suggests next steps or action items
+5. Provides strategic recommendations
+
+Be concise but comprehensive. Format as a clear, actionable insight that helps move the conversation forward.`;
+
+    try {
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      return response.content[0].type === 'text' ? response.content[0].text : '';
+    } catch (error) {
+      console.error('Error generating collaboration insight:', error);
+      throw new Error('Failed to generate collaboration insight');
+    }
+  }
+
+  /**
+   * Generate message analysis - analyzes a specific message and provides insights
+   */
+  async generateMessageAnalysis(
+    ideaId: string,
+    ideaTitle: string,
+    messageId: string | undefined,
+    messageContent: string | undefined,
+    question: string,
+    context: Array<{ id: string; userName: string; content: string; createdAt: Date }>
+  ): Promise<string> {
+    const prompt = `You are an AI collaboration assistant helping a team discuss and refine a startup idea.
+
+IDEA: ${ideaTitle}
+IDEA ID: ${ideaId}
+
+${messageId && messageContent ? `MESSAGE BEING ANALYZED:
+${messageContent}
+
+` : ''}CONVERSATION CONTEXT:
+${context.map(msg => `${msg.userName}: ${msg.content}`).join('\n\n')}
+
+USER QUESTION: ${question}
+
+Provide a thoughtful, helpful response that addresses the user's question. If a specific message is being analyzed, reference it directly. Use the conversation context to provide relevant insights.`;
+
+    try {
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      return response.content[0].type === 'text' ? response.content[0].text : '';
+    } catch (error) {
+      console.error('Error generating message analysis:', error);
+      throw new Error('Failed to generate message analysis');
+    }
+  }
+
+  /**
+   * Generate synthesize response - synthesizes conversation with state management
+   */
+  async generateSynthesizeResponse(
+    ideaId: string,
+    idea: any,
+    allContext: Array<{ id: string; userName: string; content: string; createdAt: Date }>,
+    synthesizeState: 'analyzing' | 'synthesizing' | 'critiquing',
+    synthesizeData: any,
+    question: string
+  ): Promise<{ response: string; nextState: string; data: any }> {
+    const statePrompts: Record<string, string> = {
+      analyzing: `Analyze the following message and conversation. Provide detailed insights, identify key points, and highlight important considerations.`,
+      synthesizing: `Synthesize the key points from this entire conversation. Identify themes, consensus points, disagreements, and actionable takeaways.`,
+      critiquing: `Critique the following message and conversation. Provide constructive feedback, identify potential issues, and suggest improvements.`
+    };
+
+    const prompt = `You are an AI collaboration assistant helping a team discuss and refine a startup idea.
+
+IDEA: ${idea.title}
+IDEA ID: ${ideaId}
+
+CONVERSATION:
+${allContext.map(msg => `${msg.userName}: ${msg.content}`).join('\n\n')}
+
+${statePrompts[synthesizeState] || statePrompts.synthesizing}
+
+USER REQUEST: ${question}
+
+Provide a comprehensive response that addresses the request and helps move the conversation forward.`;
+
+    try {
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
+
+      return {
+        response: responseText,
+        nextState: 'idle',
+        data: {}
+      };
+    } catch (error) {
+      console.error('Error generating synthesize response:', error);
+      throw new Error('Failed to generate synthesize response');
+    }
+  }
+}
