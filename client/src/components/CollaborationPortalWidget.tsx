@@ -234,6 +234,32 @@ export function CollaborationPortalWidget() {
     }
   }, [messagesData?.messages?.length, isOpen]);
 
+  // Draggable mouse move handler - hooks must be called unconditionally
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!widgetRef.current) return;
+      const widgetWidth = widgetRef.current.offsetWidth || 350;
+      const widgetHeight = widgetRef.current.offsetHeight || 500;
+      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, window.innerWidth - widgetWidth));
+      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, window.innerHeight - widgetHeight));
+      updatePosition(newX, newY);
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart, updatePosition]);
+
   // Early return AFTER all hooks
   if (!isOpen || !ideaId || !ideaTitle) {
     return null;
