@@ -586,17 +586,9 @@ ${idea?.description || 'Description of your solution'}
           {/* Main Content Area */}
           <div className="flex-1 overflow-y-auto min-w-0">
             <div className="max-w-4xl mx-auto p-8">
-            {currentTemplate && (
-              <div className="space-y-8">
-                {/* Template Tag and Idea Title */}
-                <div className="space-y-2">
-                  <Badge variant="secondary" className="text-sm">
-                    {currentTemplate?.name || 'Template'}
-                  </Badge>
-                  <h2 className="text-2xl font-semibold">{idea?.title || 'Renter documentation platform that prevents unfair deposit deductions'}</h2>
-                </div>
-
-                {/* Action Buttons */}
+            {/* Action Buttons - Always visible when idea exists */}
+            {idea && (
+              <div className="mb-8">
                 <div className="flex flex-wrap gap-3 items-center">
                   {isAuthenticated && idea?.id && (
                     <IdeaActionButtons ideaId={idea.id} />
@@ -650,6 +642,18 @@ ${idea?.description || 'Description of your solution'}
                       ideaTitle={idea?.title || ''}
                     />
                   </div>
+                </div>
+              </div>
+            )}
+
+            {currentTemplate && (
+              <div className="space-y-8">
+                {/* Template Tag and Idea Title */}
+                <div className="space-y-2">
+                  <Badge variant="secondary" className="text-sm">
+                    {currentTemplate?.name || 'Template'}
+                  </Badge>
+                  <h2 className="text-2xl font-semibold">{idea?.title || 'Renter documentation platform that prevents unfair deposit deductions'}</h2>
                 </div>
 
                 {/* Market Trend Graph */}
