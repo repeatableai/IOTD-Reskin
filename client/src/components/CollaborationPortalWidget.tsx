@@ -168,6 +168,7 @@ export function CollaborationPortalWidget() {
     mutationFn: async ({ question }: { question: string }) => {
       if (!ideaId) throw new Error('Idea ID is required');
       const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-chat`, {
+        messageId: chattingAboutMessage?.id || null, // Include messageId if chatting about a specific message
         question,
         conversationContext: messages.map(m => ({
           id: m.id,
