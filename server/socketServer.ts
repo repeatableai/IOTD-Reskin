@@ -14,7 +14,10 @@ export function setupSocketServer(httpServer: HttpServer, sessionMiddleware: Req
   });
 
   // Use session middleware for socket.io authentication
-  io.engine.use(sessionMiddleware as any);
+  // Wrap the Express middleware to work with Socket.IO engine
+  io.engine.use((req: any, res: any, next: any) => {
+    sessionMiddleware(req, res, next);
+  });
 
   io.on("connection", (socket) => {
     console.log(`[Socket] Client connected: ${socket.id}`);
