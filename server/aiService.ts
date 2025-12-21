@@ -273,20 +273,23 @@ class AIService {
       console.error('[OpenAI]', JSON.stringify(errorDetails, null, 2));
       console.error('[OpenAI] ========================================');
       
-      // Provide more detailed error message
+      // Always throw an error with detailed information
+      let errorMessage = 'Unknown error';
+      
       if (error?.message) {
-        const detailedError = `OpenAI API error: ${error.message}${error?.code ? ` (code: ${error.code})` : ''}${error?.status || error?.statusCode ? ` (status: ${error?.status || error?.statusCode})` : ''}`;
-        throw new Error(detailedError);
-      }
-      
-      // If error has a response with data, try to extract error message
-      if (error?.response?.data) {
+        errorMessage = error.message;
+      } else if (error?.response?.data) {
         const responseData = error.response.data;
-        const errorMsg = responseData?.error?.message || responseData?.message || JSON.stringify(responseData);
-        throw new Error(`OpenAI API error: ${errorMsg}`);
+        errorMessage = responseData?.error?.message || responseData?.message || JSON.stringify(responseData);
+      } else if (error?.toString) {
+        errorMessage = error.toString();
+      } else {
+        errorMessage = JSON.stringify(error);
       }
       
-      throw new Error(`Failed to generate AI response: ${error?.toString() || JSON.stringify(error) || 'Unknown error'}`);
+      const detailedError = `OpenAI API error: ${errorMessage}${error?.code ? ` (code: ${error.code})` : ''}${error?.status || error?.statusCode ? ` (status: ${error?.status || error?.statusCode})` : ''}`;
+      console.error('[OpenAI] Throwing error:', detailedError);
+      throw new Error(detailedError);
     }
   }
 

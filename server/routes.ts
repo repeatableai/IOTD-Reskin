@@ -3515,6 +3515,57 @@ Return ONLY valid JSON, no markdown or explanation.`
     }
   });
 
+  // Test OpenAI API key endpoint (for debugging)
+  app.get('/api/test/openai', async (req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ 
+          error: 'OPENAI_API_KEY is not set',
+          hasKey: false 
+        });
+      }
+      
+      const keyLength = process.env.OPENAI_API_KEY.length;
+      const keyPrefix = process.env.OPENAI_API_KEY.substring(0, 10);
+      
+      // Try to initialize OpenAI client
+      try {
+        const { default: OpenAI } = await import('openai');
+        const testClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        
+        // Try a simple API call
+        const testCompletion = await testClient.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: "Say 'test successful'" }],
+          max_tokens: 10,
+        });
+        
+        return res.json({
+          success: true,
+          hasKey: true,
+          keyLength,
+          keyPrefix: `${keyPrefix}...`,
+          testResponse: testCompletion.choices[0]?.message?.content || 'No content',
+        });
+      } catch (apiError: any) {
+        return res.status(500).json({
+          error: 'OpenAI API call failed',
+          hasKey: true,
+          keyLength,
+          keyPrefix: `${keyPrefix}...`,
+          apiError: apiError?.message || 'Unknown error',
+          code: apiError?.code,
+          status: apiError?.status,
+        });
+      }
+    } catch (error: any) {
+      return res.status(500).json({
+        error: 'Test endpoint failed',
+        message: error?.message || 'Unknown error',
+      });
+    }
+  });
+
   // Contact submission
   app.post('/api/contact', async (req, res) => {
     try {
