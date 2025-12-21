@@ -4937,6 +4937,64 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Remove genspark.ai previewUrls from first page (CSP blocked)
+  app.post('/api/admin/remove-genspark-ai-preview-urls', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      // Get first page of ideas
+      const firstPageIdeas = await db.select()
+        .from(ideas)
+        .where(eq(ideas.isPublished, true))
+        .orderBy(desc(ideas.createdAt))
+        .limit(50);
+      
+      let removedCount = 0;
+      const removedSlugs: string[] = [];
+      
+      for (const idea of firstPageIdeas) {
+        const previewUrl = idea.previewUrl || '';
+        if (previewUrl.includes('genspark.ai')) {
+          try {
+            // Set to null so modal shows fallback message
+            await db.update(ideas)
+              .set({ previewUrl: null })
+              .where(eq(ideas.slug, idea.slug));
+            removedCount++;
+            removedSlugs.push(idea.slug);
+            console.log(`[Remove Genspark AI] Removed CSP-blocked previewUrl from ${idea.slug}`);
+          } catch (error: any) {
+            console.error(`[Remove Genspark AI] Error removing previewUrl from ${idea.slug}:`, error.message);
+          }
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Removed ${removedCount} CSP-blocked genspark.ai previewUrls from first page`,
+        removed: removedCount,
+        removedSlugs: removedSlugs
+      });
+    } catch (error: any) {
+      console.error("[Remove Genspark AI] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to remove genspark.ai previewUrls",
+        error: error.message
+      });
+    }
+  });
+
   // Update a specific idea's previewUrl
   app.post('/api/admin/update-idea-preview', async (req: any, res) => {
     try {
