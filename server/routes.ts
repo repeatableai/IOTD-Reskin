@@ -4823,6 +4823,71 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Update first page ideas using sourceData as previewUrl fallback
+  app.post('/api/admin/update-preview-from-sourcedata', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      // Get first page of ideas
+      const firstPageIdeas = await db.select()
+        .from(ideas)
+        .where(eq(ideas.isPublished, true))
+        .orderBy(desc(ideas.createdAt))
+        .limit(50);
+      
+      let updatedCount = 0;
+      const updatedSlugs: string[] = [];
+      
+      for (const idea of firstPageIdeas) {
+        // If no previewUrl but sourceData is a URL, use it
+        if (!idea.previewUrl && idea.sourceData) {
+          const sourceData = idea.sourceData.trim();
+          const isUrl = sourceData.startsWith('http://') || 
+                       sourceData.startsWith('https://') ||
+                       /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(sourceData);
+          
+          if (isUrl) {
+            const previewUrl = sourceData.startsWith('http') ? sourceData : `https://${sourceData}`;
+            try {
+              await db.update(ideas)
+                .set({ previewUrl })
+                .where(eq(ideas.slug, idea.slug));
+              updatedCount++;
+              updatedSlugs.push(idea.slug);
+              console.log(`[Update from sourceData] Updated ${idea.slug}`);
+            } catch (error: any) {
+              console.error(`[Update from sourceData] Error updating ${idea.slug}:`, error.message);
+            }
+          }
+        }
+      }
+      
+      res.json({
+        success: true,
+        message: `Updated ${updatedCount} ideas with previewUrl from sourceData`,
+        updated: updatedCount,
+        updatedSlugs: updatedSlugs.slice(0, 20)
+      });
+    } catch (error: any) {
+      console.error("[Update from sourceData] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update preview URLs",
+        error: error.message
+      });
+    }
+  });
+
   // Update a specific idea's previewUrl
   app.post('/api/admin/update-idea-preview', async (req: any, res) => {
     try {
