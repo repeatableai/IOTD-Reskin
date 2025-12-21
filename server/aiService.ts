@@ -220,10 +220,12 @@ class AIService {
     try {
       // Check if API key is set
       if (!process.env.OPENAI_API_KEY) {
-        console.error('[OpenAI] OPENAI_API_KEY is not set');
-        throw new Error('OPENAI_API_KEY is not set. Please configure it in your environment variables.');
+        const errorMsg = 'OPENAI_API_KEY is not set. Please configure it in your environment variables.';
+        console.error('[OpenAI]', errorMsg);
+        throw new Error(errorMsg);
       }
 
+      console.log('[OpenAI] Making API call with model: gpt-4o-mini');
       const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         messages: messages,
@@ -231,20 +233,30 @@ class AIService {
         max_tokens: 4000,
       });
 
+      console.log('[OpenAI] API call successful');
       const content = completion.choices[0]?.message?.content;
       if (!content) {
-        console.error('[OpenAI] No content in response:', completion);
+        console.error('[OpenAI] No content in response:', JSON.stringify(completion, null, 2));
         throw new Error('OpenAI returned an empty response');
       }
 
       return content;
     } catch (error: any) {
-      console.error('[OpenAI] API error:', error);
+      console.error('[OpenAI] API error details:', {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        type: error?.type,
+        response: error?.response,
+        stack: error?.stack,
+      });
+      
       // Provide more detailed error message
       if (error?.message) {
-        throw new Error(`OpenAI API error: ${error.message}`);
+        const detailedError = `OpenAI API error: ${error.message}${error?.code ? ` (code: ${error.code})` : ''}${error?.status ? ` (status: ${error.status})` : ''}`;
+        throw new Error(detailedError);
       }
-      throw new Error('Failed to generate AI response');
+      throw new Error(`Failed to generate AI response: ${error?.toString() || 'Unknown error'}`);
     }
   }
 
@@ -1578,17 +1590,36 @@ ${idea.content ? `\nDetailed Analysis: ${idea.content}` : ''}
               return content.text;
             }
           } catch (anthropicError: any) {
-            console.error('[AI Chat] Anthropic fallback also failed:', anthropicError?.message);
-            throw new Error(`Both OpenAI and Anthropic failed. OpenAI: ${openAIError?.message || 'Unknown error'}, Anthropic: ${anthropicError?.message || 'Unknown error'}`);
+            console.error('[AI Chat] Anthropic fallback also failed:', {
+              message: anthropicError?.message,
+              code: anthropicError?.code,
+              status: anthropicError?.status,
+              stack: anthropicError?.stack,
+            });
+            const combinedError = new Error(`Both OpenAI and Anthropic failed. OpenAI: ${openAIError?.message || 'Unknown error'}, Anthropic: ${anthropicError?.message || 'Unknown error'}`);
+            (combinedError as any).originalOpenAIError = openAIError;
+            (combinedError as any).originalAnthropicError = anthropicError;
+            throw combinedError;
           }
         }
         
         // If no Anthropic fallback available, throw the original OpenAI error
+        console.error('[AI Chat] No Anthropic fallback available, throwing OpenAI error');
         throw openAIError;
       }
     } catch (error: any) {
-      console.error('[AI Chat] generateChatResponse error:', error);
-      throw error;
+      console.error('[AI Chat] generateChatResponse error:', {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        type: error?.constructor?.name,
+        stack: error?.stack,
+      });
+      // Re-throw with original error message preserved
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`AI Chat error: ${error?.toString() || 'Unknown error'}`);
     }
   }
 
