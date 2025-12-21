@@ -632,9 +632,10 @@ ${idea?.description || 'Description of your solution'}
                     Export
                   </Button>
                   
-                  {isAuthenticated && idea?.id && (
-                    <>
-                      <Separator orientation="vertical" className="h-8 mx-2" />
+                  <Separator orientation="vertical" className="h-8 mx-2" />
+                  
+                  <div className="flex gap-3">
+                    {isAuthenticated && idea?.id && (
                       <Button 
                         variant="outline" 
                         onClick={() => setShowCollaborationPortal(true)}
@@ -643,10 +644,7 @@ ${idea?.description || 'Description of your solution'}
                         <Users className="w-4 h-4 mr-2" />
                         Collaboration Portal
                       </Button>
-                    </>
-                  )}
-                  
-                  <div className="flex gap-3">
+                    )}
                     <ClaimButton 
                       ideaId={idea?.id || ''} 
                       ideaTitle={idea?.title || ''}

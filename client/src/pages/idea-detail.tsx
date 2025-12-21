@@ -55,6 +55,7 @@ import { PreviewModal } from "@/components/PreviewModal";
 import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
 import ExportDialog from "@/components/ExportDialog";
+import { MarketTrendGraph } from "@/components/MarketTrendGraph";
 
 function PreviewTabContent({ previewUrl, title }: { previewUrl: string; title: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -656,6 +657,14 @@ export default function IdeaDetail() {
                   <div dangerouslySetInnerHTML={{ __html: idea.content.replace(/\n/g, '<br>') }} />
                 </CardContent>
               </Card>
+            )}
+
+            {/* Market Trend Graph */}
+            {idea && (idea.keyword || idea.keywordData?.primaryKeyword?.term) && (
+              <MarketTrendGraph 
+                keyword={idea.keyword || idea.keywordData?.primaryKeyword?.term || idea.title.split(' ')[0]} 
+                ideaTitle={idea.title}
+              />
             )}
 
             {/* Comprehensive Analysis Sections */}
