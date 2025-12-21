@@ -71,13 +71,13 @@ class ExternalDataService {
    * Get real trend data from web search using SerpAPI, Reddit and Claude
    * Fetches actual data when available, falls back to generated data
    */
-  async getTrendData(keyword: string): Promise<TrendData> {
+  async getTrendData(keyword: string, timeRange: '6m' | '1y' = '1y'): Promise<TrendData> {
     try {
       // Try SerpAPI first for real Google Trends
       const apiKey = process.env.SERP_API_KEY;
       if (apiKey) {
         try {
-          const trendsData = await realDataService.getGoogleTrends(keyword);
+          const trendsData = await realDataService.getGoogleTrends(keyword, timeRange);
           if (trendsData.interestOverTime.length > 0) {
             const avgValue = trendsData.interestOverTime.reduce((sum, d) => sum + d.value, 0) / trendsData.interestOverTime.length;
             const latestValue = trendsData.interestOverTime[trendsData.interestOverTime.length - 1]?.value || 0;

@@ -3913,7 +3913,8 @@ Return ONLY valid JSON, no markdown or explanation.`
         return res.status(400).json({ message: "Keyword parameter is required" });
       }
       const decodedKeyword = decodeURIComponent(keyword);
-      const trendData = await externalDataService.getTrendData(decodedKeyword);
+      const timeRange = (req.query.timeRange as string) || '1y'; // Default to 1 year
+      const trendData = await externalDataService.getTrendData(decodedKeyword, timeRange as '6m' | '1y');
       res.json(trendData);
     } catch (error) {
       console.error("Error fetching trend data:", error);

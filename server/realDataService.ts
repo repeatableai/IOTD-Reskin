@@ -260,12 +260,12 @@ class RealDataService {
   /**
    * Get Google Trends data via SerpAPI
    */
-  async getGoogleTrends(keyword: string): Promise<{
+  async getGoogleTrends(keyword: string, timeRange: '6m' | '1y' = '1y'): Promise<{
     interestOverTime: Array<{ date: string; value: number }>;
     relatedQueries: string[];
     relatedTopics: string[];
   }> {
-    const cacheKey = `trends:${keyword}`;
+    const cacheKey = `trends:${keyword}:${timeRange}`;
     const cached = this.getFromCache(cacheKey);
     if (cached) return cached;
 
@@ -280,11 +280,16 @@ class RealDataService {
     }
 
     try {
+      // Map timeRange to SerpAPI time parameter
+      // SerpAPI supports: 'now 1-H', 'now 4-H', 'now 1-d', 'now 7-d', 'today 1-m', 'today 3-m', 'today 12-m', 'today 5-y'
+      const timeParam = timeRange === '6m' ? 'today 6-m' : 'today 12-m';
+      
       const results = await getJson({
         engine: 'google_trends',
         q: keyword,
         api_key: apiKey,
         data_type: 'TIMESERIES',
+        time: timeParam,
       });
 
       const result = {

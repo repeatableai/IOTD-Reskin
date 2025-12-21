@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { TrendingUp, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -24,6 +26,8 @@ interface TrendData {
   currentValue?: number;
   growthRate?: number;
 }
+
+type TimeRange = '6m' | '1y';
 
 interface MarketTrendGraphProps {
   keyword: string;
@@ -108,8 +112,15 @@ const getGrowthColor = (growth: number) => {
 };
 
 export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) {
+  const [timeRange, setTimeRange] = useState<TimeRange>('1y');
+  
   const { data: trendData, isLoading } = useQuery<TrendData>({
-    queryKey: ['/api/external/trend', keyword],
+    queryKey: ['/api/external/trend', keyword, timeRange],
+    queryFn: async () => {
+      const response = await fetch(`/api/external/trend?keyword=${encodeURIComponent(keyword)}&timeRange=${timeRange}`);
+      if (!response.ok) throw new Error('Failed to fetch trend data');
+      return response.json();
+    },
     enabled: !!keyword,
   });
 
@@ -161,6 +172,29 @@ export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) 
           {isLoading && (
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           )}
+        </div>
+
+        {/* Time Range Buttons */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-xs text-muted-foreground">Time Range:</span>
+          <Button
+            variant={timeRange === '6m' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTimeRange('6m')}
+            disabled={isLoading}
+            className="h-7 text-xs px-3"
+          >
+            6 Months
+          </Button>
+          <Button
+            variant={timeRange === '1y' ? "default" : "outline"}
+            size="sm"
+            onClick={() => setTimeRange('1y')}
+            disabled={isLoading}
+            className="h-7 text-xs px-3"
+          >
+            1 Year
+          </Button>
         </div>
         
         {/* Chart (matching Trends tab height) */}
