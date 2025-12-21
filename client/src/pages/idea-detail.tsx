@@ -56,7 +56,7 @@ import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
 import ExportDialog from "@/components/ExportDialog";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
-import { CollaborationPortal } from "@/components/CollaborationPortal";
+import { useCollaborationPortal } from "@/contexts/CollaborationPortalContext";
 
 function PreviewTabContent({ previewUrl, title }: { previewUrl: string; title: string }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -95,7 +95,7 @@ export default function IdeaDetail() {
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [showRoastDialog, setShowRoastDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
-  const [showCollaborationPortal, setShowCollaborationPortal] = useState(false);
+  const { openPortal } = useCollaborationPortal();
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", slug],
@@ -624,7 +624,7 @@ export default function IdeaDetail() {
             {idea?.id && (
               <Button 
                 variant="outline" 
-                onClick={() => setShowCollaborationPortal(true)}
+                onClick={() => idea?.id && openPortal(idea.id, idea.title)}
                 data-testid="button-collaboration-portal"
               >
                 <Users className="w-4 h-4 mr-2" />
@@ -1864,14 +1864,6 @@ export default function IdeaDetail() {
       )}
 
       {/* Collaboration Portal */}
-      {idea?.id && (
-        <CollaborationPortal
-          ideaId={idea.id}
-          ideaTitle={idea.title}
-          open={showCollaborationPortal}
-          onOpenChange={setShowCollaborationPortal}
-        />
-      )}
     </div>
   );
 }
