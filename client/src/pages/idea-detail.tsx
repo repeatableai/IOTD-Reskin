@@ -56,6 +56,7 @@ import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
 import ExportDialog from "@/components/ExportDialog";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
+import { CollaborationPortal } from "@/components/CollaborationPortal";
 
 function PreviewTabContent({ previewUrl, title }: { previewUrl: string; title: string }) {
   const [isOpen, setIsOpen] = useState(false);
