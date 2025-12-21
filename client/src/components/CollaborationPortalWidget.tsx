@@ -323,8 +323,8 @@ export function CollaborationPortalWidget() {
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!widgetRef.current) return;
-      const widgetWidth = widgetRef.current.offsetWidth || 400;
-      const widgetHeight = widgetRef.current.offsetHeight || 600;
+      const widgetWidth = widgetRef.current.offsetWidth || 350;
+      const widgetHeight = widgetRef.current.offsetHeight || 500;
       const newX = Math.max(0, Math.min(e.clientX - dragStart.x, window.innerWidth - widgetWidth));
       const newY = Math.max(0, Math.min(e.clientY - dragStart.y, window.innerHeight - widgetHeight));
       updatePosition(newX, newY);
