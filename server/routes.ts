@@ -4694,7 +4694,8 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         try {
           const [existingIdea] = await db.select().from(ideas).where(eq(ideas.slug, slug));
           
-          if (existingIdea && !existingIdea.previewUrl) {
+          // Update if idea exists and previewUrl is missing or empty
+          if (existingIdea && (!existingIdea.previewUrl || existingIdea.previewUrl.trim() === '')) {
             await db.update(ideas)
               .set({ previewUrl })
               .where(eq(ideas.slug, slug));
