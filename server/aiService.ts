@@ -225,8 +225,18 @@ class AIService {
         throw new Error(errorMsg);
       }
 
+      // Initialize OpenAI client (this might throw if API key is invalid)
+      let openaiClient;
+      try {
+        openaiClient = getOpenAI();
+        console.log('[OpenAI] Client initialized successfully');
+      } catch (initError: any) {
+        console.error('[OpenAI] Failed to initialize client:', initError?.message || initError);
+        throw new Error(`Failed to initialize OpenAI client: ${initError?.message || 'Unknown initialization error'}`);
+      }
+
       console.log('[OpenAI] Making API call with model: gpt-4o-mini');
-      const completion = await getOpenAI().chat.completions.create({
+      const completion = await openaiClient.chat.completions.create({
         model: "gpt-4o-mini",
         messages: messages,
         temperature: 0.8,
@@ -242,21 +252,41 @@ class AIService {
 
       return content;
     } catch (error: any) {
-      console.error('[OpenAI] API error details:', {
+      // Log comprehensive error details
+      const errorDetails = {
         message: error?.message,
         code: error?.code,
         status: error?.status,
+        statusCode: error?.statusCode,
         type: error?.type,
-        response: error?.response,
+        response: error?.response ? {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+        } : undefined,
         stack: error?.stack,
-      });
+        name: error?.name,
+        toString: error?.toString?.(),
+      };
+      
+      console.error('[OpenAI] ========== API ERROR DETAILS ==========');
+      console.error('[OpenAI]', JSON.stringify(errorDetails, null, 2));
+      console.error('[OpenAI] ========================================');
       
       // Provide more detailed error message
       if (error?.message) {
-        const detailedError = `OpenAI API error: ${error.message}${error?.code ? ` (code: ${error.code})` : ''}${error?.status ? ` (status: ${error.status})` : ''}`;
+        const detailedError = `OpenAI API error: ${error.message}${error?.code ? ` (code: ${error.code})` : ''}${error?.status || error?.statusCode ? ` (status: ${error?.status || error?.statusCode})` : ''}`;
         throw new Error(detailedError);
       }
-      throw new Error(`Failed to generate AI response: ${error?.toString() || 'Unknown error'}`);
+      
+      // If error has a response with data, try to extract error message
+      if (error?.response?.data) {
+        const responseData = error.response.data;
+        const errorMsg = responseData?.error?.message || responseData?.message || JSON.stringify(responseData);
+        throw new Error(`OpenAI API error: ${errorMsg}`);
+      }
+      
+      throw new Error(`Failed to generate AI response: ${error?.toString() || JSON.stringify(error) || 'Unknown error'}`);
     }
   }
 
