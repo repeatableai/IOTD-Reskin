@@ -105,9 +105,9 @@ export function OpportunityAnalysisModal({
       <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
+            <div className="flex-1">
               <DialogTitle>Opportunity Analysis - {ideaTitle}</DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="mt-1">
                 Interactive preview of {ideaTitle} application
               </DialogDescription>
             </div>
@@ -134,10 +134,10 @@ export function OpportunityAnalysisModal({
           </div>
         </DialogHeader>
         <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 120px)' }}>
-          {iframeError || cspBlocked ? (
+          {iframeError || cspBlocked || isGensparkAi ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <p className="text-muted-foreground mb-4">
-                {cspBlocked 
+                {cspBlocked || isGensparkAi
                   ? "This preview cannot be displayed in a pop-up window due to security restrictions. Please use the button below to open it in a new tab."
                   : "The preview cannot be displayed in this window due to security restrictions."}
               </p>
