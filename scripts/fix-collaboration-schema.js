@@ -95,6 +95,26 @@ async function fixCollaborationSchema() {
       `);
       console.log('[Schema Fix] ✅ Created collaboration_sessions table');
     } else {
+      // Check if socket_id column exists and make it nullable if it does
+      const socketIdCheck = await client.query(`
+        SELECT column_name, is_nullable
+        FROM information_schema.columns 
+        WHERE table_name = 'collaboration_sessions' AND column_name = 'socket_id';
+      `);
+      
+      if (socketIdCheck.rows.length > 0 && socketIdCheck.rows[0].is_nullable === 'NO') {
+        console.log('[Schema Fix] 🔧 Making socket_id column nullable...');
+        await client.query(`
+          ALTER TABLE collaboration_sessions 
+          ALTER COLUMN socket_id DROP NOT NULL;
+        `);
+        console.log('[Schema Fix] ✅ Made socket_id nullable');
+      } else if (socketIdCheck.rows.length === 0) {
+        console.log('[Schema Fix] ℹ️ socket_id column does not exist (this is fine)');
+      } else {
+        console.log('[Schema Fix] ✓ socket_id is already nullable');
+      }
+      
       // Check if created_at column exists
       const sessionsColumnCheck = await client.query(`
         SELECT column_name 
