@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
+import { useState, useEffect } from "react";
 
 interface OpportunityAnalysisModalProps {
   open: boolean;
@@ -19,6 +20,7 @@ export function OpportunityAnalysisModal({
   ideaSlug 
 }: OpportunityAnalysisModalProps) {
   const [, setLocation] = useLocation();
+  const [iframeError, setIframeError] = useState(false);
   
   // Validate URL before rendering
   const isValidUrl = (url: string): boolean => {
@@ -33,6 +35,13 @@ export function OpportunityAnalysisModal({
 
   const fullUrl = previewUrl.startsWith('http') ? previewUrl : `https://${previewUrl}`;
   
+  // Reset error when modal opens/closes or URL changes
+  useEffect(() => {
+    if (open) {
+      setIframeError(false);
+    }
+  }, [open, previewUrl]);
+  
   const handleOpenInNewTab = () => {
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
   };
@@ -40,6 +49,10 @@ export function OpportunityAnalysisModal({
   const handleGoToDetails = () => {
     onOpenChange(false);
     setLocation(`/idea/${ideaSlug}`);
+  };
+  
+  const handleIframeError = () => {
+    setIframeError(true);
   };
 
   if (!isValidUrl(previewUrl)) {
@@ -88,16 +101,41 @@ export function OpportunityAnalysisModal({
           </div>
         </DialogHeader>
         <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 120px)' }}>
-          <iframe
-            src={fullUrl}
-            className="w-full h-full border-0 absolute inset-0"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-presentation"
-            allow="fullscreen; autoplay; camera; microphone; geolocation"
-            title="App Preview"
-            loading="lazy"
-            style={{ width: '100%', height: '100%' }}
-            allowFullScreen
-          />
+          {iframeError ? (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+              <p className="text-muted-foreground mb-4">
+                The preview cannot be displayed in this window due to security restrictions.
+              </p>
+              <Button onClick={handleOpenInNewTab} variant="default">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Open Preview in New Tab
+              </Button>
+            </div>
+          ) : (
+            <iframe
+              src={fullUrl}
+              className="w-full h-full border-0 absolute inset-0"
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-presentation"
+              allow="fullscreen; autoplay; camera; microphone; geolocation"
+              title="App Preview"
+              loading="lazy"
+              style={{ width: '100%', height: '100%' }}
+              allowFullScreen
+              onError={handleIframeError}
+              onLoad={(e) => {
+                // Check if iframe loaded but is blocked (contentWindow will be null if blocked)
+                try {
+                  const iframe = e.target as HTMLIFrameElement;
+                  if (iframe.contentWindow === null && iframe.contentDocument === null) {
+                    // Iframe might be blocked, but we can't reliably detect this
+                    // The onError handler will catch actual load failures
+                  }
+                } catch (err) {
+                  // Cross-origin restrictions prevent checking, which is normal
+                }
+              }}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
