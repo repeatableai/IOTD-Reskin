@@ -274,20 +274,6 @@ export default function Header() {
                       <div className="text-sm text-muted-foreground">Dive deep into any opportunity with AI</div>
                     </div>
                   </button>
-                  <button
-                    onClick={() => setLocation('/collaboration')}
-                    className="flex items-start gap-3 text-left w-full hover:bg-muted/50 p-2 rounded-md transition-colors"
-                    data-testid="link-collaboration-portal"
-                  >
-                    <Users className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold inline-flex items-center gap-2">
-                        Collaboration Portal
-                        <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">PRO</span>
-                      </div>
-                      <div className="text-sm text-muted-foreground">Collaborate with team members on solutions</div>
-                    </div>
-                  </button>
                 </div>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -612,14 +598,6 @@ export default function Header() {
                         >
                           <MessageSquare className="w-4 h-4 text-muted-foreground" />
                           <span>Chat & Strategize</span>
-                          <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded ml-auto">PRO</span>
-                        </button>
-                        <button
-                          onClick={() => navigateTo('/collaboration')}
-                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
-                        >
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <span>Collaboration Portal</span>
                           <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded ml-auto">PRO</span>
                         </button>
                       </div>
