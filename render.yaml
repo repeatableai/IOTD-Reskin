@@ -10,7 +10,7 @@ services:
     runtime: node
     plan: free
     buildCommand: npm install --production=false && npm run build
-    startCommand: npm run start:migrate
+    startCommand: npm run start:render
     healthCheckPath: /api/health
     envVars:
       - key: NODE_ENV

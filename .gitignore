@@ -8,3 +8,5 @@ vite.config.ts.*
 .env.bak
 server-errors.log
 .cursor/
+ideas-export.json
+COPY_PASTE_VALUES.txt

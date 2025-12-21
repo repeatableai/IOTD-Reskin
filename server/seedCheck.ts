@@ -186,8 +186,17 @@ async function importIdeasFromExport(exportData: any) {
     }
     
     try {
+      // Remove any fields that might not exist in the database schema yet
+      // This prevents errors if migrations haven't run or columns are missing
+      const safeIdeaToInsert: any = { ...ideaToInsert };
+      
+      // Remove fields that might cause issues if columns don't exist
+      // The schema fix script will add these columns, but we need to be defensive
+      // These are already excluded above, but be extra safe
+      delete safeIdeaToInsert.previewUrl;
+      
       // Insert new idea (previewUrl excluded if column doesn't exist)
-      const [insertedIdea] = await db.insert(ideas).values(ideaToInsert).returning();
+      const [insertedIdea] = await db.insert(ideas).values(safeIdeaToInsert).returning();
       importedCount++;
       
       // Import tags
@@ -262,7 +271,7 @@ export async function checkAndSeedDatabase() {
       // Check if ideas-export.json exists
       const exportPath = path.join(process.cwd(), 'ideas-export.json');
       
-      if (fs.existsSync(exportPath)) {
+      if (exportPath && fs.existsSync(exportPath)) {
         console.log("[Seed Check] Found ideas-export.json, importing all ideas...");
         try {
           const fileContent = fs.readFileSync(exportPath, 'utf-8');
