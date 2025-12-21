@@ -22,5 +22,11 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: ANTHROPIC_API_KEY
-        sync: false  # You'll need to add this manually in Render dashboard
+        sync: false  # REQUIRED: Add manually in Render dashboard (from your .env file)
+      - key: OPENAI_API_KEY
+        sync: false  # OPTIONAL: Add manually if using OpenAI features (from your .env file)
+      - key: SERPAPI_API_KEY
+        sync: false  # OPTIONAL: Add manually for Google Images search (from your .env file)
+      - key: UNSPLASH_ACCESS_KEY
+        sync: false  # OPTIONAL: Add manually for Unsplash image search (from your .env file)
 
