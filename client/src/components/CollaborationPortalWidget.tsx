@@ -43,6 +43,7 @@ interface ActiveUser {
 }
 
 export function CollaborationPortalWidget() {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const { portalState, closePortal, updatePosition, toggleExpand } = useCollaborationPortal();
   const { ideaId, ideaTitle, isOpen, position, isExpanded } = portalState;
   const { user, isAuthenticated } = useAuth();
@@ -57,12 +58,9 @@ export function CollaborationPortalWidget() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [synthesizeState, setSynthesizeState] = useState<'idle' | 'analyzing' | 'synthesizing' | 'critiquing'>('idle');
+  const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1920, height: typeof window !== 'undefined' ? window.innerHeight : 1080 });
 
-  if (!isOpen || !ideaId || !ideaTitle) {
-    return null;
-  }
-
-  // Fetch messages
+  // Fetch messages - hooks must be called unconditionally
   const { data: messagesData, isLoading: isLoadingMessages } = useQuery<{ messages: Message[] }>({
     queryKey: [`/api/ideas/${ideaId}/collaboration/messages`],
     queryFn: async () => {
@@ -73,7 +71,7 @@ export function CollaborationPortalWidget() {
     refetchInterval: false,
   });
 
-  // Fetch active users
+  // Fetch active users - hooks must be called unconditionally
   const { data: activeUsersData } = useQuery<{ users: ActiveUser[]; count: number }>({
     queryKey: [`/api/ideas/${ideaId}/collaboration/active-users`],
     queryFn: async () => {
@@ -84,10 +82,104 @@ export function CollaborationPortalWidget() {
     refetchInterval: 5000,
   });
 
-  const messages = messagesData?.messages || [];
-  const activeUsers = activeUsersData?.users || [];
+  // Window resize handler - hooks must be called unconditionally
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
-  // Socket.IO connection
+  // Scroll to bottom helper function (defined before hooks that use it)
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+  };
+
+  // Send message mutation - hooks must be called unconditionally
+  const sendMessageMutation = useMutation({
+    mutationFn: async (content: string) => {
+      if (!ideaId) throw new Error('Idea ID is required');
+      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/messages`, {
+        content,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setMessage("");
+      scrollToBottom();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send message",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // AI Chat mutation - hooks must be called unconditionally
+  const aiChatMutation = useMutation({
+    mutationFn: async ({ question, messages: msgList }: { question: string; messages: Message[] }) => {
+      if (!ideaId) throw new Error('Idea ID is required');
+      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-chat`, {
+        messageId: selectedMessageId,
+        question,
+        conversationContext: msgList.map(m => ({
+          id: m.id,
+          userName: m.userName,
+          content: m.content,
+          createdAt: m.createdAt,
+        })),
+        synthesizeState: synthesizeState !== 'idle' ? synthesizeState : undefined,
+        synthesizeData: {},
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.synthesizeState) {
+        setSynthesizeState(data.synthesizeState);
+      } else {
+        setSynthesizeState('idle');
+      }
+      setSelectedMessageId(null);
+      scrollToBottom();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive",
+      });
+      setSynthesizeState('idle');
+    },
+  });
+
+  // AI Insight mutation - hooks must be called unconditionally
+  const aiInsightMutation = useMutation({
+    mutationFn: async () => {
+      if (!ideaId) throw new Error('Idea ID is required');
+      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-insight`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "AI Insight Generated",
+        description: "The AI has analyzed the conversation and added an insight.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate insight",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Socket.IO connection - hooks must be called unconditionally
   useEffect(() => {
     if (!isOpen || !ideaId) {
       socket?.disconnect();
@@ -134,96 +226,21 @@ export function CollaborationPortalWidget() {
     };
   }, [isOpen, ideaId, queryClient]);
 
-  // Scroll to bottom when messages change
-  const scrollToBottom = () => {
-    setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 100);
-  };
-
+  // Scroll to bottom when messages change - hooks must be called unconditionally
   useEffect(() => {
-    if (messages.length > 0) {
+    const messages = messagesData?.messages || [];
+    if (messages.length > 0 && isOpen) {
       scrollToBottom();
     }
-  }, [messages.length]);
+  }, [messagesData?.messages?.length, isOpen]);
 
-  // Send message mutation
-  const sendMessageMutation = useMutation({
-    mutationFn: async (content: string) => {
-      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/messages`, {
-        content,
-      });
-      return response.json();
-    },
-    onSuccess: () => {
-      setMessage("");
-      scrollToBottom();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send message",
-        variant: "destructive",
-      });
-    },
-  });
+  // Early return AFTER all hooks
+  if (!isOpen || !ideaId || !ideaTitle) {
+    return null;
+  }
 
-  // AI Chat mutation
-  const aiChatMutation = useMutation({
-    mutationFn: async (question: string) => {
-      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-chat`, {
-        messageId: selectedMessageId,
-        question,
-        conversationContext: messages.map(m => ({
-          id: m.id,
-          userName: m.userName,
-          content: m.content,
-          createdAt: m.createdAt,
-        })),
-        synthesizeState: synthesizeState !== 'idle' ? synthesizeState : undefined,
-        synthesizeData: {},
-      });
-      return response.json();
-    },
-    onSuccess: (data) => {
-      if (data.synthesizeState) {
-        setSynthesizeState(data.synthesizeState);
-      } else {
-        setSynthesizeState('idle');
-      }
-      setSelectedMessageId(null);
-      scrollToBottom();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to get AI response",
-        variant: "destructive",
-      });
-      setSynthesizeState('idle');
-    },
-  });
-
-  // AI Insight mutation
-  const aiInsightMutation = useMutation({
-    mutationFn: async () => {
-      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-insight`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "AI Insight Generated",
-        description: "The AI has analyzed the conversation and added an insight.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate insight",
-        variant: "destructive",
-      });
-    },
-  });
+  const messages = messagesData?.messages || [];
+  const activeUsers = activeUsersData?.users || [];
 
   const handleSendMessage = () => {
     if (!message.trim() || sendMessageMutation.isPending) return;
@@ -258,7 +275,7 @@ export function CollaborationPortalWidget() {
     }
     setSelectedMessageId(messageId);
     setSynthesizeState('analyzing');
-    aiChatMutation.mutate("Analyze this message and provide insights.");
+    aiChatMutation.mutate({ question: "Analyze this message and provide insights.", messages });
   };
 
   const handleSynthesize = () => {
@@ -272,7 +289,7 @@ export function CollaborationPortalWidget() {
     }
     setSelectedMessageId(null);
     setSynthesizeState('synthesizing');
-    aiChatMutation.mutate("Synthesize the key points from this conversation.");
+    aiChatMutation.mutate({ question: "Synthesize the key points from this conversation.", messages });
   };
 
   const handleCritique = (messageId: string) => {
@@ -286,7 +303,7 @@ export function CollaborationPortalWidget() {
     }
     setSelectedMessageId(messageId);
     setSynthesizeState('critiquing');
-    aiChatMutation.mutate("Critique this message and provide constructive feedback.");
+    aiChatMutation.mutate({ question: "Critique this message and provide constructive feedback.", messages });
   };
 
   // Draggable functionality
@@ -327,16 +344,6 @@ export function CollaborationPortalWidget() {
   }, [isDragging, dragStart, updatePosition]);
 
   // Calculate widget dimensions
-  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
-  
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
-    };
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
   const widgetWidth = isExpanded ? 500 : 400;
   const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 600;
   
