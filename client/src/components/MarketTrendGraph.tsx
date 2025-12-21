@@ -142,6 +142,14 @@ export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) 
     ? `${trendData.growthRate >= 0 ? '+' : ''}${trendData.growthRate}%`
     : trendData?.growth || "N/A";
 
+  // Format numbers for display
+  const formatNumber = (num?: number) => {
+    if (!num) return '—';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toLocaleString();
+  };
+
   return (
     <Card className="border-2">
       <CardContent className="p-5">
@@ -161,7 +169,7 @@ export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) 
         </div>
         
         {/* Stats Row (matching Trends tab style) */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-1">
             <span className="text-sm font-medium">{displayVolume}</span>
             <span className="text-xs text-muted-foreground">volume</span>
@@ -173,6 +181,35 @@ export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) 
             </span>
           </div>
         </div>
+
+        {/* Detailed Metrics Grid (matching Trends tab detail page) */}
+        {trendData && (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 pt-4 border-t">
+            {trendData.peakValue && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Peak Volume</div>
+                <div className="text-lg font-bold">{formatNumber(trendData.peakValue)}</div>
+                {trendData.peakDate && (
+                  <div className="text-xs text-muted-foreground mt-0.5">{trendData.peakDate}</div>
+                )}
+              </div>
+            )}
+            
+            {trendData.averageValue && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Average Volume</div>
+                <div className="text-lg font-bold">{formatNumber(trendData.averageValue)}</div>
+              </div>
+            )}
+            
+            {trendData.currentValue && trendData.currentValue !== trendData.volume && (
+              <div>
+                <div className="text-xs text-muted-foreground mb-1">Current Volume</div>
+                <div className="text-lg font-bold">{formatNumber(trendData.currentValue)}</div>
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
