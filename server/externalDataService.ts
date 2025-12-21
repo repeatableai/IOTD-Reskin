@@ -21,6 +21,13 @@ export interface TrendData {
     snippet: string;
     source: string;
   }>;
+  // Detailed fields for comprehensive trend analysis
+  timelineData?: Array<{ date: string; value: number }>;
+  currentValue?: number;
+  peakValue?: number;
+  peakDate?: string;
+  averageValue?: number;
+  growthRate?: number;
 }
 
 export interface MarketInsight {
@@ -98,10 +105,31 @@ class ExternalDataService {
               ? `Growing interest in ${keyword}. ${socialSignals.join('. ')}`
               : trendsData.relatedQueries[0] || `Growing interest in ${keyword}`;
 
+            // Calculate detailed metrics from timeline data
+            const values = trendsData.interestOverTime.map(d => d.value);
+            const peakIndex = values.indexOf(Math.max(...values));
+            const peakValue = values[peakIndex];
+            const peakDate = trendsData.interestOverTime[peakIndex]?.date || '';
+            const currentValue = latestValue;
+            const averageValue = avgValue;
+            const growthRate = Math.floor(growth);
+            
+            // Format timeline data for frontend
+            const timelineData = trendsData.interestOverTime.map(d => ({
+              date: d.date,
+              value: d.value,
+            }));
+
             return {
               keyword,
               volume: Math.floor(avgValue * 1000),
-              growth: `+${Math.floor(growth)}%`,
+              growth: `+${growthRate}%`,
+              growthRate: growthRate,
+              currentValue: Math.floor(currentValue * 1000),
+              peakValue: Math.floor(peakValue * 1000),
+              peakDate: peakDate,
+              averageValue: Math.floor(averageValue * 1000),
+              timelineData: timelineData,
               relatedApps: trendsData.relatedTopics.slice(0, 3),
               whyTrending,
               trendingIndustries: this.generateTrendingIndustries(keyword),
@@ -176,11 +204,43 @@ class ExternalDataService {
       return trendData;
     } catch (error) {
       console.error('Error fetching trend data:', error);
-      // Fallback to generated data
+      // Fallback to generated data with detailed fields
+      const fallbackGrowthRate = Math.floor(Math.random() * 150) + 20;
+      const fallbackVolume = Math.floor(Math.random() * 50000) + 10000;
+      
+      // Generate timeline data for fallback (12 months)
+      const fallbackTimelineData: Array<{ date: string; value: number }> = [];
+      const now = new Date();
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date(now);
+        date.setMonth(date.getMonth() - i);
+        const baseValue = 50;
+        const trendFactor = (fallbackGrowthRate / 100) * ((11 - i) / 11);
+        const value = Math.max(10, Math.min(100, baseValue + trendFactor * 30));
+        fallbackTimelineData.push({
+          date: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          value: value,
+        });
+      }
+      
+      // Calculate metrics from fallback timeline
+      const fallbackValues = fallbackTimelineData.map(d => d.value);
+      const fallbackPeakIndex = fallbackValues.indexOf(Math.max(...fallbackValues));
+      const fallbackPeakValue = fallbackValues[fallbackPeakIndex];
+      const fallbackPeakDate = fallbackTimelineData[fallbackPeakIndex]?.date || '';
+      const fallbackCurrentValue = fallbackValues[fallbackValues.length - 1];
+      const fallbackAverageValue = fallbackValues.reduce((sum, v) => sum + v, 0) / fallbackValues.length;
+      
       return {
         keyword,
-        volume: Math.floor(Math.random() * 50000) + 10000,
-        growth: `+${Math.floor(Math.random() * 150) + 20}%`,
+        volume: fallbackVolume,
+        growth: `+${fallbackGrowthRate}%`,
+        growthRate: fallbackGrowthRate,
+        currentValue: Math.floor(fallbackCurrentValue * 1000),
+        peakValue: Math.floor(fallbackPeakValue * 1000),
+        peakDate: fallbackPeakDate,
+        averageValue: Math.floor(fallbackAverageValue * 1000),
+        timelineData: fallbackTimelineData,
         relatedApps: this.generateRelatedApps(keyword),
         whyTrending: this.generateWhyTrending(keyword),
         trendingIndustries: this.generateTrendingIndustries(keyword),
