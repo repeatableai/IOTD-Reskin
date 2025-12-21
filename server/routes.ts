@@ -4482,6 +4482,101 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Fix database schema (add missing columns)
+  app.post('/api/admin/fix-schema', async (req: any, res) => {
+    try {
+      // One-time token for schema fix
+      const SCHEMA_FIX_TOKEN = 'iotd-schema-fix-2024-12-17';
+      const providedToken = req.query?.token || req.headers['x-schema-token'] || req.body?.token;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === SCHEMA_FIX_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      console.log("[Schema Fix] Starting manual schema fix...");
+      
+      // Import and run the schema fix logic inline
+      const pg = await import('pg');
+      const { Pool } = pg.default;
+      
+      if (!process.env.DATABASE_URL) {
+        return res.status(500).json({ message: "DATABASE_URL not set" });
+      }
+      
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false }
+      });
+      
+      const columnsToAdd = [
+        { name: 'preview_url', type: 'VARCHAR' },
+        { name: 'offer_tiers', type: 'JSONB' },
+        { name: 'why_now_analysis', type: 'TEXT' },
+        { name: 'proof_signals', type: 'TEXT' },
+        { name: 'market_gap', type: 'TEXT' },
+        { name: 'execution_plan', type: 'TEXT' },
+        { name: 'framework_data', type: 'JSONB' },
+        { name: 'trend_analysis', type: 'TEXT' },
+        { name: 'keyword_data', type: 'JSONB' },
+        { name: 'builder_prompts', type: 'JSONB' },
+        { name: 'community_signals', type: 'JSONB' },
+        { name: 'signal_badges', type: 'TEXT[]' },
+      ];
+      
+      const client = await pool.connect();
+      const results = { added: [], existing: [], errors: [] };
+      
+      try {
+        for (const col of columnsToAdd) {
+          try {
+            const checkQuery = `
+              SELECT column_name 
+              FROM information_schema.columns 
+              WHERE table_name = 'ideas' AND column_name = $1;
+            `;
+            const result = await client.query(checkQuery, [col.name]);
+            
+            if (result.rows.length === 0) {
+              await client.query(`ALTER TABLE ideas ADD COLUMN ${col.name} ${col.type};`);
+              results.added.push(col.name);
+              console.log(`[Schema Fix] Added column: ${col.name}`);
+            } else {
+              results.existing.push(col.name);
+            }
+          } catch (error: any) {
+            results.errors.push({ column: col.name, error: error.message });
+            console.error(`[Schema Fix] Error adding ${col.name}:`, error.message);
+          }
+        }
+      } finally {
+        client.release();
+        await pool.end();
+      }
+      
+      console.log(`[Schema Fix] Complete: ${results.added.length} added, ${results.existing.length} existing, ${results.errors.length} errors`);
+      
+      res.json({
+        success: true,
+        message: `Schema fix complete: ${results.added.length} columns added`,
+        added: results.added,
+        existing: results.existing,
+        errors: results.errors
+      });
+    } catch (error: any) {
+      console.error("[Schema Fix] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to fix schema",
+        error: error.message
+      });
+    }
+  });
+
   // Bulk import ideas from JSON export file
   app.post('/api/admin/import-ideas', upload.single('file'), async (req: any, res) => {
     try {
