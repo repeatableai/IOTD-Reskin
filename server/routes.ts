@@ -4687,19 +4687,24 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       
       console.log(`[Update First Page Genspark] Found ${firstPageIdeas.length} ideas on first page`);
       
-      // Create a map of slug -> previewUrl from export file (only genspark URLs)
+      // Create a map of slug -> previewUrl from export file (only gensparkspace.com URLs)
+      // Exclude genspark.ai URLs as they are CSP blocked and cause errors
       const exportMap = new Map<string, string>();
       for (const ideaData of exportData.ideas) {
         if (ideaData.slug && ideaData.previewUrl) {
           const previewUrl = ideaData.previewUrl;
-          // Only include genspark.ai or gensparkspace.com URLs (matching reference apps)
-          if (previewUrl.includes('genspark.ai') || previewUrl.includes('gensparkspace.com')) {
+          // Only include gensparkspace.com URLs (genspark.ai is CSP blocked)
+          if (previewUrl.includes('gensparkspace.com')) {
             exportMap.set(ideaData.slug, previewUrl);
           }
         }
       }
       
-      console.log(`[Update First Page Genspark] Export file has ${exportMap.size} ideas with genspark previewUrl`);
+      console.log(`[Update First Page Genspark] Export file has ${exportMap.size} ideas with gensparkspace.com previewUrl`);
+      
+      // Also check for genspark.ai URLs that need to be replaced
+      let removedGensparkAi = 0;
+      const gensparkAiSlugs: string[] = [];
       
       let updatedCount = 0;
       let skippedCount = 0;
@@ -4707,27 +4712,48 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       const updatedSlugs: string[] = [];
       
       for (const idea of firstPageIdeas) {
-        const gensparkPreviewUrl = exportMap.get(idea.slug);
+        const currentPreview = idea.previewUrl || '';
         
-        if (gensparkPreviewUrl) {
-          // Check if current previewUrl is not a genspark URL or is missing
-          const currentPreview = idea.previewUrl || '';
-          const needsUpdate = !currentPreview || 
-                             (!currentPreview.includes('genspark.ai') && !currentPreview.includes('gensparkspace.com'));
+        // Remove genspark.ai URLs (CSP blocked)
+        if (currentPreview.includes('genspark.ai')) {
+          const gensparkspaceUrl = exportMap.get(idea.slug);
+          if (gensparkspaceUrl) {
+            try {
+              await db.update(ideas)
+                .set({ previewUrl: gensparkspaceUrl })
+                .where(eq(ideas.slug, idea.slug));
+              removedGensparkAi++;
+              gensparkAiSlugs.push(idea.slug);
+              updatedCount++;
+              updatedSlugs.push(idea.slug);
+              console.log(`[Update First Page Genspark] Replaced genspark.ai with gensparkspace.com for ${idea.slug}`);
+            } catch (error: any) {
+              console.error(`[Update First Page Genspark] Error replacing genspark.ai for ${idea.slug}:`, error.message);
+              skippedCount++;
+            }
+            continue;
+          }
+        }
+        
+        const gensparkspacePreviewUrl = exportMap.get(idea.slug);
+        
+        if (gensparkspacePreviewUrl) {
+          // Check if current previewUrl is not a gensparkspace URL or is missing
+          const needsUpdate = !currentPreview || !currentPreview.includes('gensparkspace.com');
           
           if (needsUpdate) {
             try {
               await db.update(ideas)
-                .set({ previewUrl: gensparkPreviewUrl })
+                .set({ previewUrl: gensparkspacePreviewUrl })
                 .where(eq(ideas.slug, idea.slug));
               updatedCount++;
               updatedSlugs.push(idea.slug);
               
               if (currentPreview) {
                 replacedCount++;
-                console.log(`[Update First Page Genspark] Replaced ${idea.slug}: ${currentPreview[:50]} -> genspark URL`);
+                console.log(`[Update First Page Genspark] Replaced ${idea.slug}: ${currentPreview.substring(0, 50)} -> gensparkspace URL`);
               } else {
-                console.log(`[Update First Page Genspark] Added ${idea.slug} with genspark previewUrl`);
+                console.log(`[Update First Page Genspark] Added ${idea.slug} with gensparkspace previewUrl`);
               }
               
               if (updatedCount % 10 === 0) {
@@ -4745,13 +4771,14 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         }
       }
       
-      console.log(`[Update First Page Genspark] Complete: ${updatedCount} updated (${replacedCount} replaced), ${skippedCount} skipped`);
+      console.log(`[Update First Page Genspark] Complete: ${updatedCount} updated (${replacedCount} replaced, ${removedGensparkAi} genspark.ai removed), ${skippedCount} skipped`);
       
       res.json({
         success: true,
-        message: `Updated ${updatedCount} ideas on first page with genspark previewUrl (matching reference apps)`,
+        message: `Updated ${updatedCount} ideas on first page with gensparkspace.com previewUrl (removed ${removedGensparkAi} CSP-blocked genspark.ai URLs)`,
         updated: updatedCount,
         replaced: replacedCount,
+        removedGensparkAi: removedGensparkAi,
         skipped: skippedCount,
         updatedSlugs: updatedSlugs.slice(0, 20) // Return first 20 for verification
       });

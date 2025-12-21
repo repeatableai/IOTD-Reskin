@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, ArrowRight } from "lucide-react";
 import { useLocation } from "wouter";
@@ -21,6 +21,7 @@ export function OpportunityAnalysisModal({
 }: OpportunityAnalysisModalProps) {
   const [, setLocation] = useLocation();
   const [iframeError, setIframeError] = useState(false);
+  const [cspBlocked, setCspBlocked] = useState(false);
   
   // Validate URL before rendering
   const isValidUrl = (url: string): boolean => {
@@ -35,12 +36,22 @@ export function OpportunityAnalysisModal({
 
   const fullUrl = previewUrl.startsWith('http') ? previewUrl : `https://${previewUrl}`;
   
+  // Check if URL is genspark.ai (known to block iframe embedding via CSP)
+  const isGensparkAi = fullUrl.includes('genspark.ai');
+  
   // Reset error when modal opens/closes or URL changes
   useEffect(() => {
     if (open) {
       setIframeError(false);
+      setCspBlocked(false);
+      
+      // If it's genspark.ai, immediately show CSP blocked message
+      // since we know it will be blocked
+      if (isGensparkAi) {
+        setCspBlocked(true);
+      }
     }
-  }, [open, previewUrl]);
+  }, [open, previewUrl, isGensparkAi]);
   
   const handleOpenInNewTab = () => {
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
@@ -54,6 +65,25 @@ export function OpportunityAnalysisModal({
   const handleIframeError = () => {
     setIframeError(true);
   };
+  
+  // Listen for CSP violations
+  useEffect(() => {
+    if (!open) return;
+    
+    const handleCSPViolation = (e: SecurityPolicyViolationEvent) => {
+      if (e.violatedDirective === 'frame-ancestors' || e.blockedURI?.includes('genspark.ai')) {
+        setCspBlocked(true);
+        setIframeError(true);
+      }
+    };
+    
+    // Note: CSP violations may not always fire this event, so we also check URL
+    document.addEventListener('securitypolicyviolation', handleCSPViolation);
+    
+    return () => {
+      document.removeEventListener('securitypolicyviolation', handleCSPViolation);
+    };
+  }, [open]);
 
   if (!isValidUrl(previewUrl)) {
     return (
@@ -72,11 +102,14 @@ export function OpportunityAnalysisModal({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col">
+      <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col" aria-describedby="opportunity-analysis-description">
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <DialogTitle>Opportunity Analysis - {ideaTitle}</DialogTitle>
+              <DialogDescription id="opportunity-analysis-description" className="sr-only">
+                Interactive preview of {ideaTitle} application
+              </DialogDescription>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: '200px' }}>
               <Button
@@ -101,10 +134,12 @@ export function OpportunityAnalysisModal({
           </div>
         </DialogHeader>
         <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 120px)' }}>
-          {iframeError ? (
+          {iframeError || cspBlocked ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <p className="text-muted-foreground mb-4">
-                The preview cannot be displayed in this window due to security restrictions.
+                {cspBlocked 
+                  ? "This preview cannot be displayed in a pop-up window due to security restrictions. Please use the button below to open it in a new tab."
+                  : "The preview cannot be displayed in this window due to security restrictions."}
               </p>
               <Button onClick={handleOpenInNewTab} variant="default">
                 <ExternalLink className="h-4 w-4 mr-2" />
@@ -117,19 +152,25 @@ export function OpportunityAnalysisModal({
               className="w-full h-full border-0 absolute inset-0"
               sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-presentation"
               allow="fullscreen; autoplay; camera; microphone; geolocation"
-              title="App Preview"
+              title={`App Preview - ${ideaTitle}`}
               loading="lazy"
               style={{ width: '100%', height: '100%' }}
-              allowFullScreen
               onError={handleIframeError}
               onLoad={(e) => {
                 // Check if iframe loaded but is blocked (contentWindow will be null if blocked)
                 try {
                   const iframe = e.target as HTMLIFrameElement;
-                  if (iframe.contentWindow === null && iframe.contentDocument === null) {
-                    // Iframe might be blocked, but we can't reliably detect this
-                    // The onError handler will catch actual load failures
-                  }
+                  // If CSP blocked, contentWindow will be null
+                  setTimeout(() => {
+                    try {
+                      if (iframe.contentWindow === null) {
+                        setCspBlocked(true);
+                        setIframeError(true);
+                      }
+                    } catch (err) {
+                      // Cross-origin restrictions prevent checking, which is normal
+                    }
+                  }, 1000);
                 } catch (err) {
                   // Cross-origin restrictions prevent checking, which is normal
                 }
