@@ -131,10 +131,15 @@ export async function setupAuth(app: Express) {
       // Always log for debugging
       if (req.path.startsWith('/api/')) {
         console.log(`[Auth Middleware] ${req.method} ${req.path} - req.user:`, req.user ? 'Present' : 'Missing');
+        if (req.user?.claims) {
+          console.log(`[Auth Middleware] User ID: ${req.user.claims.sub}, Email: ${req.user.claims.email}`);
+        }
       }
       
-      // Check if user is missing or doesn't have claims (except for logout)
+      // Check if user is missing or doesn't have claims (except for logout and login)
+      // Don't override existing session users - only set demo user if truly no user exists
       const needsDemoUser = !req.path.startsWith('/api/logout') && 
+                            !req.path.startsWith('/api/login') &&
                             (!req.user || !req.user.claims || !req.user.claims.sub);
       
       if (needsDemoUser) {
@@ -151,6 +156,8 @@ export async function setupAuth(app: Express) {
         // Also mark as authenticated for passport
         req.login(req.user, () => {});
         console.log(`[Auth] Demo user set - ID: ${req.user.claims.sub}`);
+      } else if (req.user?.claims?.sub) {
+        console.log(`[Auth] Using existing session user - ID: ${req.user.claims.sub}, Email: ${req.user.claims.email}`);
       }
       next();
     });
@@ -160,7 +167,7 @@ export async function setupAuth(app: Express) {
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
     // Stub auth routes for demo mode
-    app.post("/api/login", async (req, res) => {
+    app.post("/api/login", async (req: any, res) => {
       const { email, password } = req.body;
       
       // Check for nick@test.com credentials
@@ -179,18 +186,33 @@ export async function setupAuth(app: Express) {
           console.log('Note: Could not upsert nick user');
         }
         
-        req.user = {
-          claims: {
-            sub: nickUser.id,
-            email: nickUser.email,
-            first_name: nickUser.firstName,
-            last_name: nickUser.lastName,
-            profile_image_url: nickUser.profileImageUrl,
-          }
+        const userClaims = {
+          sub: nickUser.id,
+          email: nickUser.email,
+          first_name: nickUser.firstName,
+          last_name: nickUser.lastName,
+          profile_image_url: nickUser.profileImageUrl,
         };
         
-        req.login(req.user, () => {
-          res.json({ success: true, user: req.user });
+        // Regenerate session to ensure old session is cleared
+        req.session.regenerate((err: any) => {
+          if (err) {
+            console.error('[Login] Error regenerating session:', err);
+            return res.status(500).json({ success: false, message: 'Failed to create session' });
+          }
+          
+          req.user = {
+            claims: userClaims
+          };
+          
+          req.login(req.user, (err) => {
+            if (err) {
+              console.error('[Login] Error logging in:', err);
+              return res.status(500).json({ success: false, message: 'Failed to create session' });
+            }
+            console.log(`[Login] ✅ Successfully logged in as Nick - ID: ${req.user.claims.sub}, Email: ${req.user.claims.email}`);
+            res.json({ success: true, user: req.user });
+          });
         });
       } else {
         // Fallback to demo user for any other credentials
@@ -202,18 +224,31 @@ export async function setupAuth(app: Express) {
           profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
         };
         
-        req.user = {
-          claims: {
-            sub: demoUser.id,
-            email: demoUser.email,
-            first_name: demoUser.firstName,
-            last_name: demoUser.lastName,
-            profile_image_url: demoUser.profileImageUrl,
+        // Regenerate session to ensure old session is cleared
+        req.session.regenerate((err: any) => {
+          if (err) {
+            console.error('[Login] Error regenerating session:', err);
+            return res.status(500).json({ success: false, message: 'Failed to create session' });
           }
-        };
-        
-        req.login(req.user, () => {
-          res.json({ success: true, user: req.user });
+          
+          req.user = {
+            claims: {
+              sub: demoUser.id,
+              email: demoUser.email,
+              first_name: demoUser.firstName,
+              last_name: demoUser.lastName,
+              profile_image_url: demoUser.profileImageUrl,
+            }
+          };
+          
+          req.login(req.user, (err) => {
+            if (err) {
+              console.error('[Login] Error logging in demo user:', err);
+              return res.status(500).json({ success: false, message: 'Failed to create session' });
+            }
+            console.log(`[Login] ✅ Successfully logged in as Demo - ID: ${req.user.claims.sub}`);
+            res.json({ success: true, user: req.user });
+          });
         });
       }
     });

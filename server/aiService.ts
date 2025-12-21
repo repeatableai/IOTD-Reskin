@@ -539,29 +539,63 @@ Make it realistic, innovative, and comprehensive. Use real market insights. Gene
 ${prompt}`;
 
     try {
-      // Use faster model for rapid mode, Opus for deep/comprehensive mode
+      // Use Sonnet 4 for rapid mode (faster than Opus), Opus for deep/comprehensive mode
       const model = params.constraints === 'rapid_mode' 
-        ? "claude-sonnet-4-20250514"  // Faster for rapid research
+        ? "claude-sonnet-4-20250514"  // Fastest model - Sonnet 4 is faster than Opus
         : "claude-opus-4-5-20251101";  // Slower but more comprehensive
       
-      const message = await getAnthropic().messages.create({
-        model,
-        max_tokens: 16000,
-        temperature: 0.8,
-        timeout: params.constraints === 'rapid_mode' ? 60000 : 180000, // 1 min for rapid, 3 min for deep
-        messages: [
-          {
-            role: "user",
-            content: fullPrompt
-          }
-        ],
-      });
+      // Reduce tokens for rapid mode but keep enough for all comprehensive fields
+      const maxTokens = params.constraints === 'rapid_mode' 
+        ? 10000  // Enough for all fields but faster than 16k
+        : 16000; // Full for comprehensive
+      
+      console.log(`[generateIdea] 🚀 Starting AI API call`);
+      console.log(`[generateIdea] Model: ${model}, max_tokens: ${maxTokens}, timeout: ${params.constraints === 'rapid_mode' ? 180000 : 180000}ms`);
+      console.log(`[generateIdea] Timestamp: ${new Date().toISOString()}`);
+      console.log(`[generateIdea] Prompt length: ${fullPrompt.length} characters`);
+      
+      const startTime = Date.now();
+      let message;
+      try {
+        // Note: Anthropic SDK doesn't accept 'timeout' as a parameter
+        // Timeouts are handled by the HTTP client or AbortController
+        // For now, we rely on the default HTTP timeout
+        message = await getAnthropic().messages.create({
+          model,
+          max_tokens: maxTokens,
+          temperature: 0.8,
+          messages: [
+            {
+              role: "user",
+              content: fullPrompt
+            }
+          ],
+        });
+        const duration = Date.now() - startTime;
+        console.log(`[generateIdea] ✅ AI API call completed in ${duration}ms (${(duration / 1000).toFixed(1)}s)`);
+      } catch (apiError: any) {
+        const duration = Date.now() - startTime;
+        console.error(`[generateIdea] ❌ AI API CALL FAILED after ${duration}ms`);
+        console.error(`[generateIdea] Error type: ${apiError?.constructor?.name}`);
+        console.error(`[generateIdea] Error message: ${apiError?.message}`);
+        console.error(`[generateIdea] Error status: ${apiError?.status}`);
+        console.error(`[generateIdea] Error code: ${apiError?.code}`);
+        console.error(`[generateIdea] Error name: ${apiError?.name}`);
+        if (apiError?.error) {
+          console.error(`[generateIdea] Error details:`, JSON.stringify(apiError.error, null, 2));
+        }
+        throw apiError;
+      }
 
       const response = message.content[0]?.type === 'text' ? message.content[0].text : '';
       
       if (!response) {
+        console.error('[generateIdea] ❌ No response text from Claude API');
+        console.error('[generateIdea] Message content:', JSON.stringify(message.content, null, 2));
         throw new Error('No response from Claude API');
       }
+      
+      console.log(`[generateIdea] Response length: ${response.length} characters`);
       
       try {
         const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -574,14 +608,15 @@ ${prompt}`;
           }
         }
         
+        console.log(`[generateIdea] ✅ Successfully parsed idea: ${parsedIdea.title}`);
         return parsedIdea;
       } catch (parseError) {
-        console.error('Error parsing AI response:', parseError);
-        console.error('Raw response:', response);
+        console.error('[generateIdea] ❌ Error parsing AI response:', parseError);
+        console.error('[generateIdea] Raw response (first 500 chars):', response.substring(0, 500));
         throw new Error('Failed to parse AI-generated idea');
       }
     } catch (error: any) {
-      console.error('Error generating idea with Claude:', error);
+      console.error('[generateIdea] ❌ Error generating idea with Claude:', error);
       throw new Error(`Failed to generate idea: ${error.message || 'Unknown error'}`);
     }
   }
@@ -2311,7 +2346,7 @@ Return as JSON:
     market?: string;
     targetAudience?: string;
     keyword?: string;
-  }): Promise<Partial<GeneratedIdea>> {
+  }, modelOverride?: string): Promise<Partial<GeneratedIdea>> {
     const prompt = `You are an elite startup advisor and business analyst. Analyze this startup idea and generate comprehensive metrics, scores, and detailed analysis sections.
 
 STARTUP IDEA:
@@ -2413,11 +2448,14 @@ Be realistic, data-driven, and specific. Use actual market research insights. Sc
     try {
       console.log(`[Idea Enrichment] Enriching idea: ${basicIdea.title}`);
       
+      // Use provided model override, or default to Sonnet for speed
+      const model = modelOverride || "claude-sonnet-4-20250514";
+      console.log(`[Idea Enrichment] Using model: ${model}`);
+      
       const response = await getAnthropic().messages.create({
-        model: "claude-sonnet-4-20250514", // Faster model for enrichment
+        model, // Use override if provided, otherwise default to Sonnet
         max_tokens: 16000,
         temperature: 0.7,
-        timeout: 120000, // 2 minute timeout
         messages: [
           {
             role: "user",

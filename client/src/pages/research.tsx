@@ -149,14 +149,32 @@ export default function Research() {
       // Filter ideas created via research (rapid or deep)
       const filtered = ideas.filter(idea => {
         try {
-          const sourceData = idea.sourceData ? JSON.parse(idea.sourceData) : {};
+          // Handle cases where sourceData might be a URL string or other non-JSON value
+          if (!idea.sourceData) {
+            return false;
+          }
+          
+          // Check if it's already a string that starts with http (URL) - skip it
+          if (typeof idea.sourceData === 'string' && idea.sourceData.trim().startsWith('http')) {
+            return false;
+          }
+          
+          // Try to parse as JSON
+          let sourceData;
+          try {
+            sourceData = typeof idea.sourceData === 'string' ? JSON.parse(idea.sourceData) : idea.sourceData;
+          } catch (parseError) {
+            // If it's not valid JSON, it's likely a URL or other string - skip it
+            return false;
+          }
+          
           const isResearch = sourceData.researchType === 'rapid' || sourceData.researchType === 'deep';
           if (isResearch) {
             console.log('[Research] Found research idea:', idea.title, 'Type:', sourceData.researchType);
           }
           return isResearch;
         } catch (e) {
-          console.log('[Research] Error parsing sourceData for idea:', idea.title, e);
+          // Silently skip ideas with invalid sourceData
           return false;
         }
       });

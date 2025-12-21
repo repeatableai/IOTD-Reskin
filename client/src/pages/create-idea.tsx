@@ -714,8 +714,41 @@ export default function CreateIdea() {
     setIsGenerating(true);
     
     try {
+      console.log('[AI Generate Frontend] Starting AI generation with params:', aiParams);
       const response = await apiRequest('POST', '/api/ai/generate-idea', aiParams);
       const generatedIdea = await response.json();
+      
+      console.log('[AI Generate Frontend] Response received:', {
+        hasTitle: !!generatedIdea.title,
+        hasDescription: !!generatedIdea.description,
+        hasOfferTiers: !!generatedIdea.offerTiers,
+        hasWhyNowAnalysis: !!generatedIdea.whyNowAnalysis,
+        hasCommunitySignals: !!generatedIdea.communitySignals,
+      });
+      
+      // Validate response has required fields
+      if (!generatedIdea.title || !generatedIdea.description) {
+        console.error('[AI Generate Frontend] ❌ Missing required fields:', {
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          allKeys: Object.keys(generatedIdea),
+        });
+        throw new Error('Generated idea is missing required fields (title or description)');
+      }
+      
+      // Check if enrichment failed (has fallback defaults)
+      const hasEnrichmentFailure = generatedIdea.whyNowAnalysis?.includes('Analysis pending - AI enrichment failed') ||
+                                   generatedIdea.proofSignals?.includes('Analysis pending - AI enrichment failed') ||
+                                   generatedIdea.marketGap?.includes('Analysis pending - AI enrichment failed');
+      
+      if (hasEnrichmentFailure) {
+        console.warn('[AI Generate Frontend] ⚠️ Enrichment failed, using fallback defaults');
+        toast({
+          title: "Partial Generation",
+          description: "Idea generated but some analysis fields are incomplete. You may want to retry for full analysis.",
+          variant: "default",
+        });
+      }
       
       // Map AI response to form data with all comprehensive fields
       setFormData(prev => ({
@@ -762,15 +795,31 @@ export default function CreateIdea() {
       // Switch to manual tab to review/edit the generated idea
       setActiveTab('manual');
       
-      toast({
-        title: "AI Solution Generated!",
-        description: "Your AI-generated startup solution is ready for review.",
-      });
+      if (!hasEnrichmentFailure) {
+        toast({
+          title: "AI Solution Generated!",
+          description: "Your AI-generated startup solution is ready for review.",
+        });
+      }
     } catch (error) {
-      console.error('Error generating AI idea:', error);
+      console.error('[AI Generate Frontend] ❌ Error generating AI idea:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      
+      // Provide more specific error messages
+      let userMessage = "Failed to generate solution. Please try again.";
+      if (errorMessage.includes('500')) {
+        userMessage = "Server error occurred. Please check server logs or try again.";
+      } else if (errorMessage.includes('Missing required fields')) {
+        userMessage = "Generated idea is incomplete. Please try again.";
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('Timeout')) {
+        userMessage = "Request timed out. The AI service may be slow. Please try again.";
+      } else if (errorMessage) {
+        userMessage = errorMessage;
+      }
+      
       toast({
         title: "Generation Failed",
-        description: "Failed to generate solution. Please try again.",
+        description: userMessage,
         variant: "destructive",
       });
     } finally {

@@ -21,7 +21,7 @@ import { imageProcessor } from './imageProcessor';
 import puppeteer from 'puppeteer';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
-import { eq, sql, desc, asc } from 'drizzle-orm';
+import { eq, sql, desc, asc, inArray } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
@@ -1038,32 +1038,10 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
 
   // Generate Opportunity Analysis endpoint
   app.post('/api/ideas/:id/generate-opportunity-analysis', async (req, res) => {
-    try {
-      const { id } = req.params;
-      const idea = await storage.getIdeaById(id);
-      
-      if (!idea) {
-        return res.status(404).json({ message: "Idea not found" });
-      }
-
-      // Generate analysis
-      const analysis = await aiService.generateOpportunityAnalysis(idea);
-      
-      // Update idea with analysis
-      await storage.updateIdea(id, { opportunityAnalysis: analysis });
-      
-      res.json({ 
-        success: true, 
-        message: "Opportunity Analysis generated successfully",
-        analysis 
-      });
-    } catch (error: any) {
-      console.error("Error generating opportunity analysis:", error);
-      res.status(500).json({ 
-        message: "Failed to generate opportunity analysis",
-        error: error.message || "Unknown error"
-      });
-    }
+    return res.status(501).json({ 
+      message: "Opportunity Analysis feature is not yet implemented",
+      success: false
+    });
   });
 
   // Batch generate Opportunity Analysis for all existing ideas
@@ -1071,56 +1049,10 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     try {
       const { batchSize = 5 } = req.body; // Process in small batches
       
-      // Get ideas without opportunityAnalysis
-      const allIdeas = await db
-        .select()
-        .from(ideas)
-        .where(sql`${ideas.opportunityAnalysis} IS NULL OR ${ideas.opportunityAnalysis}::text = 'null'`)
-        .limit(batchSize);
-      
-      if (allIdeas.length === 0) {
-        return res.json({ 
-          message: 'All ideas already have analyses', 
+      return res.status(501).json({ 
+        message: "Opportunity Analysis feature is not yet implemented",
           processed: 0,
-          remaining: 0
-        });
-      }
-      
-      const results = [];
-      
-      for (const idea of allIdeas) {
-        try {
-          console.log(`[Batch Generate] Processing: ${idea.title} (${idea.id})`);
-          const analysis = await aiService.generateOpportunityAnalysis(idea);
-          await storage.updateIdea(idea.id, { opportunityAnalysis: analysis });
-          results.push({ id: idea.id, title: idea.title, status: 'success' });
-          console.log(`[Batch Generate] ✓ Success: ${idea.title}`);
-        } catch (error: any) {
-          console.error(`[Batch Generate] ✗ Failed for ${idea.title}:`, error.message);
-          results.push({ 
-            id: idea.id, 
-            title: idea.title, 
-            status: 'failed', 
-            error: error.message 
-          });
-        }
-      }
-      
-      // Get remaining count
-      const remainingResult = await db
-        .select({ count: sql<number>`count(*)` })
-        .from(ideas)
-        .where(sql`${ideas.opportunityAnalysis} IS NULL OR ${ideas.opportunityAnalysis}::text = 'null'`);
-      
-      const remaining = Number(remainingResult[0]?.count || 0);
-      
-      res.json({ 
-        processed: results.length,
-        results,
-        remaining,
-        message: remaining > 0 
-          ? `Processed ${results.length} ideas. ${remaining} remaining. Call again to continue.`
-          : 'All ideas processed!'
+        results: []
       });
     } catch (error: any) {
       console.error('[Batch Generate] Error:', error);
@@ -1416,16 +1348,8 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
 
       const createdIdea = await storage.createIdea(mergedIdea);
       
-      // Generate Opportunity Analysis asynchronously (don't block response)
-      aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
-        storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
-        console.log(`[Opportunity Analysis] Successfully generated for: ${createdIdea.id}`);
-      }).catch((error) => {
-        console.error(`[Opportunity Analysis] Failed for ${createdIdea.id}:`, error);
-      });
-      
       // Return the created idea immediately
-      res.json(createdIdea);
+        res.json(createdIdea);
     } catch (error: any) {
       console.error("Error creating idea:", error);
       console.error("Error details:", {
@@ -1505,6 +1429,10 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     try {
       const userId = req.user.claims.sub;
       
+      console.log(`[AI Generate] ===== REQUEST RECEIVED =====`);
+      console.log(`[AI Generate] User ID: ${userId}`);
+      console.log(`[AI Generate] Request body:`, JSON.stringify(req.body, null, 2));
+      
       // Validate and parse generation parameters
       const generationSchema = z.object({
         industry: z.string().optional(),
@@ -1517,13 +1445,42 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       
       const params: IdeaGenerationParams = generationSchema.parse(req.body);
       
+      // Normalize empty strings to undefined so defaults are used
+      // Empty strings are truthy, so defaults don't apply - we need undefined
+      const normalizedParams: IdeaGenerationParams = {
+        industry: params.industry?.trim() || undefined,
+        type: params.type?.trim() || undefined,
+        market: params.market?.trim() || undefined,
+        targetAudience: params.targetAudience?.trim() || undefined,
+        problemArea: params.problemArea?.trim() || undefined,
+        constraints: params.constraints?.trim() || undefined,
+      };
+      
+      console.log(`[AI Generate] Original params:`, params);
+      console.log(`[AI Generate] Normalized params:`, normalizedParams);
+      
       // Generate idea using AI service
-      const generatedIdea = await aiService.generateIdea(params);
+      const generatedIdea = await aiService.generateIdea(normalizedParams);
       
       // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+      // Use same pattern as manual entry: always enrich, with fallback defaults on error
+      // Use stronger model (Opus) for AI generation enrichment to get more detail
+      let enrichedData: any = {};
+      
       try {
-        console.log(`[AI Generate] Enriching generated idea with comprehensive analysis: ${generatedIdea.title}`);
-        const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+        console.log(`[AI Generate] ⚡ Enriching generated idea with comprehensive AI analysis: ${generatedIdea.title}`);
+        console.log(`[AI Generate] Input data:`, {
+          title: generatedIdea.title,
+          description: generatedIdea.description?.substring(0, 100),
+          content: generatedIdea.content?.substring(0, 100),
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+        });
+        
+        // Use stronger model (Opus) for AI generation enrichment to get more detail
+        enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
           title: generatedIdea.title,
           description: generatedIdea.description,
           content: generatedIdea.content,
@@ -1531,32 +1488,138 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           market: generatedIdea.market,
           targetAudience: generatedIdea.targetAudience,
           keyword: generatedIdea.keyword,
+        }, 'claude-opus-4-5-20251101'); // Use Opus for more detail in AI generation
+        
+        // Validate that enrichment returned comprehensive data
+        const hasComprehensiveData = enrichedData.offerTiers && 
+                                     enrichedData.whyNowAnalysis && 
+                                     enrichedData.proofSignals &&
+                                     enrichedData.marketGap &&
+                                     enrichedData.executionPlan &&
+                                     enrichedData.frameworkData &&
+                                     enrichedData.keywordData &&
+                                     enrichedData.communitySignals;
+        
+        if (!hasComprehensiveData) {
+          console.error(`[AI Generate] ⚠️ Enrichment returned incomplete data. Fields present:`, {
+            offerTiers: !!enrichedData.offerTiers,
+            whyNowAnalysis: !!enrichedData.whyNowAnalysis,
+            proofSignals: !!enrichedData.proofSignals,
+            marketGap: !!enrichedData.marketGap,
+            executionPlan: !!enrichedData.executionPlan,
+            frameworkData: !!enrichedData.frameworkData,
+            keywordData: !!enrichedData.keywordData,
+            communitySignals: !!enrichedData.communitySignals,
+          });
+          console.error(`[AI Generate] ⚠️ Enrichment data keys:`, Object.keys(enrichedData));
+        }
+        
+        console.log(`[AI Generate] ✅ AI enrichment completed for: ${generatedIdea.title}`);
+        console.log(`[AI Generate] Enriched fields count:`, Object.keys(enrichedData).length);
+        console.log(`[AI Generate] Key enriched fields:`, {
+          hasOfferTiers: !!enrichedData.offerTiers,
+          hasWhyNowAnalysis: !!enrichedData.whyNowAnalysis,
+          hasProofSignals: !!enrichedData.proofSignals,
+          hasMarketGap: !!enrichedData.marketGap,
+          hasExecutionPlan: !!enrichedData.executionPlan,
+          hasFrameworkData: !!enrichedData.frameworkData,
+          hasKeywordData: !!enrichedData.keywordData,
+          hasCommunitySignals: !!enrichedData.communitySignals,
         });
-        
-        // Merge: generated idea takes precedence, enriched fills gaps
-        const finalIdea = {
-          ...enrichedData,
-          ...generatedIdea, // Generated data overrides enriched defaults
-          // Ensure comprehensive fields use enriched if missing from generated
-          offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
-          whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
-          proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
-          marketGap: generatedIdea.marketGap || enrichedData.marketGap,
-          executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
-          frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
-          keywordData: generatedIdea.keywordData || enrichedData.keywordData,
-          communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
-          trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
-          signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
-        };
-        
-        console.log(`[AI Generate] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
-        res.json(finalIdea);
       } catch (enrichError) {
-        console.error(`[AI Generate] Enrichment failed, returning generated idea without enrichment:`, enrichError);
-        // Return generated idea even if enrichment fails
-        res.json(generatedIdea);
+        console.error(`[AI Generate] ❌ AI enrichment failed:`, enrichError);
+        console.error(`[AI Generate] Error details:`, {
+          message: enrichError instanceof Error ? enrichError.message : String(enrichError),
+          stack: enrichError instanceof Error ? enrichError.stack : undefined,
+        });
+        logErrorToFile(enrichError, 'AI Generate Enrichment');
+        // Use same fallback defaults as manual entry
+        if (!enrichedData || Object.keys(enrichedData).length === 0) {
+          console.error(`[AI Generate] ⚠️ enrichedData is empty after error, using fallback defaults`);
+          enrichedData = {
+            opportunityScore: 7,
+            problemScore: 7,
+            feasibilityScore: 6,
+            timingScore: 7,
+            executionScore: 6,
+            gtmScore: 7,
+            opportunityLabel: "Good Opportunity",
+            problemLabel: "Clear Problem",
+            feasibilityLabel: "Moderate Complexity",
+            timingLabel: "Good Timing",
+            revenuePotential: "Analysis pending - AI enrichment failed",
+            revenuePotentialNum: 1000000,
+            executionDifficulty: "Medium",
+            gtmStrength: "Analysis pending",
+            offerTiers: {
+              leadMagnet: { name: "Free Resource", description: "Value-add resource", price: "$0" },
+              frontend: { name: "Entry Product", description: "Low-ticket entry", price: "$47" },
+              core: { name: "Core Product", description: "Main value", price: "$497" },
+              backend: { name: "Premium Service", description: "High-ticket", price: "$2997" },
+              continuity: { name: "Subscription", description: "Recurring revenue", price: "$97/mo" }
+            },
+            whyNowAnalysis: "Analysis pending - AI enrichment failed. Please retry.",
+            proofSignals: "Analysis pending - AI enrichment failed. Please retry.",
+            marketGap: "Analysis pending - AI enrichment failed. Please retry.",
+            executionPlan: "Analysis pending - AI enrichment failed. Please retry.",
+            frameworkData: {
+              valueEquation: { dreamOutcome: "Pending", perceivedLikelihood: "Pending", timeDelay: "Pending", effortSacrifice: "Pending" },
+              marketMatrix: { marketSize: "Pending", painLevel: "Pending", targetingEase: "Pending", purchasingPower: "Pending" },
+              acpFramework: { avatar: "Pending", catalyst: "Pending", promise: "Pending" }
+            },
+            keywordData: { fastestGrowing: [], highestVolume: [], mostRelevant: [] },
+            communitySignals: {
+              reddit: { subreddits: 0, members: "0", score: 0, details: "Pending" },
+              facebook: { groups: 0, members: "0", score: 0, details: "Pending" },
+              youtube: { channels: 0, members: "0", score: 0, details: "Pending" },
+              other: { segments: 0, priorities: 0, score: 0, details: "Pending" }
+            },
+            signalBadges: []
+          };
+        }
       }
+      
+      // Merge: enriched data provides comprehensive fields, generated idea provides basic fields
+      // Same merge logic as manual entry
+      const finalIdea = {
+        ...enrichedData, // Start with enriched comprehensive data
+        ...generatedIdea, // Override with generated basic fields (title, description, etc.)
+        // Use enriched data for comprehensive fields unless generated has meaningful data
+        offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+        whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+        proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+        marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+        executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+        frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+        keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+        communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+        trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+        signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+        builderPrompts: generatedIdea.builderPrompts || enrichedData.builderPrompts,
+      };
+      
+      // Validate that we have at least basic required fields
+      if (!finalIdea.title || !finalIdea.description) {
+        console.error(`[AI Generate] ❌ CRITICAL: Missing required fields in final idea`);
+        console.error(`[AI Generate] Final idea keys:`, Object.keys(finalIdea));
+        console.error(`[AI Generate] Title:`, finalIdea.title);
+        console.error(`[AI Generate] Description:`, finalIdea.description);
+        logErrorToFile(new Error('Missing required fields in final idea'), 'AI Generate Validation');
+        return res.status(500).json({ 
+          message: "Failed to generate idea - missing required fields",
+          error: "Generated idea is incomplete"
+        });
+      }
+      
+      // Log warning if enrichment failed but we're still returning
+      if (!enrichedData || Object.keys(enrichedData).length === 0 || 
+          enrichedData.whyNowAnalysis?.includes('Analysis pending - AI enrichment failed')) {
+        console.warn(`[AI Generate] ⚠️ WARNING: Returning idea with fallback defaults - enrichment failed`);
+        console.warn(`[AI Generate] This means the idea will have incomplete comprehensive analysis`);
+      }
+      
+      console.log(`[AI Generate] ✅ Successfully returning final idea: ${finalIdea.title}`);
+      res.json(finalIdea);
     } catch (error) {
       logErrorToFile(error, 'AI Idea Generation Endpoint');
       console.error("Error generating AI idea:", error);
@@ -1617,7 +1680,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       } catch (enrichError) {
         console.error(`[Generate from HTML] Enrichment failed, returning generated idea without enrichment:`, enrichError);
         // Return generated idea even if enrichment fails
-        res.json(generatedIdea);
+      res.json(generatedIdea);
       }
     } catch (error) {
       console.error("Error generating idea from HTML:", error);
@@ -1889,7 +1952,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       } catch (enrichError) {
         console.error(`[Generate from Document] Enrichment failed, returning generated idea without enrichment:`, enrichError);
         // Return generated idea even if enrichment fails
-        res.json(generatedIdea);
+      res.json(generatedIdea);
       }
     } catch (error) {
       console.error("Error generating idea from document:", error);
@@ -2036,7 +2099,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       } catch (enrichError) {
         console.error(`[Generate from URL] Enrichment failed, returning generated idea without enrichment:`, enrichError);
         // Return generated idea even if enrichment fails
-        res.json(generatedIdea);
+      res.json(generatedIdea);
       }
     } catch (error) {
       console.error("Error generating idea from URL:", error);
@@ -2142,6 +2205,16 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       // Generate full idea using comprehensive AI analysis (same format as existing ideas)
       let generatedIdea, imageUrl;
       try {
+        console.log('[Deep Research] 🚀 Starting AI idea generation...');
+        console.log('[Deep Research] Calling aiService.generateIdea with params:', {
+          industry: params.targetMarket || 'technology',
+          type: params.type || 'web_app',
+          market: params.market || 'B2C',
+          targetAudience: params.targetAudience || 'general users',
+          problemArea: params.ideaDescription.substring(0, 100),
+          constraints: params.additionalContext || 'none'
+        });
+        const generateStartTime = Date.now();
         // Generate the full idea with all fields matching existing ideas
         generatedIdea = await aiService.generateIdea({
           industry: params.targetMarket || 'technology',
@@ -2151,10 +2224,20 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           problemArea: params.ideaDescription.substring(0, 100),
           constraints: params.additionalContext || 'none'
         }).catch((error) => {
+          const generateDuration = Date.now() - generateStartTime;
           logErrorToFile(error, 'Deep Research Generation (generateIdea)');
-          console.error('Error in generateIdea:', error);
+          console.error(`[Deep Research] ❌ Error in generateIdea after ${generateDuration}ms:`, error);
+          console.error('[Deep Research] Error details:', {
+            message: error?.message,
+            status: error?.status,
+            code: error?.code,
+            name: error?.name,
+            stack: error?.stack
+          });
           throw error;
         });
+        const generateDuration = Date.now() - generateStartTime;
+        console.log(`[Deep Research] ✅ generateIdea completed in ${generateDuration}ms (${(generateDuration / 1000).toFixed(1)}s)`);
 
         // Override with user-provided title and description
         generatedIdea.title = params.ideaTitle;
@@ -2232,15 +2315,72 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           
           console.log(`[Deep Research] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
           console.log(`[Deep Research] Comprehensive fields present:`, {
-            offerTiers: !!generatedIdea.offerTiers,
-            whyNowAnalysis: !!generatedIdea.whyNowAnalysis,
-            proofSignals: !!generatedIdea.proofSignals,
-            marketGap: !!generatedIdea.marketGap,
-            executionPlan: !!generatedIdea.executionPlan,
-            frameworkData: !!generatedIdea.frameworkData,
-            keywordData: !!generatedIdea.keywordData,
-            communitySignals: !!generatedIdea.communitySignals,
-            builderPrompts: !!generatedIdea.builderPrompts,
+            offerTiers: {
+              present: !!generatedIdea.offerTiers,
+              complete: generatedIdea.offerTiers && typeof generatedIdea.offerTiers === 'object' && 
+                       generatedIdea.offerTiers.leadMagnet && generatedIdea.offerTiers.frontend && 
+                       generatedIdea.offerTiers.core && generatedIdea.offerTiers.backend && 
+                       generatedIdea.offerTiers.continuity,
+              tiers: generatedIdea.offerTiers ? Object.keys(generatedIdea.offerTiers).length : 0
+            },
+            whyNowAnalysis: {
+              present: !!generatedIdea.whyNowAnalysis,
+              length: generatedIdea.whyNowAnalysis ? generatedIdea.whyNowAnalysis.trim().length : 0,
+              complete: !!generatedIdea.whyNowAnalysis && generatedIdea.whyNowAnalysis.trim().length > 50
+            },
+            proofSignals: {
+              present: !!generatedIdea.proofSignals,
+              length: generatedIdea.proofSignals ? generatedIdea.proofSignals.trim().length : 0,
+              complete: !!generatedIdea.proofSignals && generatedIdea.proofSignals.trim().length > 50
+            },
+            marketGap: {
+              present: !!generatedIdea.marketGap,
+              length: generatedIdea.marketGap ? generatedIdea.marketGap.trim().length : 0,
+              complete: !!generatedIdea.marketGap && generatedIdea.marketGap.trim().length > 50
+            },
+            executionPlan: {
+              present: !!generatedIdea.executionPlan,
+              length: generatedIdea.executionPlan ? generatedIdea.executionPlan.trim().length : 0,
+              complete: !!generatedIdea.executionPlan && generatedIdea.executionPlan.trim().length > 50
+            },
+            frameworkData: {
+              present: !!generatedIdea.frameworkData,
+              complete: generatedIdea.frameworkData && typeof generatedIdea.frameworkData === 'object' &&
+                       generatedIdea.frameworkData.valueEquation && generatedIdea.frameworkData.marketMatrix &&
+                       generatedIdea.frameworkData.acpFramework,
+              frameworks: generatedIdea.frameworkData ? Object.keys(generatedIdea.frameworkData).length : 0
+            },
+            keywordData: {
+              present: !!generatedIdea.keywordData,
+              complete: generatedIdea.keywordData && typeof generatedIdea.keywordData === 'object' &&
+                       Array.isArray(generatedIdea.keywordData.fastestGrowing) &&
+                       generatedIdea.keywordData.fastestGrowing.length >= 3,
+              fastestGrowing: generatedIdea.keywordData?.fastestGrowing?.length || 0,
+              highestVolume: generatedIdea.keywordData?.highestVolume?.length || 0,
+              mostRelevant: generatedIdea.keywordData?.mostRelevant?.length || 0
+            },
+            communitySignals: {
+              present: !!generatedIdea.communitySignals,
+              complete: generatedIdea.communitySignals && typeof generatedIdea.communitySignals === 'object' &&
+                       generatedIdea.communitySignals.reddit && generatedIdea.communitySignals.facebook &&
+                       generatedIdea.communitySignals.youtube,
+              platforms: generatedIdea.communitySignals ? Object.keys(generatedIdea.communitySignals).length : 0
+            },
+            trendAnalysis: {
+              present: !!generatedIdea.trendAnalysis,
+              length: generatedIdea.trendAnalysis ? generatedIdea.trendAnalysis.trim().length : 0,
+              complete: !!generatedIdea.trendAnalysis && generatedIdea.trendAnalysis.trim().length > 50
+            },
+            builderPrompts: {
+              present: !!generatedIdea.builderPrompts,
+              complete: generatedIdea.builderPrompts && typeof generatedIdea.builderPrompts === 'object' &&
+                       Object.keys(generatedIdea.builderPrompts).length >= 4,
+              prompts: generatedIdea.builderPrompts ? Object.keys(generatedIdea.builderPrompts).length : 0
+            },
+            signalBadges: {
+              present: Array.isArray(generatedIdea.signalBadges) && generatedIdea.signalBadges.length > 0,
+              count: Array.isArray(generatedIdea.signalBadges) ? generatedIdea.signalBadges.length : 0
+            }
           });
         } catch (enrichError) {
           console.error(`[Deep Research] Enrichment failed, using generated idea without enrichment:`, enrichError);
@@ -2275,7 +2415,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         .trim();
 
       // Generate unique slug
-      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug);
+      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug, new Set<string>());
 
       // Ensure signalBadges is an array
       const signalBadges = Array.isArray(generatedIdea.signalBadges) 
@@ -2334,22 +2474,105 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         isPublished: true,
       };
 
-      // Log comprehensive fields before saving
+      // Log comprehensive fields before saving with detailed validation
       console.log('[Deep Research] 💾 Preparing to save idea to database...');
+      
+      // Detailed field validation
+      const offerTiersComplete = ideaData.offerTiers && 
+        typeof ideaData.offerTiers === 'object' &&
+        ideaData.offerTiers.leadMagnet &&
+        ideaData.offerTiers.frontend &&
+        ideaData.offerTiers.core &&
+        ideaData.offerTiers.backend &&
+        ideaData.offerTiers.continuity;
+      
+      const frameworkDataComplete = ideaData.frameworkData &&
+        typeof ideaData.frameworkData === 'object' &&
+        ideaData.frameworkData.valueEquation &&
+        ideaData.frameworkData.marketMatrix &&
+        ideaData.frameworkData.acpFramework;
+      
+      const keywordDataComplete = ideaData.keywordData &&
+        typeof ideaData.keywordData === 'object' &&
+        Array.isArray(ideaData.keywordData.fastestGrowing) &&
+        ideaData.keywordData.fastestGrowing.length >= 3 &&
+        Array.isArray(ideaData.keywordData.highestVolume) &&
+        ideaData.keywordData.highestVolume.length >= 3 &&
+        Array.isArray(ideaData.keywordData.mostRelevant) &&
+        ideaData.keywordData.mostRelevant.length >= 3;
+      
+      const communitySignalsComplete = ideaData.communitySignals &&
+        typeof ideaData.communitySignals === 'object' &&
+        ideaData.communitySignals.reddit &&
+        ideaData.communitySignals.facebook &&
+        ideaData.communitySignals.youtube;
+      
+      const builderPromptsComplete = ideaData.builderPrompts &&
+        typeof ideaData.builderPrompts === 'object' &&
+        Object.keys(ideaData.builderPrompts).length >= 4;
+      
       console.log(`[Deep Research] Saving idea with comprehensive fields:`, {
         title: ideaData.title,
         subtitle: ideaData.subtitle,
-        hasOfferTiers: !!ideaData.offerTiers,
-        hasWhyNowAnalysis: !!ideaData.whyNowAnalysis,
-        hasProofSignals: !!ideaData.proofSignals,
-        hasMarketGap: !!ideaData.marketGap,
-        hasExecutionPlan: !!ideaData.executionPlan,
-        hasFrameworkData: !!ideaData.frameworkData,
-        hasKeywordData: !!ideaData.keywordData,
-        hasCommunitySignals: !!ideaData.communitySignals,
-        hasTrendAnalysis: !!ideaData.trendAnalysis,
-        hasBuilderPrompts: !!ideaData.builderPrompts,
-        signalBadgesCount: signalBadges.length,
+        comprehensiveFields: {
+          offerTiers: {
+            present: !!ideaData.offerTiers,
+            complete: offerTiersComplete,
+            tiers: ideaData.offerTiers ? Object.keys(ideaData.offerTiers).length : 0
+          },
+          whyNowAnalysis: {
+            present: !!ideaData.whyNowAnalysis,
+            length: ideaData.whyNowAnalysis ? ideaData.whyNowAnalysis.trim().length : 0,
+            complete: !!ideaData.whyNowAnalysis && ideaData.whyNowAnalysis.trim().length > 50
+          },
+          proofSignals: {
+            present: !!ideaData.proofSignals,
+            length: ideaData.proofSignals ? ideaData.proofSignals.trim().length : 0,
+            complete: !!ideaData.proofSignals && ideaData.proofSignals.trim().length > 50
+          },
+          marketGap: {
+            present: !!ideaData.marketGap,
+            length: ideaData.marketGap ? ideaData.marketGap.trim().length : 0,
+            complete: !!ideaData.marketGap && ideaData.marketGap.trim().length > 50
+          },
+          executionPlan: {
+            present: !!ideaData.executionPlan,
+            length: ideaData.executionPlan ? ideaData.executionPlan.trim().length : 0,
+            complete: !!ideaData.executionPlan && ideaData.executionPlan.trim().length > 50
+          },
+          frameworkData: {
+            present: !!ideaData.frameworkData,
+            complete: frameworkDataComplete,
+            frameworks: ideaData.frameworkData ? Object.keys(ideaData.frameworkData).length : 0
+          },
+          keywordData: {
+            present: !!ideaData.keywordData,
+            complete: keywordDataComplete,
+            fastestGrowing: ideaData.keywordData?.fastestGrowing?.length || 0,
+            highestVolume: ideaData.keywordData?.highestVolume?.length || 0,
+            mostRelevant: ideaData.keywordData?.mostRelevant?.length || 0
+          },
+          communitySignals: {
+            present: !!ideaData.communitySignals,
+            complete: communitySignalsComplete,
+            platforms: ideaData.communitySignals ? Object.keys(ideaData.communitySignals).length : 0
+          },
+          trendAnalysis: {
+            present: !!ideaData.trendAnalysis,
+            length: ideaData.trendAnalysis ? ideaData.trendAnalysis.trim().length : 0,
+            complete: !!ideaData.trendAnalysis && ideaData.trendAnalysis.trim().length > 50
+          },
+          builderPrompts: {
+            present: !!ideaData.builderPrompts,
+            complete: builderPromptsComplete,
+            prompts: ideaData.builderPrompts ? Object.keys(ideaData.builderPrompts).length : 0
+          },
+          signalBadges: {
+            present: signalBadges.length > 0,
+            count: signalBadges.length,
+            badges: signalBadges
+          }
+        },
         allRequiredFields: {
           title: !!ideaData.title,
           description: !!ideaData.description,
@@ -2364,6 +2587,26 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           gtmScore: ideaData.gtmScore > 0,
         },
       });
+      
+      // Warn if critical fields are missing
+      const missingComprehensiveFields = [];
+      if (!offerTiersComplete) missingComprehensiveFields.push('offerTiers (incomplete)');
+      if (!ideaData.whyNowAnalysis || ideaData.whyNowAnalysis.trim().length < 50) missingComprehensiveFields.push('whyNowAnalysis');
+      if (!ideaData.proofSignals || ideaData.proofSignals.trim().length < 50) missingComprehensiveFields.push('proofSignals');
+      if (!ideaData.marketGap || ideaData.marketGap.trim().length < 50) missingComprehensiveFields.push('marketGap');
+      if (!ideaData.executionPlan || ideaData.executionPlan.trim().length < 50) missingComprehensiveFields.push('executionPlan');
+      if (!frameworkDataComplete) missingComprehensiveFields.push('frameworkData (incomplete)');
+      if (!keywordDataComplete) missingComprehensiveFields.push('keywordData (incomplete)');
+      if (!communitySignalsComplete) missingComprehensiveFields.push('communitySignals (incomplete)');
+      if (!ideaData.trendAnalysis || ideaData.trendAnalysis.trim().length < 50) missingComprehensiveFields.push('trendAnalysis');
+      if (!builderPromptsComplete) missingComprehensiveFields.push('builderPrompts (incomplete)');
+      if (signalBadges.length === 0) missingComprehensiveFields.push('signalBadges');
+      
+      if (missingComprehensiveFields.length > 0) {
+        console.warn(`[Deep Research] ⚠️ Missing or incomplete comprehensive fields: ${missingComprehensiveFields.join(', ')}`);
+      } else {
+        console.log(`[Deep Research] ✅ All comprehensive fields present and complete`);
+      }
       
       // Validate required fields before saving
       const requiredFields = {
@@ -2385,13 +2628,13 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         gtmScore: ideaData.gtmScore,
       };
       
-      const missingFields = Object.entries(requiredFields)
+      const missingRequiredFields = Object.entries(requiredFields)
         .filter(([key, value]) => value === undefined || value === null || value === '')
         .map(([key]) => key);
       
-      if (missingFields.length > 0) {
-        console.error('[Deep Research] ❌ Missing required fields:', missingFields);
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      if (missingRequiredFields.length > 0) {
+        console.error('[Deep Research] ❌ Missing required fields:', missingRequiredFields);
+        throw new Error(`Missing required fields: ${missingRequiredFields.join(', ')}`);
       }
       
       // Validate types
@@ -2411,14 +2654,6 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         console.log(`[Deep Research] Idea Slug: ${createdIdea.slug}`);
         console.log(`[Deep Research] Created At: ${createdIdea.createdAt}`);
 
-        // Generate Opportunity Analysis asynchronously (don't wait)
-        aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
-          storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
-          console.log(`[Deep Research] Opportunity Analysis generated for idea ${createdIdea.id}`);
-        }).catch((error) => {
-          console.error(`[Deep Research] Error generating Opportunity Analysis for ${createdIdea.id}:`, error);
-        });
-        
         console.log('[Deep Research] 📤 Sending response to client...');
         // Return the created idea
         res.json(createdIdea);
@@ -2513,6 +2748,15 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       let generatedIdea, imageUrl;
       try {
         console.log('[Rapid Research] 🚀 Starting AI idea generation...');
+        console.log('[Rapid Research] Calling aiService.generateIdea with params:', {
+          industry: params.targetMarket || 'technology',
+          type: params.type || 'web_app',
+          market: params.market || 'B2C',
+          targetAudience: params.targetAudience || 'general users',
+          problemArea: params.ideaDescription.substring(0, 100),
+          constraints: 'rapid_mode'
+        });
+        const generateStartTime = Date.now();
         // Generate the full idea with all fields matching existing ideas
         generatedIdea = await aiService.generateIdea({
           industry: params.targetMarket || 'technology',
@@ -2522,10 +2766,20 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           problemArea: params.ideaDescription.substring(0, 100),
           constraints: 'rapid_mode'
         }).catch((error) => {
+          const generateDuration = Date.now() - generateStartTime;
           logErrorToFile(error, 'Rapid Research Generation (generateIdea)');
-          console.error('[Rapid Research] Error in generateIdea:', error);
+          console.error(`[Rapid Research] ❌ Error in generateIdea after ${generateDuration}ms:`, error);
+          console.error('[Rapid Research] Error details:', {
+            message: error?.message,
+            status: error?.status,
+            code: error?.code,
+            name: error?.name,
+            stack: error?.stack
+          });
           throw error;
         });
+        const generateDuration = Date.now() - generateStartTime;
+        console.log(`[Rapid Research] ✅ generateIdea completed in ${generateDuration}ms (${(generateDuration / 1000).toFixed(1)}s)`);
 
         console.log('[Rapid Research] ✅ AI idea generation completed');
         console.log('[Rapid Research] Generated idea title:', generatedIdea?.title);
@@ -2540,29 +2794,16 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         console.log('[Rapid Research] ✅ User-provided fields applied');
 
         // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
-        // For rapid mode, skip enrichment to speed things up - generateIdea already provides comprehensive data
+        // Check if generated idea has all required comprehensive fields, enrich if missing
         let enrichedData;
         try {
-          console.log(`[Rapid Research] Skipping enrichment for rapid mode - using generated idea data directly`);
-          // Use the generated idea's data as-is for rapid mode (it's already comprehensive)
-          enrichedData = {
-            offerTiers: generatedIdea.offerTiers,
-            whyNowAnalysis: generatedIdea.whyNowAnalysis,
-            proofSignals: generatedIdea.proofSignals,
-            marketGap: generatedIdea.marketGap,
-            executionPlan: generatedIdea.executionPlan,
-            frameworkData: generatedIdea.frameworkData,
-            trendAnalysis: generatedIdea.trendAnalysis,
-            keywordData: generatedIdea.keywordData,
-            communitySignals: generatedIdea.communitySignals,
-            signalBadges: generatedIdea.signalBadges,
-          };
-          
-          // Merge: enriched data provides comprehensive fields, generated idea provides basic fields
-          // Check if generated idea has meaningful comprehensive data, otherwise use enriched
+          // Check if generated idea has meaningful comprehensive data
           const hasMeaningfulOfferTiers = generatedIdea.offerTiers && 
                                          typeof generatedIdea.offerTiers === 'object' && 
-                                         Object.keys(generatedIdea.offerTiers).length > 0;
+                                         Object.keys(generatedIdea.offerTiers).length > 0 &&
+                                         generatedIdea.offerTiers.leadMagnet &&
+                                         generatedIdea.offerTiers.frontend &&
+                                         generatedIdea.offerTiers.core;
           const hasMeaningfulWhyNow = generatedIdea.whyNowAnalysis && 
                                      typeof generatedIdea.whyNowAnalysis === 'string' && 
                                      generatedIdea.whyNowAnalysis.trim().length > 50;
@@ -2577,23 +2818,73 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
                                             generatedIdea.executionPlan.trim().length > 50;
           const hasMeaningfulFramework = generatedIdea.frameworkData && 
                                         typeof generatedIdea.frameworkData === 'object' && 
-                                        Object.keys(generatedIdea.frameworkData).length > 0;
+                                        Object.keys(generatedIdea.frameworkData).length > 0 &&
+                                        generatedIdea.frameworkData.valueEquation &&
+                                        generatedIdea.frameworkData.marketMatrix;
           const hasMeaningfulKeywordData = generatedIdea.keywordData && 
                                           typeof generatedIdea.keywordData === 'object' && 
-                                          Object.keys(generatedIdea.keywordData).length > 0;
+                                          Object.keys(generatedIdea.keywordData).length > 0 &&
+                                          Array.isArray(generatedIdea.keywordData.fastestGrowing) &&
+                                          generatedIdea.keywordData.fastestGrowing.length > 0;
           const hasMeaningfulCommunity = generatedIdea.communitySignals && 
                                        typeof generatedIdea.communitySignals === 'object' && 
-                                       Object.keys(generatedIdea.communitySignals).length > 0;
+                                       Object.keys(generatedIdea.communitySignals).length > 0 &&
+                                       generatedIdea.communitySignals.reddit;
           
           // Preserve builderPrompts from generated idea (it's specific to generateIdea)
           const hasBuilderPrompts = generatedIdea.builderPrompts && 
                                    typeof generatedIdea.builderPrompts === 'object' && 
                                    Object.keys(generatedIdea.builderPrompts).length > 0;
           
+          // Check if we need enrichment (if any critical fields are missing)
+          const needsEnrichment = !hasMeaningfulOfferTiers || !hasMeaningfulWhyNow || !hasMeaningfulProofSignals || 
+                                 !hasMeaningfulMarketGap || !hasMeaningfulExecutionPlan || !hasMeaningfulFramework ||
+                                 !hasMeaningfulKeywordData || !hasMeaningfulCommunity;
+          
+          if (needsEnrichment) {
+            console.log(`[Rapid Research] Some comprehensive fields missing, enriching with AI...`);
+            console.log(`[Rapid Research] Missing fields:`, {
+              offerTiers: !hasMeaningfulOfferTiers,
+              whyNowAnalysis: !hasMeaningfulWhyNow,
+              proofSignals: !hasMeaningfulProofSignals,
+              marketGap: !hasMeaningfulMarketGap,
+              executionPlan: !hasMeaningfulExecutionPlan,
+              frameworkData: !hasMeaningfulFramework,
+              keywordData: !hasMeaningfulKeywordData,
+              communitySignals: !hasMeaningfulCommunity,
+            });
+            
+            enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+              title: generatedIdea.title,
+              description: generatedIdea.description,
+              content: generatedIdea.content,
+              type: generatedIdea.type,
+              market: generatedIdea.market,
+              targetAudience: generatedIdea.targetAudience,
+              keyword: generatedIdea.keyword,
+            });
+          } else {
+            console.log(`[Rapid Research] All comprehensive fields present, using generated idea data directly`);
+            // Use the generated idea's data as-is for rapid mode (it's already comprehensive)
+            enrichedData = {
+              offerTiers: generatedIdea.offerTiers,
+              whyNowAnalysis: generatedIdea.whyNowAnalysis,
+              proofSignals: generatedIdea.proofSignals,
+              marketGap: generatedIdea.marketGap,
+              executionPlan: generatedIdea.executionPlan,
+              frameworkData: generatedIdea.frameworkData,
+              trendAnalysis: generatedIdea.trendAnalysis,
+              keywordData: generatedIdea.keywordData,
+              communitySignals: generatedIdea.communitySignals,
+              signalBadges: generatedIdea.signalBadges,
+            };
+          }
+          
+          // Merge: enriched data provides comprehensive fields, generated idea provides basic fields
           generatedIdea = {
             ...enrichedData, // Start with enriched comprehensive data
             ...generatedIdea, // Override with generated basic fields (title, description, etc.)
-            // Use enriched data for comprehensive fields unless generated has meaningful data
+            // Use generated data for comprehensive fields if meaningful, otherwise use enriched
             offerTiers: hasMeaningfulOfferTiers ? generatedIdea.offerTiers : enrichedData.offerTiers,
             whyNowAnalysis: hasMeaningfulWhyNow ? generatedIdea.whyNowAnalysis : enrichedData.whyNowAnalysis,
             proofSignals: hasMeaningfulProofSignals ? generatedIdea.proofSignals : enrichedData.proofSignals,
@@ -2604,39 +2895,47 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
             communitySignals: hasMeaningfulCommunity ? generatedIdea.communitySignals : enrichedData.communitySignals,
             trendAnalysis: (generatedIdea.trendAnalysis && typeof generatedIdea.trendAnalysis === 'string' && generatedIdea.trendAnalysis.trim().length > 50) 
               ? generatedIdea.trendAnalysis 
-              : enrichedData.trendAnalysis,
+              : (enrichedData.trendAnalysis || generatedIdea.trendAnalysis),
             signalBadges: (generatedIdea.signalBadges && Array.isArray(generatedIdea.signalBadges) && generatedIdea.signalBadges.length > 0) 
               ? generatedIdea.signalBadges 
-              : enrichedData.signalBadges,
+              : (enrichedData.signalBadges || generatedIdea.signalBadges || []),
             // Preserve builderPrompts from generated idea (enrichment doesn't generate this)
             builderPrompts: hasBuilderPrompts ? generatedIdea.builderPrompts : (generatedIdea.builderPrompts || {}),
           };
           
-          console.log(`[Rapid Research] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+          console.log(`[Rapid Research] ✅ Comprehensive data merge completed for: ${generatedIdea.title}`);
           console.log(`[Rapid Research] Comprehensive fields present:`, {
-            offerTiers: !!generatedIdea.offerTiers,
-            whyNowAnalysis: !!generatedIdea.whyNowAnalysis,
-            proofSignals: !!generatedIdea.proofSignals,
-            marketGap: !!generatedIdea.marketGap,
-            executionPlan: !!generatedIdea.executionPlan,
-            frameworkData: !!generatedIdea.frameworkData,
-            keywordData: !!generatedIdea.keywordData,
-            communitySignals: !!generatedIdea.communitySignals,
-            builderPrompts: !!generatedIdea.builderPrompts,
+            offerTiers: !!generatedIdea.offerTiers && typeof generatedIdea.offerTiers === 'object' && Object.keys(generatedIdea.offerTiers).length >= 3,
+            whyNowAnalysis: !!generatedIdea.whyNowAnalysis && generatedIdea.whyNowAnalysis.trim().length > 50,
+            proofSignals: !!generatedIdea.proofSignals && generatedIdea.proofSignals.trim().length > 50,
+            marketGap: !!generatedIdea.marketGap && generatedIdea.marketGap.trim().length > 50,
+            executionPlan: !!generatedIdea.executionPlan && generatedIdea.executionPlan.trim().length > 50,
+            frameworkData: !!generatedIdea.frameworkData && typeof generatedIdea.frameworkData === 'object' && Object.keys(generatedIdea.frameworkData).length > 0,
+            keywordData: !!generatedIdea.keywordData && typeof generatedIdea.keywordData === 'object' && Array.isArray(generatedIdea.keywordData.fastestGrowing),
+            communitySignals: !!generatedIdea.communitySignals && typeof generatedIdea.communitySignals === 'object' && generatedIdea.communitySignals.reddit,
+            trendAnalysis: !!generatedIdea.trendAnalysis && generatedIdea.trendAnalysis.trim().length > 50,
+            builderPrompts: !!generatedIdea.builderPrompts && typeof generatedIdea.builderPrompts === 'object' && Object.keys(generatedIdea.builderPrompts).length > 0,
+            signalBadges: Array.isArray(generatedIdea.signalBadges) && generatedIdea.signalBadges.length > 0,
           });
         } catch (enrichError) {
           console.error(`[Rapid Research] Enrichment failed, using generated idea without enrichment:`, enrichError);
           // Continue with generated idea if enrichment fails
         }
 
-        // Generate image for the idea
-        try {
-          imageUrl = await aiService.searchAppImage(generatedIdea.title, generatedIdea.description);
-          if (imageUrl) {
-            generatedIdea.imageUrl = imageUrl;
+        // Generate image for the idea (non-blocking for rapid mode to save time)
+        if (params.constraints === 'rapid_mode') {
+          // For rapid mode, fetch image asynchronously after saving (don't block response)
+          console.log('[Rapid Research] Image search will be done asynchronously after save');
+        } else {
+          // For deep/comprehensive mode, wait for image
+          try {
+            imageUrl = await aiService.searchAppImage(generatedIdea.title, generatedIdea.description);
+            if (imageUrl) {
+              generatedIdea.imageUrl = imageUrl;
+            }
+          } catch (imageError) {
+            console.error('Error generating image (non-critical):', imageError);
           }
-        } catch (imageError) {
-          console.error('Error generating image (non-critical):', imageError);
         }
 
         console.log('[Rapid Research] ✅ Rapid research idea generation completed successfully');
@@ -2658,7 +2957,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         .trim();
 
       // Generate unique slug
-      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug);
+      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug, new Set<string>());
       console.log('[Rapid Research] ✅ Slug generated:', uniqueSlug);
 
       // Ensure signalBadges is an array
@@ -2718,22 +3017,105 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         isPublished: true,
       };
 
-      // Log comprehensive fields before saving
+      // Log comprehensive fields before saving with detailed validation
       console.log('[Rapid Research] 💾 Preparing to save idea to database...');
+      
+      // Detailed field validation
+      const offerTiersComplete = ideaData.offerTiers && 
+        typeof ideaData.offerTiers === 'object' &&
+        ideaData.offerTiers.leadMagnet &&
+        ideaData.offerTiers.frontend &&
+        ideaData.offerTiers.core &&
+        ideaData.offerTiers.backend &&
+        ideaData.offerTiers.continuity;
+      
+      const frameworkDataComplete = ideaData.frameworkData &&
+        typeof ideaData.frameworkData === 'object' &&
+        ideaData.frameworkData.valueEquation &&
+        ideaData.frameworkData.marketMatrix &&
+        ideaData.frameworkData.acpFramework;
+      
+      const keywordDataComplete = ideaData.keywordData &&
+        typeof ideaData.keywordData === 'object' &&
+        Array.isArray(ideaData.keywordData.fastestGrowing) &&
+        ideaData.keywordData.fastestGrowing.length >= 3 &&
+        Array.isArray(ideaData.keywordData.highestVolume) &&
+        ideaData.keywordData.highestVolume.length >= 3 &&
+        Array.isArray(ideaData.keywordData.mostRelevant) &&
+        ideaData.keywordData.mostRelevant.length >= 3;
+      
+      const communitySignalsComplete = ideaData.communitySignals &&
+        typeof ideaData.communitySignals === 'object' &&
+        ideaData.communitySignals.reddit &&
+        ideaData.communitySignals.facebook &&
+        ideaData.communitySignals.youtube;
+      
+      const builderPromptsComplete = ideaData.builderPrompts &&
+        typeof ideaData.builderPrompts === 'object' &&
+        Object.keys(ideaData.builderPrompts).length >= 4;
+      
       console.log(`[Rapid Research] Saving idea with comprehensive fields:`, {
         title: ideaData.title,
         subtitle: ideaData.subtitle,
-        hasOfferTiers: !!ideaData.offerTiers,
-        hasWhyNowAnalysis: !!ideaData.whyNowAnalysis,
-        hasProofSignals: !!ideaData.proofSignals,
-        hasMarketGap: !!ideaData.marketGap,
-        hasExecutionPlan: !!ideaData.executionPlan,
-        hasFrameworkData: !!ideaData.frameworkData,
-        hasKeywordData: !!ideaData.keywordData,
-        hasCommunitySignals: !!ideaData.communitySignals,
-        hasTrendAnalysis: !!ideaData.trendAnalysis,
-        hasBuilderPrompts: !!ideaData.builderPrompts,
-        signalBadgesCount: signalBadges.length,
+        comprehensiveFields: {
+          offerTiers: {
+            present: !!ideaData.offerTiers,
+            complete: offerTiersComplete,
+            tiers: ideaData.offerTiers ? Object.keys(ideaData.offerTiers).length : 0
+          },
+          whyNowAnalysis: {
+            present: !!ideaData.whyNowAnalysis,
+            length: ideaData.whyNowAnalysis ? ideaData.whyNowAnalysis.trim().length : 0,
+            complete: !!ideaData.whyNowAnalysis && ideaData.whyNowAnalysis.trim().length > 50
+          },
+          proofSignals: {
+            present: !!ideaData.proofSignals,
+            length: ideaData.proofSignals ? ideaData.proofSignals.trim().length : 0,
+            complete: !!ideaData.proofSignals && ideaData.proofSignals.trim().length > 50
+          },
+          marketGap: {
+            present: !!ideaData.marketGap,
+            length: ideaData.marketGap ? ideaData.marketGap.trim().length : 0,
+            complete: !!ideaData.marketGap && ideaData.marketGap.trim().length > 50
+          },
+          executionPlan: {
+            present: !!ideaData.executionPlan,
+            length: ideaData.executionPlan ? ideaData.executionPlan.trim().length : 0,
+            complete: !!ideaData.executionPlan && ideaData.executionPlan.trim().length > 50
+          },
+          frameworkData: {
+            present: !!ideaData.frameworkData,
+            complete: frameworkDataComplete,
+            frameworks: ideaData.frameworkData ? Object.keys(ideaData.frameworkData).length : 0
+          },
+          keywordData: {
+            present: !!ideaData.keywordData,
+            complete: keywordDataComplete,
+            fastestGrowing: ideaData.keywordData?.fastestGrowing?.length || 0,
+            highestVolume: ideaData.keywordData?.highestVolume?.length || 0,
+            mostRelevant: ideaData.keywordData?.mostRelevant?.length || 0
+          },
+          communitySignals: {
+            present: !!ideaData.communitySignals,
+            complete: communitySignalsComplete,
+            platforms: ideaData.communitySignals ? Object.keys(ideaData.communitySignals).length : 0
+          },
+          trendAnalysis: {
+            present: !!ideaData.trendAnalysis,
+            length: ideaData.trendAnalysis ? ideaData.trendAnalysis.trim().length : 0,
+            complete: !!ideaData.trendAnalysis && ideaData.trendAnalysis.trim().length > 50
+          },
+          builderPrompts: {
+            present: !!ideaData.builderPrompts,
+            complete: builderPromptsComplete,
+            prompts: ideaData.builderPrompts ? Object.keys(ideaData.builderPrompts).length : 0
+          },
+          signalBadges: {
+            present: signalBadges.length > 0,
+            count: signalBadges.length,
+            badges: signalBadges
+          }
+        },
         allRequiredFields: {
           title: !!ideaData.title,
           description: !!ideaData.description,
@@ -2748,6 +3130,26 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           gtmScore: ideaData.gtmScore > 0,
         },
       });
+      
+      // Warn if critical fields are missing
+      const missingComprehensiveFields = [];
+      if (!offerTiersComplete) missingComprehensiveFields.push('offerTiers (incomplete)');
+      if (!ideaData.whyNowAnalysis || ideaData.whyNowAnalysis.trim().length < 50) missingComprehensiveFields.push('whyNowAnalysis');
+      if (!ideaData.proofSignals || ideaData.proofSignals.trim().length < 50) missingComprehensiveFields.push('proofSignals');
+      if (!ideaData.marketGap || ideaData.marketGap.trim().length < 50) missingComprehensiveFields.push('marketGap');
+      if (!ideaData.executionPlan || ideaData.executionPlan.trim().length < 50) missingComprehensiveFields.push('executionPlan');
+      if (!frameworkDataComplete) missingComprehensiveFields.push('frameworkData (incomplete)');
+      if (!keywordDataComplete) missingComprehensiveFields.push('keywordData (incomplete)');
+      if (!communitySignalsComplete) missingComprehensiveFields.push('communitySignals (incomplete)');
+      if (!ideaData.trendAnalysis || ideaData.trendAnalysis.trim().length < 50) missingComprehensiveFields.push('trendAnalysis');
+      if (!builderPromptsComplete) missingComprehensiveFields.push('builderPrompts (incomplete)');
+      if (signalBadges.length === 0) missingComprehensiveFields.push('signalBadges');
+      
+      if (missingComprehensiveFields.length > 0) {
+        console.warn(`[Rapid Research] ⚠️ Missing or incomplete comprehensive fields: ${missingComprehensiveFields.join(', ')}`);
+      } else {
+        console.log(`[Rapid Research] ✅ All comprehensive fields present and complete`);
+      }
       
       // Validate required fields before saving
       const requiredFields = {
@@ -2769,13 +3171,13 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         gtmScore: ideaData.gtmScore,
       };
       
-      const missingFields = Object.entries(requiredFields)
+      const missingRequiredFields = Object.entries(requiredFields)
         .filter(([key, value]) => value === undefined || value === null || value === '')
         .map(([key]) => key);
       
-      if (missingFields.length > 0) {
-        console.error('[Rapid Research] ❌ Missing required fields:', missingFields);
-        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      if (missingRequiredFields.length > 0) {
+        console.error('[Rapid Research] ❌ Missing required fields:', missingRequiredFields);
+        throw new Error(`Missing required fields: ${missingRequiredFields.join(', ')}`);
       }
       
       // Validate types
@@ -2795,13 +3197,16 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         console.log(`[Rapid Research] Idea Slug: ${createdIdea.slug}`);
         console.log(`[Rapid Research] Created At: ${createdIdea.createdAt}`);
 
-        // Generate Opportunity Analysis asynchronously (don't wait)
-        aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
-          storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
-          console.log(`[Rapid Research] Opportunity Analysis generated for idea ${createdIdea.id}`);
-        }).catch((error) => {
-          console.error(`[Rapid Research] Error generating Opportunity Analysis for ${createdIdea.id}:`, error);
-        });
+        // For rapid mode, fetch image asynchronously after saving (don't block response)
+        // This saves 10-30 seconds on the initial response time
+        aiService.searchAppImage(createdIdea.title, createdIdea.description)
+          .then(url => {
+            if (url) {
+              storage.updateIdea(createdIdea.id, { imageUrl: url });
+              console.log(`[Rapid Research] Image URL updated asynchronously for idea ${createdIdea.id}`);
+            }
+          })
+          .catch(err => console.error(`[Rapid Research] Async image search failed (non-critical) for ${createdIdea.id}:`, err));
         
         console.log('[Rapid Research] 📤 Sending response to client...');
         console.log('[Rapid Research] Response will contain:', {
@@ -4855,6 +5260,64 @@ Be practical, encouraging, and focus on helping them make real progress.`;
   
   // Store io instance globally for broadcasting AI messages
   (global as any).socketIO = io;
+  
+  // Admin endpoint to delete test ideas (matching various test patterns)
+  app.delete('/api/admin/delete-test-ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      console.log('[Admin] Deleting test ideas...');
+      
+      // Find all ideas matching these patterns (case insensitive):
+      // 1. "test" followed by optional space and a number (e.g., "test 3", "test5")
+      // 2. Exact match "test" (e.g., "Test")
+      // 3. Exact match "test app" (e.g., "Test App")
+      const testIdeas = await db
+        .select({
+          id: ideas.id,
+          title: ideas.title,
+          slug: ideas.slug,
+        })
+        .from(ideas)
+        .where(
+          sql`LOWER(${ideas.title}) ~ '^test\\s*\\d+$' OR LOWER(${ideas.title}) = 'test' OR LOWER(${ideas.title}) = 'test app'`
+        );
+      
+      console.log(`[Admin] Found ${testIdeas.length} ideas matching patterns`);
+      
+      if (testIdeas.length === 0) {
+        return res.json({ 
+          success: true, 
+          message: 'No ideas found matching the patterns',
+          deleted: 0 
+        });
+      }
+      
+      // Get IDs to delete
+      const idsToDelete = testIdeas.map(idea => idea.id);
+      
+      console.log(`[Admin] Deleting ${idsToDelete.length} ideas:`, testIdeas.map(i => i.title));
+      
+      // Delete ideas (cascade will handle related records like tags, votes, etc.)
+      await db
+        .delete(ideas)
+        .where(inArray(ideas.id, idsToDelete));
+      
+      console.log(`[Admin] Successfully deleted ${idsToDelete.length} ideas`);
+      
+      res.json({ 
+        success: true, 
+        message: `Successfully deleted ${idsToDelete.length} test ideas`,
+        deleted: idsToDelete.length,
+        deletedIdeas: testIdeas.map(idea => ({ title: idea.title, slug: idea.slug }))
+      });
+    } catch (error) {
+      console.error('[Admin] Error deleting test ideas:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to delete test ideas',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
   
   return { server: httpServer, sessionMiddleware };
 }
