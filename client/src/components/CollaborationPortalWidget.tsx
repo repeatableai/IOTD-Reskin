@@ -413,10 +413,6 @@ export function CollaborationPortalWidget() {
       y: e.clientY - rect.top,
     });
   };
-
-  // Calculate widget dimensions - smaller default size
-  const widgetWidth = isExpanded ? 500 : 350;
-  const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 500;
   
   // Constrain position to viewport
   const constrainedPosition = {
