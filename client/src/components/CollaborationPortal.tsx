@@ -59,7 +59,7 @@ export function CollaborationPortal({
   open,
   onOpenChange,
 }: CollaborationPortalProps) {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
@@ -234,6 +234,16 @@ export function CollaborationPortal({
 
   const handleSendMessage = () => {
     if (!message.trim() || sendMessageMutation.isPending) return;
+    
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to send messages in the collaboration portal.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     sendMessageMutation.mutate(message.trim());
   };
 
@@ -245,18 +255,42 @@ export function CollaborationPortal({
   };
 
   const handleAnalyze = (messageId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use AI features.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedMessageId(messageId);
     setSynthesizeState('analyzing');
     aiChatMutation.mutate("Analyze this message and provide insights.");
   };
 
   const handleSynthesize = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use AI features.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedMessageId(null);
     setSynthesizeState('synthesizing');
     aiChatMutation.mutate("Synthesize the key points from this conversation.");
   };
 
   const handleCritique = (messageId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to use AI features.",
+        variant: "destructive",
+      });
+      return;
+    }
     setSelectedMessageId(messageId);
     setSynthesizeState('critiquing');
     aiChatMutation.mutate("Critique this message and provide constructive feedback.");
@@ -436,59 +470,69 @@ export function CollaborationPortal({
             </ScrollArea>
 
             {/* AI Assistant Actions */}
-            <div className="px-6 py-3 border-t bg-muted/30">
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSynthesize}
-                  disabled={aiChatMutation.isPending || messages.length === 0}
-                >
-                  <Layers className="w-4 h-4 mr-2" />
-                  Synthesize Conversation
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => aiInsightMutation.mutate()}
-                  disabled={aiInsightMutation.isPending || messages.length === 0}
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  Generate AI Insight
-                </Button>
-                {aiChatMutation.isPending && (
-                  <Badge variant="secondary" className="flex items-center gap-1">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    {synthesizeState === 'analyzing' ? 'Analyzing...' : synthesizeState === 'synthesizing' ? 'Synthesizing...' : 'Critiquing...'}
-                  </Badge>
-                )}
+            {isAuthenticated && (
+              <div className="px-6 py-3 border-t bg-muted/30">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSynthesize}
+                    disabled={aiChatMutation.isPending || messages.length === 0}
+                  >
+                    <Layers className="w-4 h-4 mr-2" />
+                    Synthesize Conversation
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => aiInsightMutation.mutate()}
+                    disabled={aiInsightMutation.isPending || messages.length === 0}
+                  >
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    Generate AI Insight
+                  </Button>
+                  {aiChatMutation.isPending && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      {synthesizeState === 'analyzing' ? 'Analyzing...' : synthesizeState === 'synthesizing' ? 'Synthesizing...' : 'Critiquing...'}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Message Input */}
             <div className="px-6 py-4 border-t flex-shrink-0">
-              <div className="flex gap-2">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message... (Press Enter to send)"
-                  className="min-h-[80px] resize-none"
-                  disabled={sendMessageMutation.isPending}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!message.trim() || sendMessageMutation.isPending}
-                  size="icon"
-                  className="h-[80px] w-[80px] flex-shrink-0"
-                >
-                  {sendMessageMutation.isPending ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
-                </Button>
-              </div>
+              {!isAuthenticated ? (
+                <div className="flex items-center justify-center py-4 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    Please log in to send messages and use AI features.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your message... (Press Enter to send)"
+                    className="min-h-[80px] resize-none"
+                    disabled={sendMessageMutation.isPending}
+                  />
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!message.trim() || sendMessageMutation.isPending}
+                    size="icon"
+                    className="h-[80px] w-[80px] flex-shrink-0"
+                  >
+                    {sendMessageMutation.isPending ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className="w-5 h-5" />
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 

@@ -635,7 +635,7 @@ ${idea?.description || 'Description of your solution'}
                   <Separator orientation="vertical" className="h-8 mx-2" />
                   
                   <div className="flex gap-3">
-                    {isAuthenticated && idea?.id && (
+                    {idea?.id && (
                       <Button 
                         variant="outline" 
                         onClick={() => setShowCollaborationPortal(true)}

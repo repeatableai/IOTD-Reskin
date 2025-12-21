@@ -5363,7 +5363,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
   });
 
   // Collaboration Portal routes
-  app.get('/api/ideas/:ideaId/collaboration/messages', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ideas/:ideaId/collaboration/messages', async (req: any, res) => {
     try {
       const { ideaId } = req.params;
       const limit = parseInt(req.query.limit as string) || 50;
@@ -5408,7 +5408,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
-  app.get('/api/ideas/:ideaId/collaboration/active-users', isAuthenticated, async (req: any, res) => {
+  app.get('/api/ideas/:ideaId/collaboration/active-users', async (req: any, res) => {
     try {
       const { ideaId } = req.params;
 
@@ -5425,13 +5425,21 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         .leftJoin(users, eq(collaborationSessions.userId, users.id))
         .where(eq(collaborationSessions.ideaId, ideaId));
 
+      // Get unique users
+      const uniqueUsers = new Map();
+      activeSessions.forEach(session => {
+        if (session.userId && !uniqueUsers.has(session.userId)) {
+          uniqueUsers.set(session.userId, {
+            userId: session.userId,
+            userName: session.user?.firstName || 'Anonymous',
+            userImage: session.user?.profileImageUrl || null,
+          });
+        }
+      });
+
       res.json({ 
-        count: activeSessions.length,
-        users: activeSessions.map(s => ({
-          userId: s.userId,
-          userName: s.user?.firstName || 'Anonymous',
-          userImage: s.user?.profileImageUrl || null,
-        })),
+        count: uniqueUsers.size,
+        users: Array.from(uniqueUsers.values()),
       });
     } catch (error: any) {
       console.error("Error fetching active users:", error);
