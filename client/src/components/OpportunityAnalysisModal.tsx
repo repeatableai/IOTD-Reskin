@@ -102,12 +102,12 @@ export function OpportunityAnalysisModal({
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col" aria-describedby="opportunity-analysis-description">
+      <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col">
         <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <DialogTitle>Opportunity Analysis - {ideaTitle}</DialogTitle>
-              <DialogDescription id="opportunity-analysis-description" className="sr-only">
+              <DialogDescription>
                 Interactive preview of {ideaTitle} application
               </DialogDescription>
             </div>
