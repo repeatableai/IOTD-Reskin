@@ -343,9 +343,9 @@ export function CollaborationPortalWidget() {
     };
   }, [isDragging, dragStart, updatePosition]);
 
-  // Calculate widget dimensions
-  const widgetWidth = isExpanded ? 500 : 400;
-  const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 600;
+  // Calculate widget dimensions - smaller default size
+  const widgetWidth = isExpanded ? 500 : 350;
+  const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 500;
   
   // Constrain position to viewport
   const constrainedPosition = {
