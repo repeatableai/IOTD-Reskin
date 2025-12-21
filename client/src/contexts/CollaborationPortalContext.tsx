@@ -19,10 +19,10 @@ interface CollaborationPortalContextType {
 const CollaborationPortalContext = createContext<CollaborationPortalContextType | undefined>(undefined);
 
 export function CollaborationPortalProvider({ children }: { children: ReactNode }) {
-  // Initialize position to bottom-right corner (smaller widget: 350x500)
+  // Initialize position to bottom-right corner (wider widget: 550x600)
   const getInitialPosition = () => {
     if (typeof window !== 'undefined') {
-      return { x: Math.max(20, window.innerWidth - 370), y: Math.max(20, window.innerHeight - 520) };
+      return { x: Math.max(20, window.innerWidth - 570), y: Math.max(20, window.innerHeight - 620) };
     }
     return { x: 100, y: 100 };
   };
@@ -37,11 +37,11 @@ export function CollaborationPortalProvider({ children }: { children: ReactNode 
 
   const openPortal = (ideaId: string, ideaTitle: string) => {
     setPortalState((prev) => {
-      // If opening a different idea, reset position to bottom-right (smaller widget: 350x500)
+      // If opening a different idea, reset position to bottom-right (wider widget: 550x600)
       const newPosition = prev.ideaId === ideaId 
         ? prev.position 
         : typeof window !== 'undefined'
-          ? { x: Math.max(20, window.innerWidth - 370), y: Math.max(20, window.innerHeight - 520) }
+          ? { x: Math.max(20, window.innerWidth - 570), y: Math.max(20, window.innerHeight - 620) }
           : { x: 100, y: 100 };
       
       return {
