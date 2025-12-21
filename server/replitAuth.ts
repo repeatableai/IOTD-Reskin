@@ -108,10 +108,20 @@ export async function setupAuth(app: Express) {
       profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
     };
 
+    // Create or get nick user
+    const nickUser = {
+      id: 'nick-user-id',
+      email: 'nick@test.com',
+      firstName: 'Nick',
+      lastName: 'Test',
+      profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nick',
+    };
+
     try {
       await storage.upsertUser(demoUser);
+      await storage.upsertUser(nickUser);
     } catch (e) {
-      console.log('Note: Could not create demo user (database may need migration)');
+      console.log('Note: Could not create demo users (database may need migration)');
     }
 
     // Auto-login middleware for demo mode
@@ -150,9 +160,70 @@ export async function setupAuth(app: Express) {
     passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
     // Stub auth routes for demo mode
-    app.get("/api/login", (req, res) => res.redirect('/'));
+    app.post("/api/login", async (req, res) => {
+      const { email, password } = req.body;
+      
+      // Check for nick@test.com credentials
+      if (email === 'nick@test.com' && password === '123456') {
+        const nickUser = {
+          id: 'nick-user-id',
+          email: 'nick@test.com',
+          firstName: 'Nick',
+          lastName: 'Test',
+          profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nick',
+        };
+        
+        try {
+          await storage.upsertUser(nickUser);
+        } catch (e) {
+          console.log('Note: Could not upsert nick user');
+        }
+        
+        req.user = {
+          claims: {
+            sub: nickUser.id,
+            email: nickUser.email,
+            first_name: nickUser.firstName,
+            last_name: nickUser.lastName,
+            profile_image_url: nickUser.profileImageUrl,
+          }
+        };
+        
+        req.login(req.user, () => {
+          res.json({ success: true, user: req.user });
+        });
+      } else {
+        // Fallback to demo user for any other credentials
+        const demoUser = {
+          id: 'demo-user-public',
+          email: 'demo@iotd.app',
+          firstName: 'Demo',
+          lastName: 'User',
+          profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
+        };
+        
+        req.user = {
+          claims: {
+            sub: demoUser.id,
+            email: demoUser.email,
+            first_name: demoUser.firstName,
+            last_name: demoUser.lastName,
+            profile_image_url: demoUser.profileImageUrl,
+          }
+        };
+        
+        req.login(req.user, () => {
+          res.json({ success: true, user: req.user });
+        });
+      }
+    });
+    
+    // GET login for backward compatibility - redirects to login page
+    app.get("/api/login", (req, res) => {
+      res.redirect('/login');
+    });
     app.get("/api/callback", (req, res) => res.redirect('/'));
-    app.get("/api/logout", (req, res) => res.redirect('/'));
+    app.get("/api/logout", (req, res) => res.redirect('/login'));
     
     return; // Skip Replit OIDC setup
   }

@@ -1,10 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, getSession } from "./replitAuth";
 import { ideaFiltersSchema, insertIdeaSchema } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { setupSocketServer } from "./socketServer";
 import { ObjectPermission } from "./objectAcl";
 import { aiService, type IdeaGenerationParams } from "./aiService";
 import { externalDataService } from "./externalDataService";
@@ -19,8 +20,31 @@ import { slugService } from './slugService';
 import { imageProcessor } from './imageProcessor';
 import puppeteer from 'puppeteer';
 import { db } from './db';
-import { ideas, tags, ideaTags, communitySignals } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
+import { eq, sql, desc, asc } from 'drizzle-orm';
+import fs from 'fs';
+import path from 'path';
+import bcrypt from 'bcrypt';
+
+// Create error log file
+const ERROR_LOG_PATH = path.join(process.cwd(), 'server-errors.log');
+
+function logErrorToFile(error: any, context: string) {
+  const timestamp = new Date().toISOString();
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const errorStack = error instanceof Error ? error.stack : 'No stack trace';
+  const errorDetails = error instanceof Error ? JSON.stringify(error, Object.getOwnPropertyNames(error), 2) : String(error);
+  
+  const logEntry = `\n[${timestamp}] ${context}\nError: ${errorMessage}\nStack: ${errorStack}\nDetails: ${errorDetails}\n---\n`;
+  
+  try {
+    fs.appendFileSync(ERROR_LOG_PATH, logEntry, 'utf8');
+  } catch (e) {
+    // If we can't write to file, at least log to console
+    console.error(`[ERROR LOG FAILED] ${context}:`, error);
+  }
+  console.error(`[ERROR LOGGED TO FILE] ${context}:`, error);
+}
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -40,7 +64,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
+export async function registerRoutes(app: Express): Promise<{ server: Server; sessionMiddleware: ReturnType<typeof import('express-session')> }> {
   // CRITICAL: Early API request logger - runs before everything else
   // Use a function to match all API routes
   app.use((req, res, next) => {
@@ -59,14 +83,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Auth middleware
-  await setupAuth(app);
+  // Auth middleware - capture the session middleware for Socket.io
+  const sessionMiddleware = await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Auth routes - check auth status (returns 401 if not authenticated)
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
+      // Check if user is authenticated - return 401 if not (frontend handles this)
+      if (!req.user || !req.user.claims || !req.user.claims.sub) {
+        return res.status(401).json({ message: 'Not authenticated' });
+      }
       const userId = req.user.claims.sub;
       const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
       res.json(user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -296,6 +327,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user claimed ideas:", error);
       res.status(500).json({ message: "Failed to fetch claimed ideas" });
+    }
+  });
+
+  // Get user-created ideas
+  app.get('/api/user/created-ideas', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      // Query ideas directly where createdBy matches userId
+      const userIdeas = await db
+        .select({
+          id: ideas.id,
+          title: ideas.title,
+          slug: ideas.slug,
+          description: ideas.description,
+          imageUrl: ideas.imageUrl,
+          createdAt: ideas.createdAt,
+          sourceData: ideas.sourceData, // Include sourceData to filter by researchType
+        })
+        .from(ideas)
+        .where(eq(ideas.createdBy, userId))
+        .orderBy(desc(ideas.createdAt));
+      
+      res.json(userIdeas);
+    } catch (error) {
+      console.error("Error fetching user created ideas:", error);
+      res.status(500).json({ message: "Failed to fetch created ideas" });
     }
   });
 
@@ -979,6 +1036,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Generate Opportunity Analysis endpoint
+  app.post('/api/ideas/:id/generate-opportunity-analysis', async (req, res) => {
+    try {
+      const { id } = req.params;
+      const idea = await storage.getIdeaById(id);
+      
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Generate analysis
+      const analysis = await aiService.generateOpportunityAnalysis(idea);
+      
+      // Update idea with analysis
+      await storage.updateIdea(id, { opportunityAnalysis: analysis });
+      
+      res.json({ 
+        success: true, 
+        message: "Opportunity Analysis generated successfully",
+        analysis 
+      });
+    } catch (error: any) {
+      console.error("Error generating opportunity analysis:", error);
+      res.status(500).json({ 
+        message: "Failed to generate opportunity analysis",
+        error: error.message || "Unknown error"
+      });
+    }
+  });
+
+  // Batch generate Opportunity Analysis for all existing ideas
+  app.post('/api/admin/generate-all-opportunity-analyses', async (req, res) => {
+    try {
+      const { batchSize = 5 } = req.body; // Process in small batches
+      
+      // Get ideas without opportunityAnalysis
+      const allIdeas = await db
+        .select()
+        .from(ideas)
+        .where(sql`${ideas.opportunityAnalysis} IS NULL OR ${ideas.opportunityAnalysis}::text = 'null'`)
+        .limit(batchSize);
+      
+      if (allIdeas.length === 0) {
+        return res.json({ 
+          message: 'All ideas already have analyses', 
+          processed: 0,
+          remaining: 0
+        });
+      }
+      
+      const results = [];
+      
+      for (const idea of allIdeas) {
+        try {
+          console.log(`[Batch Generate] Processing: ${idea.title} (${idea.id})`);
+          const analysis = await aiService.generateOpportunityAnalysis(idea);
+          await storage.updateIdea(idea.id, { opportunityAnalysis: analysis });
+          results.push({ id: idea.id, title: idea.title, status: 'success' });
+          console.log(`[Batch Generate] ✓ Success: ${idea.title}`);
+        } catch (error: any) {
+          console.error(`[Batch Generate] ✗ Failed for ${idea.title}:`, error.message);
+          results.push({ 
+            id: idea.id, 
+            title: idea.title, 
+            status: 'failed', 
+            error: error.message 
+          });
+        }
+      }
+      
+      // Get remaining count
+      const remainingResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ideas)
+        .where(sql`${ideas.opportunityAnalysis} IS NULL OR ${ideas.opportunityAnalysis}::text = 'null'`);
+      
+      const remaining = Number(remainingResult[0]?.count || 0);
+      
+      res.json({ 
+        processed: results.length,
+        results,
+        remaining,
+        message: remaining > 0 
+          ? `Processed ${results.length} ideas. ${remaining} remaining. Call again to continue.`
+          : 'All ideas processed!'
+      });
+    } catch (error: any) {
+      console.error('[Batch Generate] Error:', error);
+      res.status(500).json({ 
+        message: "Failed to batch generate analyses",
+        error: error.message 
+      });
+    }
+  });
+
   // Object storage routes
   app.post('/api/objects/upload', isAuthenticated, async (req, res) => {
     try {
@@ -1040,10 +1192,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ideaData = req.body;
       
       // Validate required fields
-      if (!ideaData.title || !ideaData.description || !ideaData.content) {
+      if (!ideaData.title || !ideaData.description) {
         return res.status(400).json({ 
-          message: "Missing required fields: title, description, and content are required" 
+          message: "Missing required fields: title and description are required" 
         });
+      }
+      
+      // Use description as content fallback if content is missing
+      if (!ideaData.content) {
+        ideaData.content = ideaData.description;
       }
       
       // Generate slug from title
@@ -1059,30 +1216,215 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? ideaData.signalBadges 
         : (ideaData.signalBadges ? [ideaData.signalBadges] : []);
       
-      // Set default scores for user-created ideas
-      const newIdea = {
-        ...ideaData,
+      // Manual entry ALWAYS calls AI enrichment to generate comprehensive analysis
+      // This ensures all manually created ideas have the same level of detail as imported/generated ideas
+      let enrichedData: any = {};
+      
+      try {
+        console.log(`[Idea Creation] ⚡ ALWAYS enriching manual entry with comprehensive AI analysis: ${ideaData.title}`);
+        console.log(`[Idea Creation] Input data:`, {
+          title: ideaData.title,
+          description: ideaData.description?.substring(0, 100),
+          content: ideaData.content?.substring(0, 100),
+          type: ideaData.type,
+          market: ideaData.market,
+          targetAudience: ideaData.targetAudience,
+          keyword: ideaData.keyword,
+        });
+        
+        enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+          title: ideaData.title,
+          description: ideaData.description,
+          content: ideaData.content,
+          type: ideaData.type,
+          market: ideaData.market,
+          targetAudience: ideaData.targetAudience,
+          keyword: ideaData.keyword,
+        });
+        
+        // Validate that enrichment returned comprehensive data
+        const hasComprehensiveData = enrichedData.offerTiers && 
+                                     enrichedData.whyNowAnalysis && 
+                                     enrichedData.proofSignals &&
+                                     enrichedData.marketGap &&
+                                     enrichedData.executionPlan &&
+                                     enrichedData.frameworkData &&
+                                     enrichedData.keywordData &&
+                                     enrichedData.communitySignals;
+        
+        if (!hasComprehensiveData) {
+          console.error(`[Idea Creation] ⚠️ Enrichment returned incomplete data. Fields present:`, {
+            offerTiers: !!enrichedData.offerTiers,
+            whyNowAnalysis: !!enrichedData.whyNowAnalysis,
+            proofSignals: !!enrichedData.proofSignals,
+            marketGap: !!enrichedData.marketGap,
+            executionPlan: !!enrichedData.executionPlan,
+            frameworkData: !!enrichedData.frameworkData,
+            keywordData: !!enrichedData.keywordData,
+            communitySignals: !!enrichedData.communitySignals,
+          });
+          console.error(`[Idea Creation] ⚠️ Enrichment data keys:`, Object.keys(enrichedData));
+          // Enrichment function should return comprehensive defaults, but log warning
+        }
+        
+        console.log(`[Idea Creation] ✅ AI enrichment completed for: ${ideaData.title}`);
+        console.log(`[Idea Creation] Enriched fields count:`, Object.keys(enrichedData).length);
+        console.log(`[Idea Creation] Key enriched fields:`, {
+          hasOfferTiers: !!enrichedData.offerTiers,
+          hasWhyNowAnalysis: !!enrichedData.whyNowAnalysis,
+          hasProofSignals: !!enrichedData.proofSignals,
+          hasMarketGap: !!enrichedData.marketGap,
+          hasExecutionPlan: !!enrichedData.executionPlan,
+          hasFrameworkData: !!enrichedData.frameworkData,
+          hasKeywordData: !!enrichedData.keywordData,
+          hasCommunitySignals: !!enrichedData.communitySignals,
+        });
+      } catch (enrichError) {
+        console.error(`[Idea Creation] ❌ AI enrichment failed:`, enrichError);
+        console.error(`[Idea Creation] Error details:`, {
+          message: enrichError instanceof Error ? enrichError.message : String(enrichError),
+          stack: enrichError instanceof Error ? enrichError.stack : undefined,
+        });
+        logErrorToFile(enrichError, 'Idea Enrichment');
+        // Enrichment function should return comprehensive defaults on error
+        // But if it throws, enrichedData will remain {} - ensure we have defaults
+        if (!enrichedData || Object.keys(enrichedData).length === 0) {
+          console.error(`[Idea Creation] ⚠️ enrichedData is empty after error, using fallback defaults`);
+          enrichedData = {
+            opportunityScore: 7,
+            problemScore: 7,
+            feasibilityScore: 6,
+            timingScore: 7,
+            executionScore: 6,
+            gtmScore: 7,
+            opportunityLabel: "Good Opportunity",
+            problemLabel: "Clear Problem",
+            feasibilityLabel: "Moderate Complexity",
+            timingLabel: "Good Timing",
+            revenuePotential: "Analysis pending - AI enrichment failed",
+            revenuePotentialNum: 1000000,
+            executionDifficulty: "Medium",
+            gtmStrength: "Analysis pending",
+            offerTiers: {
+              leadMagnet: { name: "Free Resource", description: "Value-add resource", price: "$0" },
+              frontend: { name: "Entry Product", description: "Low-ticket entry", price: "$47" },
+              core: { name: "Core Product", description: "Main value", price: "$497" },
+              backend: { name: "Premium Service", description: "High-ticket", price: "$2997" },
+              continuity: { name: "Subscription", description: "Recurring revenue", price: "$97/mo" }
+            },
+            whyNowAnalysis: "Analysis pending - AI enrichment failed. Please retry.",
+            proofSignals: "Analysis pending - AI enrichment failed. Please retry.",
+            marketGap: "Analysis pending - AI enrichment failed. Please retry.",
+            executionPlan: "Analysis pending - AI enrichment failed. Please retry.",
+            frameworkData: {
+              valueEquation: { dreamOutcome: "Pending", perceivedLikelihood: "Pending", timeDelay: "Pending", effortSacrifice: "Pending" },
+              marketMatrix: { marketSize: "Pending", painLevel: "Pending", targetingEase: "Pending", purchasingPower: "Pending" },
+              acpFramework: { avatar: "Pending", catalyst: "Pending", promise: "Pending" }
+            },
+            keywordData: { fastestGrowing: [], highestVolume: [], mostRelevant: [] },
+            communitySignals: {
+              reddit: { subreddits: 0, members: "0", score: 0, details: "Pending" },
+              facebook: { groups: 0, members: "0", score: 0, details: "Pending" },
+              youtube: { channels: 0, members: "0", score: 0, details: "Pending" },
+              other: { segments: 0, priorities: 0, score: 0, details: "Pending" }
+            },
+            signalBadges: []
+          };
+        }
+      }
+
+      // Merge AI-enriched data with user-provided data
+      // User-provided data takes precedence for basic fields, but enriched data fills in missing comprehensive fields
+      // For comprehensive fields, only use user data if it's meaningful (not empty/placeholder)
+      const mergedIdea = {
+        // Start with enriched data (comprehensive analysis)
+        ...enrichedData,
+        // Basic user-provided fields (always use user data for these)
+        title: ideaData.title,
+        subtitle: ideaData.subtitle,
+        description: ideaData.description,
+        content: ideaData.content,
+        type: ideaData.type,
+        market: ideaData.market,
+        targetAudience: ideaData.targetAudience,
+        imageUrl: ideaData.imageUrl,
+        // Ensure required fields
         slug,
         createdBy: userId,
-        opportunityScore: ideaData.opportunityScore ?? 7,
-        opportunityLabel: ideaData.opportunityLabel ?? "Good",
-        problemScore: ideaData.problemScore ?? 7,
-        problemLabel: ideaData.problemLabel ?? "Good",
-        feasibilityScore: ideaData.feasibilityScore ?? 7,
-        feasibilityLabel: ideaData.feasibilityLabel ?? "Good",
-        timingScore: ideaData.timingScore ?? 7,
-        timingLabel: ideaData.timingLabel ?? "Good",
-        executionScore: ideaData.executionScore ?? 7,
-        gtmScore: ideaData.gtmScore ?? 7,
-        revenuePotential: ideaData.revenuePotential ?? "TBD",
-        revenuePotentialNum: ideaData.revenuePotentialNum ?? 1000000,
-        executionDifficulty: ideaData.executionDifficulty ?? "Medium",
-        gtmStrength: ideaData.gtmStrength ?? "TBD",
+        // Scores: use user-provided if available and valid, otherwise use enriched, otherwise defaults
+        opportunityScore: (ideaData.opportunityScore && ideaData.opportunityScore > 0) ? ideaData.opportunityScore : (enrichedData.opportunityScore ?? 7),
+        opportunityLabel: ideaData.opportunityLabel || enrichedData.opportunityLabel || "Good",
+        problemScore: (ideaData.problemScore && ideaData.problemScore > 0) ? ideaData.problemScore : (enrichedData.problemScore ?? 7),
+        problemLabel: ideaData.problemLabel || enrichedData.problemLabel || "Good",
+        feasibilityScore: (ideaData.feasibilityScore && ideaData.feasibilityScore > 0) ? ideaData.feasibilityScore : (enrichedData.feasibilityScore ?? 7),
+        feasibilityLabel: ideaData.feasibilityLabel || enrichedData.feasibilityLabel || "Good",
+        timingScore: (ideaData.timingScore && ideaData.timingScore > 0) ? ideaData.timingScore : (enrichedData.timingScore ?? 7),
+        timingLabel: ideaData.timingLabel || enrichedData.timingLabel || "Good",
+        executionScore: (ideaData.executionScore && ideaData.executionScore > 0) ? ideaData.executionScore : (enrichedData.executionScore ?? 7),
+        gtmScore: (ideaData.gtmScore && ideaData.gtmScore > 0) ? ideaData.gtmScore : (enrichedData.gtmScore ?? 7),
+        // Business metrics: use user data if meaningful, otherwise enriched
+        revenuePotential: (ideaData.revenuePotential && ideaData.revenuePotential !== "TBD" && ideaData.revenuePotential.trim().length > 0) 
+          ? ideaData.revenuePotential 
+          : (enrichedData.revenuePotential || "TBD"),
+        revenuePotentialNum: ideaData.revenuePotentialNum || enrichedData.revenuePotentialNum || 1000000,
+        executionDifficulty: (ideaData.executionDifficulty && ideaData.executionDifficulty !== "Medium" && ideaData.executionDifficulty.trim().length > 0)
+          ? ideaData.executionDifficulty
+          : (enrichedData.executionDifficulty || "Medium"),
+        gtmStrength: (ideaData.gtmStrength && ideaData.gtmStrength !== "TBD" && ideaData.gtmStrength.trim().length > 0)
+          ? ideaData.gtmStrength
+          : (enrichedData.gtmStrength || "TBD"),
+        mainCompetitor: ideaData.mainCompetitor || enrichedData.mainCompetitor,
+        keyword: ideaData.keyword || enrichedData.keyword,
+        keywordVolume: ideaData.keywordVolume || enrichedData.keywordVolume,
+        keywordGrowth: ideaData.keywordGrowth || enrichedData.keywordGrowth,
+        // Comprehensive analysis sections: use enriched data (manual entry always enriches)
+        // User-provided values only used if they're meaningful (not empty/placeholder)
+        offerTiers: (ideaData.offerTiers && typeof ideaData.offerTiers === 'object' && Object.keys(ideaData.offerTiers).length > 0) 
+          ? ideaData.offerTiers 
+          : enrichedData.offerTiers,
+        whyNowAnalysis: (ideaData.whyNowAnalysis && typeof ideaData.whyNowAnalysis === 'string' && ideaData.whyNowAnalysis.trim().length > 50) 
+          ? ideaData.whyNowAnalysis 
+          : enrichedData.whyNowAnalysis,
+        proofSignals: (ideaData.proofSignals && typeof ideaData.proofSignals === 'string' && ideaData.proofSignals.trim().length > 50) 
+          ? ideaData.proofSignals 
+          : enrichedData.proofSignals,
+        marketGap: (ideaData.marketGap && typeof ideaData.marketGap === 'string' && ideaData.marketGap.trim().length > 50) 
+          ? ideaData.marketGap 
+          : enrichedData.marketGap,
+        executionPlan: (ideaData.executionPlan && typeof ideaData.executionPlan === 'string' && ideaData.executionPlan.trim().length > 50) 
+          ? ideaData.executionPlan 
+          : enrichedData.executionPlan,
+        frameworkData: (ideaData.frameworkData && typeof ideaData.frameworkData === 'object' && Object.keys(ideaData.frameworkData).length > 0) 
+          ? ideaData.frameworkData 
+          : enrichedData.frameworkData,
+        trendAnalysis: (ideaData.trendAnalysis && typeof ideaData.trendAnalysis === 'string' && ideaData.trendAnalysis.trim().length > 50) 
+          ? ideaData.trendAnalysis 
+          : enrichedData.trendAnalysis,
+        keywordData: (ideaData.keywordData && typeof ideaData.keywordData === 'object' && Object.keys(ideaData.keywordData).length > 0) 
+          ? ideaData.keywordData 
+          : enrichedData.keywordData,
+        communitySignals: (ideaData.communitySignals && typeof ideaData.communitySignals === 'object' && Object.keys(ideaData.communitySignals).length > 0) 
+          ? ideaData.communitySignals 
+          : enrichedData.communitySignals,
+        builderPrompts: (ideaData.builderPrompts && typeof ideaData.builderPrompts === 'object' && Object.keys(ideaData.builderPrompts).length > 0)
+          ? ideaData.builderPrompts
+          : enrichedData.builderPrompts,
+        // Other fields
         isPublished: ideaData.isPublished !== undefined ? ideaData.isPublished : true,
-        signalBadges, // Use processed array
+        signalBadges: signalBadges.length > 0 ? signalBadges : (enrichedData.signalBadges || []),
       };
 
-      const createdIdea = await storage.createIdea(newIdea);
+      const createdIdea = await storage.createIdea(mergedIdea);
+      
+      // Generate Opportunity Analysis asynchronously (don't block response)
+      aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
+        storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
+        console.log(`[Opportunity Analysis] Successfully generated for: ${createdIdea.id}`);
+      }).catch((error) => {
+        console.error(`[Opportunity Analysis] Failed for ${createdIdea.id}:`, error);
+      });
+      
+      // Return the created idea immediately
       res.json(createdIdea);
     } catch (error: any) {
       console.error("Error creating idea:", error);
@@ -1178,12 +1520,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate idea using AI service
       const generatedIdea = await aiService.generateIdea(params);
       
-      res.json(generatedIdea);
+      // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+      try {
+        console.log(`[AI Generate] Enriching generated idea with comprehensive analysis: ${generatedIdea.title}`);
+        const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          content: generatedIdea.content,
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+        });
+        
+        // Merge: generated idea takes precedence, enriched fills gaps
+        const finalIdea = {
+          ...enrichedData,
+          ...generatedIdea, // Generated data overrides enriched defaults
+          // Ensure comprehensive fields use enriched if missing from generated
+          offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+          whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+          proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+          marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+          executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+          frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+          keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+          communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+          trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+          signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+        };
+        
+        console.log(`[AI Generate] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+        res.json(finalIdea);
+      } catch (enrichError) {
+        console.error(`[AI Generate] Enrichment failed, returning generated idea without enrichment:`, enrichError);
+        // Return generated idea even if enrichment fails
+        res.json(generatedIdea);
+      }
     } catch (error) {
+      logErrorToFile(error, 'AI Idea Generation Endpoint');
       console.error("Error generating AI idea:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       res.status(500).json({ 
         message: "Failed to generate idea",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       });
     }
   });
@@ -1202,7 +1582,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate idea from HTML using AI service
       const generatedIdea = await aiService.generateIdeaFromHTML(htmlContent);
       
-      res.json(generatedIdea);
+      // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+      try {
+        console.log(`[Generate from HTML] Enriching generated idea with comprehensive analysis: ${generatedIdea.title}`);
+        const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          content: generatedIdea.content,
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+        });
+        
+        // Merge: generated idea takes precedence, enriched fills gaps
+        const finalIdea = {
+          ...enrichedData,
+          ...generatedIdea, // Generated data overrides enriched defaults
+          // Ensure comprehensive fields use enriched if missing from generated
+          offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+          whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+          proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+          marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+          executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+          frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+          keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+          communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+          trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+          signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+        };
+        
+        console.log(`[Generate from HTML] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+        res.json(finalIdea);
+      } catch (enrichError) {
+        console.error(`[Generate from HTML] Enrichment failed, returning generated idea without enrichment:`, enrichError);
+        // Return generated idea even if enrichment fails
+        res.json(generatedIdea);
+      }
     } catch (error) {
       console.error("Error generating idea from HTML:", error);
       res.status(500).json({ 
@@ -1438,7 +1854,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate idea from document text using AI service (reuse HTML method as it works with any text)
       const generatedIdea = await aiService.generateIdeaFromHTML(textContent);
       
-      res.json(generatedIdea);
+      // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+      try {
+        console.log(`[Generate from Document] Enriching generated idea with comprehensive analysis: ${generatedIdea.title}`);
+        const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          content: generatedIdea.content,
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+        });
+        
+        // Merge: generated idea takes precedence, enriched fills gaps
+        const finalIdea = {
+          ...enrichedData,
+          ...generatedIdea, // Generated data overrides enriched defaults
+          // Ensure comprehensive fields use enriched if missing from generated
+          offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+          whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+          proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+          marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+          executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+          frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+          keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+          communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+          trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+          signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+        };
+        
+        console.log(`[Generate from Document] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+        res.json(finalIdea);
+      } catch (enrichError) {
+        console.error(`[Generate from Document] Enrichment failed, returning generated idea without enrichment:`, enrichError);
+        // Return generated idea even if enrichment fails
+        res.json(generatedIdea);
+      }
     } catch (error) {
       console.error("Error generating idea from document:", error);
       res.status(500).json({ 
@@ -1549,7 +2001,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate idea from fetched HTML
       const generatedIdea = await aiService.generateIdeaFromHTML(htmlContent);
       
-      res.json(generatedIdea);
+      // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+      try {
+        console.log(`[Generate from URL] Enriching generated idea with comprehensive analysis: ${generatedIdea.title}`);
+        const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+          title: generatedIdea.title,
+          description: generatedIdea.description,
+          content: generatedIdea.content,
+          type: generatedIdea.type,
+          market: generatedIdea.market,
+          targetAudience: generatedIdea.targetAudience,
+          keyword: generatedIdea.keyword,
+        });
+        
+        // Merge: generated idea takes precedence, enriched fills gaps
+        const finalIdea = {
+          ...enrichedData,
+          ...generatedIdea, // Generated data overrides enriched defaults
+          // Ensure comprehensive fields use enriched if missing from generated
+          offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+          whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+          proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+          marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+          executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+          frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+          keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+          communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+          trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+          signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+        };
+        
+        console.log(`[Generate from URL] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+        res.json(finalIdea);
+      } catch (enrichError) {
+        console.error(`[Generate from URL] Enrichment failed, returning generated idea without enrichment:`, enrichError);
+        // Return generated idea even if enrichment fails
+        res.json(generatedIdea);
+      }
     } catch (error) {
       console.error("Error generating idea from URL:", error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -1622,8 +2110,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Deep Research - Claude Sonnet 4.5 with Extended Thinking + Builder Prompts
   app.post('/api/ai/deep-research', isAuthenticated, async (req: any, res) => {
+    console.log('[Deep Research] ===== ENDPOINT CALLED =====');
+    console.log('[Deep Research] Timestamp:', new Date().toISOString());
+    console.log('[Deep Research] req.user exists:', !!req.user);
+    console.log('[Deep Research] req.user.claims exists:', !!req.user?.claims);
+    console.log('[Deep Research] req.user.claims.sub:', req.user?.claims?.sub);
+    console.log('[Deep Research] req.body keys:', Object.keys(req.body || {}));
+    console.log('[Deep Research] req.body:', JSON.stringify(req.body, null, 2));
+    
     try {
       const userId = req.user.claims.sub;
+      console.log('[Deep Research] User ID extracted:', userId);
 
       // Validate request body
       const researchSchema = z.object({
@@ -1638,46 +2135,364 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const params = researchSchema.parse(req.body);
+      console.log('[Deep Research] ✅ Request validation passed');
+      console.log(`[Deep Research] User ${userId} starting deep research for: ${params.ideaTitle}`);
+      console.log('[Deep Research] Params:', JSON.stringify(params, null, 2));
 
-      console.log(`User ${userId} starting deep research for: ${params.ideaTitle}`);
+      // Generate full idea using comprehensive AI analysis (same format as existing ideas)
+      let generatedIdea, imageUrl;
+      try {
+        // Generate the full idea with all fields matching existing ideas
+        generatedIdea = await aiService.generateIdea({
+          industry: params.targetMarket || 'technology',
+          type: params.type || 'web_app',
+          market: params.market || 'B2C',
+          targetAudience: params.targetAudience || 'general users',
+          problemArea: params.ideaDescription.substring(0, 100),
+          constraints: params.additionalContext || 'none'
+        }).catch((error) => {
+          logErrorToFile(error, 'Deep Research Generation (generateIdea)');
+          console.error('Error in generateIdea:', error);
+          throw error;
+        });
 
-      // Generate comprehensive research report using Claude Sonnet 4.5
-      // Also generate builder prompts in parallel for efficiency
-      const [deepReport, builderPrompts] = await Promise.all([
-        aiService.generateDeepResearch(params),
-        aiService.generateBuilderPrompts({
-          ideaTitle: params.ideaTitle,
-          ideaDescription: params.ideaDescription,
-          type: params.type,
-          market: params.market || params.targetMarket,
-          targetAudience: params.targetAudience,
-        })
-      ]);
+        // Override with user-provided title and description
+        generatedIdea.title = params.ideaTitle;
+        generatedIdea.description = params.ideaDescription;
+        if (params.type) generatedIdea.type = params.type;
+        if (params.market) generatedIdea.market = params.market;
+        if (params.targetAudience) generatedIdea.targetAudience = params.targetAudience;
 
-      // If ideaId is provided, save the builder prompts to the idea
-      if (params.ideaId) {
-        await storage.updateIdea(params.ideaId, { builderPrompts });
-        console.log(`Builder prompts saved to idea ${params.ideaId}`);
+        // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+        try {
+          console.log(`[Deep Research] Enriching generated idea with comprehensive AI analysis: ${generatedIdea.title}`);
+          const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+            title: generatedIdea.title,
+            description: generatedIdea.description,
+            content: generatedIdea.content,
+            type: generatedIdea.type,
+            market: generatedIdea.market,
+            targetAudience: generatedIdea.targetAudience,
+            keyword: generatedIdea.keyword,
+          });
+          
+          // Merge: enriched data provides comprehensive fields, generated idea provides basic fields
+          // Check if generated idea has meaningful comprehensive data, otherwise use enriched
+          const hasMeaningfulOfferTiers = generatedIdea.offerTiers && 
+                                         typeof generatedIdea.offerTiers === 'object' && 
+                                         Object.keys(generatedIdea.offerTiers).length > 0;
+          const hasMeaningfulWhyNow = generatedIdea.whyNowAnalysis && 
+                                     typeof generatedIdea.whyNowAnalysis === 'string' && 
+                                     generatedIdea.whyNowAnalysis.trim().length > 50;
+          const hasMeaningfulProofSignals = generatedIdea.proofSignals && 
+                                           typeof generatedIdea.proofSignals === 'string' && 
+                                           generatedIdea.proofSignals.trim().length > 50;
+          const hasMeaningfulMarketGap = generatedIdea.marketGap && 
+                                        typeof generatedIdea.marketGap === 'string' && 
+                                        generatedIdea.marketGap.trim().length > 50;
+          const hasMeaningfulExecutionPlan = generatedIdea.executionPlan && 
+                                            typeof generatedIdea.executionPlan === 'string' && 
+                                            generatedIdea.executionPlan.trim().length > 50;
+          const hasMeaningfulFramework = generatedIdea.frameworkData && 
+                                        typeof generatedIdea.frameworkData === 'object' && 
+                                        Object.keys(generatedIdea.frameworkData).length > 0;
+          const hasMeaningfulKeywordData = generatedIdea.keywordData && 
+                                          typeof generatedIdea.keywordData === 'object' && 
+                                          Object.keys(generatedIdea.keywordData).length > 0;
+          const hasMeaningfulCommunity = generatedIdea.communitySignals && 
+                                       typeof generatedIdea.communitySignals === 'object' && 
+                                       Object.keys(generatedIdea.communitySignals).length > 0;
+          
+          // Preserve builderPrompts from generated idea (it's specific to generateIdea)
+          const hasBuilderPrompts = generatedIdea.builderPrompts && 
+                                   typeof generatedIdea.builderPrompts === 'object' && 
+                                   Object.keys(generatedIdea.builderPrompts).length > 0;
+          
+          generatedIdea = {
+            ...enrichedData, // Start with enriched comprehensive data
+            ...generatedIdea, // Override with generated basic fields (title, description, etc.)
+            // Use enriched data for comprehensive fields unless generated has meaningful data
+            offerTiers: hasMeaningfulOfferTiers ? generatedIdea.offerTiers : enrichedData.offerTiers,
+            whyNowAnalysis: hasMeaningfulWhyNow ? generatedIdea.whyNowAnalysis : enrichedData.whyNowAnalysis,
+            proofSignals: hasMeaningfulProofSignals ? generatedIdea.proofSignals : enrichedData.proofSignals,
+            marketGap: hasMeaningfulMarketGap ? generatedIdea.marketGap : enrichedData.marketGap,
+            executionPlan: hasMeaningfulExecutionPlan ? generatedIdea.executionPlan : enrichedData.executionPlan,
+            frameworkData: hasMeaningfulFramework ? generatedIdea.frameworkData : enrichedData.frameworkData,
+            keywordData: hasMeaningfulKeywordData ? generatedIdea.keywordData : enrichedData.keywordData,
+            communitySignals: hasMeaningfulCommunity ? generatedIdea.communitySignals : enrichedData.communitySignals,
+            trendAnalysis: (generatedIdea.trendAnalysis && typeof generatedIdea.trendAnalysis === 'string' && generatedIdea.trendAnalysis.trim().length > 50) 
+              ? generatedIdea.trendAnalysis 
+              : enrichedData.trendAnalysis,
+            signalBadges: (generatedIdea.signalBadges && Array.isArray(generatedIdea.signalBadges) && generatedIdea.signalBadges.length > 0) 
+              ? generatedIdea.signalBadges 
+              : enrichedData.signalBadges,
+            // Preserve builderPrompts from generated idea (enrichment doesn't generate this)
+            builderPrompts: hasBuilderPrompts ? generatedIdea.builderPrompts : (generatedIdea.builderPrompts || {}),
+          };
+          
+          console.log(`[Deep Research] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+          console.log(`[Deep Research] Comprehensive fields present:`, {
+            offerTiers: !!generatedIdea.offerTiers,
+            whyNowAnalysis: !!generatedIdea.whyNowAnalysis,
+            proofSignals: !!generatedIdea.proofSignals,
+            marketGap: !!generatedIdea.marketGap,
+            executionPlan: !!generatedIdea.executionPlan,
+            frameworkData: !!generatedIdea.frameworkData,
+            keywordData: !!generatedIdea.keywordData,
+            communitySignals: !!generatedIdea.communitySignals,
+            builderPrompts: !!generatedIdea.builderPrompts,
+          });
+        } catch (enrichError) {
+          console.error(`[Deep Research] Enrichment failed, using generated idea without enrichment:`, enrichError);
+          // Continue with generated idea if enrichment fails
+        }
+
+        // Generate image for the idea
+        try {
+          imageUrl = await aiService.searchAppImage(generatedIdea.title, generatedIdea.description);
+          if (imageUrl) {
+            generatedIdea.imageUrl = imageUrl;
+          }
+        } catch (imageError) {
+          console.error('Error generating image (non-critical):', imageError);
+        }
+
+        console.log('[Deep Research] ✅ Deep research idea generation completed successfully');
+      } catch (genError: any) {
+        console.error('[Deep Research] ❌ ERROR in generateIdea:', genError);
+        console.error('[Deep Research] Error message:', genError?.message);
+        console.error('[Deep Research] Error stack:', genError?.stack);
+        logErrorToFile(genError, 'Deep Research Generation (generateIdea)');
+        throw genError; // Re-throw to be caught by outer catch
       }
 
-      // Return both the research report and builder prompts
-      res.json({
-        ...deepReport,
-        builderPrompts
+      // Generate slug from title
+      const baseSlug = generatedIdea.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+
+      // Generate unique slug
+      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug);
+
+      // Ensure signalBadges is an array
+      const signalBadges = Array.isArray(generatedIdea.signalBadges) 
+        ? generatedIdea.signalBadges 
+        : (generatedIdea.signalBadges ? [generatedIdea.signalBadges] : []);
+
+      // Create the idea in database - ensure all required fields match existing apps structure
+      const ideaData = {
+        // Basic required fields
+        title: generatedIdea.title,
+        subtitle: generatedIdea.subtitle || generatedIdea.description?.substring(0, 100) || '',
+        description: generatedIdea.description,
+        content: generatedIdea.content || generatedIdea.description || '',
+        slug: uniqueSlug,
+        type: generatedIdea.type || 'web_app',
+        market: generatedIdea.market || 'B2C',
+        targetAudience: generatedIdea.targetAudience || 'general users',
+        keyword: generatedIdea.keyword || '',
+        mainCompetitor: generatedIdea.mainCompetitor || '',
+        // Required scores with defaults
+        opportunityScore: generatedIdea.opportunityScore || 7,
+        opportunityLabel: generatedIdea.opportunityLabel || 'Good Opportunity',
+        problemScore: generatedIdea.problemScore || 7,
+        problemLabel: generatedIdea.problemLabel || 'Clear Problem',
+        feasibilityScore: generatedIdea.feasibilityScore || 6,
+        feasibilityLabel: generatedIdea.feasibilityLabel || 'Moderate Complexity',
+        timingScore: generatedIdea.timingScore || 7,
+        timingLabel: generatedIdea.timingLabel || 'Good Timing',
+        executionScore: generatedIdea.executionScore || 6,
+        gtmScore: generatedIdea.gtmScore || 7,
+        // Business metrics
+        revenuePotential: generatedIdea.revenuePotential || 'TBD',
+        revenuePotentialNum: generatedIdea.revenuePotentialNum || 1000000,
+        executionDifficulty: generatedIdea.executionDifficulty || 'Medium',
+        gtmStrength: generatedIdea.gtmStrength || 'TBD',
+        keywordVolume: generatedIdea.keywordVolume || 0,
+        keywordGrowth: String(generatedIdea.keywordGrowth || 0),
+        // Comprehensive analysis sections (must match existing apps)
+        offerTiers: generatedIdea.offerTiers,
+        whyNowAnalysis: generatedIdea.whyNowAnalysis,
+        proofSignals: generatedIdea.proofSignals,
+        marketGap: generatedIdea.marketGap,
+        executionPlan: generatedIdea.executionPlan,
+        frameworkData: generatedIdea.frameworkData,
+        trendAnalysis: generatedIdea.trendAnalysis,
+        keywordData: generatedIdea.keywordData,
+        communitySignals: generatedIdea.communitySignals,
+        builderPrompts: generatedIdea.builderPrompts,
+        signalBadges,
+        // Image
+        imageUrl: generatedIdea.imageUrl || null,
+        // Metadata
+        createdBy: userId,
+        sourceType: 'user_generated' as const,
+        sourceData: JSON.stringify({ researchType: 'deep', originalParams: params }),
+        isPublished: true,
+      };
+
+      // Log comprehensive fields before saving
+      console.log('[Deep Research] 💾 Preparing to save idea to database...');
+      console.log(`[Deep Research] Saving idea with comprehensive fields:`, {
+        title: ideaData.title,
+        subtitle: ideaData.subtitle,
+        hasOfferTiers: !!ideaData.offerTiers,
+        hasWhyNowAnalysis: !!ideaData.whyNowAnalysis,
+        hasProofSignals: !!ideaData.proofSignals,
+        hasMarketGap: !!ideaData.marketGap,
+        hasExecutionPlan: !!ideaData.executionPlan,
+        hasFrameworkData: !!ideaData.frameworkData,
+        hasKeywordData: !!ideaData.keywordData,
+        hasCommunitySignals: !!ideaData.communitySignals,
+        hasTrendAnalysis: !!ideaData.trendAnalysis,
+        hasBuilderPrompts: !!ideaData.builderPrompts,
+        signalBadgesCount: signalBadges.length,
+        allRequiredFields: {
+          title: !!ideaData.title,
+          description: !!ideaData.description,
+          content: !!ideaData.content,
+          type: !!ideaData.type,
+          market: !!ideaData.market,
+          opportunityScore: ideaData.opportunityScore > 0,
+          problemScore: ideaData.problemScore > 0,
+          feasibilityScore: ideaData.feasibilityScore > 0,
+          timingScore: ideaData.timingScore > 0,
+          executionScore: ideaData.executionScore > 0,
+          gtmScore: ideaData.gtmScore > 0,
+        },
       });
+      
+      // Validate required fields before saving
+      const requiredFields = {
+        title: ideaData.title,
+        slug: ideaData.slug,
+        description: ideaData.description,
+        content: ideaData.content,
+        type: ideaData.type,
+        market: ideaData.market,
+        opportunityScore: ideaData.opportunityScore,
+        opportunityLabel: ideaData.opportunityLabel,
+        problemScore: ideaData.problemScore,
+        problemLabel: ideaData.problemLabel,
+        feasibilityScore: ideaData.feasibilityScore,
+        feasibilityLabel: ideaData.feasibilityLabel,
+        timingScore: ideaData.timingScore,
+        timingLabel: ideaData.timingLabel,
+        executionScore: ideaData.executionScore,
+        gtmScore: ideaData.gtmScore,
+      };
+      
+      const missingFields = Object.entries(requiredFields)
+        .filter(([key, value]) => value === undefined || value === null || value === '')
+        .map(([key]) => key);
+      
+      if (missingFields.length > 0) {
+        console.error('[Deep Research] ❌ Missing required fields:', missingFields);
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Validate types
+      if (typeof ideaData.opportunityScore !== 'number' || ideaData.opportunityScore < 1 || ideaData.opportunityScore > 10) {
+        console.error('[Deep Research] ❌ Invalid opportunityScore:', ideaData.opportunityScore);
+        throw new Error(`Invalid opportunityScore: ${ideaData.opportunityScore}`);
+      }
+      
+      console.log('[Deep Research] ✅ All required fields validated, types checked');
+
+      try {
+        console.log('[Deep Research] 💾 Calling storage.createIdea()...');
+        const createdIdea = await storage.createIdea(ideaData);
+        console.log(`[Deep Research] ✅✅✅ IDEA SAVED SUCCESSFULLY ✅✅✅`);
+        console.log(`[Deep Research] Idea ID: ${createdIdea.id}`);
+        console.log(`[Deep Research] Idea Title: ${createdIdea.title}`);
+        console.log(`[Deep Research] Idea Slug: ${createdIdea.slug}`);
+        console.log(`[Deep Research] Created At: ${createdIdea.createdAt}`);
+
+        // Generate Opportunity Analysis asynchronously (don't wait)
+        aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
+          storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
+          console.log(`[Deep Research] Opportunity Analysis generated for idea ${createdIdea.id}`);
+        }).catch((error) => {
+          console.error(`[Deep Research] Error generating Opportunity Analysis for ${createdIdea.id}:`, error);
+        });
+        
+        console.log('[Deep Research] 📤 Sending response to client...');
+        // Return the created idea
+        res.json(createdIdea);
+        console.log('[Deep Research] ✅ Response sent successfully');
+      } catch (saveError: any) {
+        console.error(`[Deep Research] ❌❌❌ FAILED TO SAVE IDEA ❌❌❌`);
+        console.error(`[Deep Research] Save error type:`, saveError?.constructor?.name);
+        console.error(`[Deep Research] Save error message:`, saveError?.message);
+        console.error(`[Deep Research] Save error code:`, saveError?.code);
+        console.error(`[Deep Research] Save error detail:`, saveError?.detail);
+        console.error(`[Deep Research] Save error constraint:`, saveError?.constraint);
+        console.error(`[Deep Research] Save error table:`, saveError?.table);
+        console.error(`[Deep Research] Save error column:`, saveError?.column);
+        console.error(`[Deep Research] Full error:`, JSON.stringify(saveError, Object.getOwnPropertyNames(saveError), 2));
+        
+        // Handle specific database errors
+        if (saveError?.code === '23505') { // Unique constraint violation
+          console.error(`[Deep Research] Unique constraint violation - slug may already exist: ${ideaData.slug}`);
+        } else if (saveError?.code === '23503') { // Foreign key violation
+          console.error(`[Deep Research] Foreign key violation - user may not exist: ${userId}`);
+        } else if (saveError?.code === '23502') { // Not null violation
+          console.error(`[Deep Research] Not null violation - column: ${saveError?.column}`);
+        } else if (saveError?.code === '42804') { // Type mismatch
+          console.error(`[Deep Research] Type mismatch - column: ${saveError?.column}`);
+        }
+        
+        logErrorToFile(saveError, 'Deep Research Save');
+        throw saveError;
+      }
     } catch (error) {
-      console.error("Error generating deep research report:", error);
+      console.error('[Deep Research] ❌❌❌ OUTER CATCH BLOCK - ERROR ❌❌❌');
+      console.error('[Deep Research] Error type:', error?.constructor?.name);
+      console.error('[Deep Research] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('[Deep Research] Error stack:', error instanceof Error ? error.stack : undefined);
+      logErrorToFile(error, 'Deep Research Endpoint');
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      // Provide more specific error messages
+      let userMessage = "Failed to generate deep research report";
+      if (errorMessage.includes('API key') || errorMessage.includes('authentication')) {
+        userMessage = "AI service authentication error. Please check API configuration.";
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('time')) {
+        userMessage = "Request timed out. Please try again with a simpler request.";
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        userMessage = "AI service rate limit exceeded. Please try again later.";
+      } else if (errorMessage.includes('parse') || errorMessage.includes('JSON')) {
+        userMessage = "Error parsing AI response. Please try again.";
+      }
+      
       res.status(500).json({
-        message: "Failed to generate deep research report",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        message: userMessage,
+        error: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
       });
     }
   });
 
   // Rapid Research - Claude Haiku (fast, 5-10 minute response) + Builder Prompts
   app.post('/api/ai/rapid-research', isAuthenticated, async (req: any, res) => {
+    // CRITICAL: This log MUST appear if endpoint is hit
+    console.error('[RAPID RESEARCH] ===== ENDPOINT HIT - THIS MUST APPEAR =====');
+    console.log('[Rapid Research] ===== ENDPOINT CALLED =====');
+    console.log('[Rapid Research] Timestamp:', new Date().toISOString());
+    console.log('[Rapid Research] req.user exists:', !!req.user);
+    console.log('[Rapid Research] req.user.claims exists:', !!req.user?.claims);
+    console.log('[Rapid Research] req.user.claims.sub:', req.user?.claims?.sub);
+    console.log('[Rapid Research] req.body keys:', Object.keys(req.body || {}));
+    console.log('[Rapid Research] req.body:', JSON.stringify(req.body, null, 2));
+    
     try {
       const userId = req.user.claims.sub;
+      console.log('[Rapid Research] User ID extracted:', userId);
 
       // Validate request body
       const researchSchema = z.object({
@@ -1691,38 +2506,374 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const params = researchSchema.parse(req.body);
+      console.log('[Rapid Research] ✅ Request validation passed');
+      console.log(`[Rapid Research] User ${userId} starting rapid research for: ${params.ideaTitle}`);
 
-      console.log(`User ${userId} starting rapid research for: ${params.ideaTitle}`);
+      // Generate full idea using comprehensive AI analysis (same format as existing ideas)
+      let generatedIdea, imageUrl;
+      try {
+        console.log('[Rapid Research] 🚀 Starting AI idea generation...');
+        // Generate the full idea with all fields matching existing ideas
+        generatedIdea = await aiService.generateIdea({
+          industry: params.targetMarket || 'technology',
+          type: params.type || 'web_app',
+          market: params.market || 'B2C',
+          targetAudience: params.targetAudience || 'general users',
+          problemArea: params.ideaDescription.substring(0, 100),
+          constraints: 'rapid_mode'
+        }).catch((error) => {
+          logErrorToFile(error, 'Rapid Research Generation (generateIdea)');
+          console.error('[Rapid Research] Error in generateIdea:', error);
+          throw error;
+        });
 
-      // Generate quick research report using Claude Haiku
-      // Also generate builder prompts in parallel for efficiency
-      const [rapidReport, builderPrompts] = await Promise.all([
-        aiService.generateRapidResearch(params),
-        aiService.generateBuilderPrompts({
-          ideaTitle: params.ideaTitle,
-          ideaDescription: params.ideaDescription,
-          type: params.type,
-          market: params.market || params.targetMarket,
-          targetAudience: params.targetAudience,
-        })
-      ]);
+        console.log('[Rapid Research] ✅ AI idea generation completed');
+        console.log('[Rapid Research] Generated idea title:', generatedIdea?.title);
+        console.log('[Rapid Research] Generated idea has content:', !!generatedIdea?.content);
+        
+        // Override with user-provided title and description
+        generatedIdea.title = params.ideaTitle;
+        generatedIdea.description = params.ideaDescription;
+        if (params.type) generatedIdea.type = params.type;
+        if (params.market) generatedIdea.market = params.market;
+        if (params.targetAudience) generatedIdea.targetAudience = params.targetAudience;
+        console.log('[Rapid Research] ✅ User-provided fields applied');
 
-      // If ideaId is provided, save the builder prompts to the idea
-      if (params.ideaId) {
-        await storage.updateIdea(params.ideaId, { builderPrompts });
-        console.log(`Builder prompts saved to idea ${params.ideaId}`);
+        // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+        // For rapid mode, skip enrichment to speed things up - generateIdea already provides comprehensive data
+        let enrichedData;
+        try {
+          console.log(`[Rapid Research] Skipping enrichment for rapid mode - using generated idea data directly`);
+          // Use the generated idea's data as-is for rapid mode (it's already comprehensive)
+          enrichedData = {
+            offerTiers: generatedIdea.offerTiers,
+            whyNowAnalysis: generatedIdea.whyNowAnalysis,
+            proofSignals: generatedIdea.proofSignals,
+            marketGap: generatedIdea.marketGap,
+            executionPlan: generatedIdea.executionPlan,
+            frameworkData: generatedIdea.frameworkData,
+            trendAnalysis: generatedIdea.trendAnalysis,
+            keywordData: generatedIdea.keywordData,
+            communitySignals: generatedIdea.communitySignals,
+            signalBadges: generatedIdea.signalBadges,
+          };
+          
+          // Merge: enriched data provides comprehensive fields, generated idea provides basic fields
+          // Check if generated idea has meaningful comprehensive data, otherwise use enriched
+          const hasMeaningfulOfferTiers = generatedIdea.offerTiers && 
+                                         typeof generatedIdea.offerTiers === 'object' && 
+                                         Object.keys(generatedIdea.offerTiers).length > 0;
+          const hasMeaningfulWhyNow = generatedIdea.whyNowAnalysis && 
+                                     typeof generatedIdea.whyNowAnalysis === 'string' && 
+                                     generatedIdea.whyNowAnalysis.trim().length > 50;
+          const hasMeaningfulProofSignals = generatedIdea.proofSignals && 
+                                           typeof generatedIdea.proofSignals === 'string' && 
+                                           generatedIdea.proofSignals.trim().length > 50;
+          const hasMeaningfulMarketGap = generatedIdea.marketGap && 
+                                        typeof generatedIdea.marketGap === 'string' && 
+                                        generatedIdea.marketGap.trim().length > 50;
+          const hasMeaningfulExecutionPlan = generatedIdea.executionPlan && 
+                                            typeof generatedIdea.executionPlan === 'string' && 
+                                            generatedIdea.executionPlan.trim().length > 50;
+          const hasMeaningfulFramework = generatedIdea.frameworkData && 
+                                        typeof generatedIdea.frameworkData === 'object' && 
+                                        Object.keys(generatedIdea.frameworkData).length > 0;
+          const hasMeaningfulKeywordData = generatedIdea.keywordData && 
+                                          typeof generatedIdea.keywordData === 'object' && 
+                                          Object.keys(generatedIdea.keywordData).length > 0;
+          const hasMeaningfulCommunity = generatedIdea.communitySignals && 
+                                       typeof generatedIdea.communitySignals === 'object' && 
+                                       Object.keys(generatedIdea.communitySignals).length > 0;
+          
+          // Preserve builderPrompts from generated idea (it's specific to generateIdea)
+          const hasBuilderPrompts = generatedIdea.builderPrompts && 
+                                   typeof generatedIdea.builderPrompts === 'object' && 
+                                   Object.keys(generatedIdea.builderPrompts).length > 0;
+          
+          generatedIdea = {
+            ...enrichedData, // Start with enriched comprehensive data
+            ...generatedIdea, // Override with generated basic fields (title, description, etc.)
+            // Use enriched data for comprehensive fields unless generated has meaningful data
+            offerTiers: hasMeaningfulOfferTiers ? generatedIdea.offerTiers : enrichedData.offerTiers,
+            whyNowAnalysis: hasMeaningfulWhyNow ? generatedIdea.whyNowAnalysis : enrichedData.whyNowAnalysis,
+            proofSignals: hasMeaningfulProofSignals ? generatedIdea.proofSignals : enrichedData.proofSignals,
+            marketGap: hasMeaningfulMarketGap ? generatedIdea.marketGap : enrichedData.marketGap,
+            executionPlan: hasMeaningfulExecutionPlan ? generatedIdea.executionPlan : enrichedData.executionPlan,
+            frameworkData: hasMeaningfulFramework ? generatedIdea.frameworkData : enrichedData.frameworkData,
+            keywordData: hasMeaningfulKeywordData ? generatedIdea.keywordData : enrichedData.keywordData,
+            communitySignals: hasMeaningfulCommunity ? generatedIdea.communitySignals : enrichedData.communitySignals,
+            trendAnalysis: (generatedIdea.trendAnalysis && typeof generatedIdea.trendAnalysis === 'string' && generatedIdea.trendAnalysis.trim().length > 50) 
+              ? generatedIdea.trendAnalysis 
+              : enrichedData.trendAnalysis,
+            signalBadges: (generatedIdea.signalBadges && Array.isArray(generatedIdea.signalBadges) && generatedIdea.signalBadges.length > 0) 
+              ? generatedIdea.signalBadges 
+              : enrichedData.signalBadges,
+            // Preserve builderPrompts from generated idea (enrichment doesn't generate this)
+            builderPrompts: hasBuilderPrompts ? generatedIdea.builderPrompts : (generatedIdea.builderPrompts || {}),
+          };
+          
+          console.log(`[Rapid Research] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
+          console.log(`[Rapid Research] Comprehensive fields present:`, {
+            offerTiers: !!generatedIdea.offerTiers,
+            whyNowAnalysis: !!generatedIdea.whyNowAnalysis,
+            proofSignals: !!generatedIdea.proofSignals,
+            marketGap: !!generatedIdea.marketGap,
+            executionPlan: !!generatedIdea.executionPlan,
+            frameworkData: !!generatedIdea.frameworkData,
+            keywordData: !!generatedIdea.keywordData,
+            communitySignals: !!generatedIdea.communitySignals,
+            builderPrompts: !!generatedIdea.builderPrompts,
+          });
+        } catch (enrichError) {
+          console.error(`[Rapid Research] Enrichment failed, using generated idea without enrichment:`, enrichError);
+          // Continue with generated idea if enrichment fails
+        }
+
+        // Generate image for the idea
+        try {
+          imageUrl = await aiService.searchAppImage(generatedIdea.title, generatedIdea.description);
+          if (imageUrl) {
+            generatedIdea.imageUrl = imageUrl;
+          }
+        } catch (imageError) {
+          console.error('Error generating image (non-critical):', imageError);
+        }
+
+        console.log('[Rapid Research] ✅ Rapid research idea generation completed successfully');
+      } catch (genError: any) {
+        console.error('[Rapid Research] ❌ ERROR in generateIdea:', genError);
+        console.error('[Rapid Research] Error message:', genError?.message);
+        console.error('[Rapid Research] Error stack:', genError?.stack);
+        logErrorToFile(genError, 'Rapid Research Generation (generateIdea)');
+        throw genError; // Re-throw to be caught by outer catch
       }
 
-      // Return both the research report and builder prompts
-      res.json({
-        ...rapidReport,
-        builderPrompts
+      console.log('[Rapid Research] 📝 Generating slug...');
+      // Generate slug from title
+      const baseSlug = generatedIdea.title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .trim();
+
+      // Generate unique slug
+      const uniqueSlug = await slugService.generateUniqueSlug(baseSlug);
+      console.log('[Rapid Research] ✅ Slug generated:', uniqueSlug);
+
+      // Ensure signalBadges is an array
+      const signalBadges = Array.isArray(generatedIdea.signalBadges) 
+        ? generatedIdea.signalBadges 
+        : (generatedIdea.signalBadges ? [generatedIdea.signalBadges] : []);
+
+      // Create the idea in database - ensure all required fields match existing apps structure
+      const ideaData = {
+        // Basic required fields
+        title: generatedIdea.title,
+        subtitle: generatedIdea.subtitle || generatedIdea.description?.substring(0, 100) || '',
+        description: generatedIdea.description,
+        content: generatedIdea.content || generatedIdea.description || '',
+        slug: uniqueSlug,
+        type: generatedIdea.type || 'web_app',
+        market: generatedIdea.market || 'B2C',
+        targetAudience: generatedIdea.targetAudience || 'general users',
+        keyword: generatedIdea.keyword || '',
+        mainCompetitor: generatedIdea.mainCompetitor || '',
+        // Required scores with defaults
+        opportunityScore: generatedIdea.opportunityScore || 7,
+        opportunityLabel: generatedIdea.opportunityLabel || 'Good Opportunity',
+        problemScore: generatedIdea.problemScore || 7,
+        problemLabel: generatedIdea.problemLabel || 'Clear Problem',
+        feasibilityScore: generatedIdea.feasibilityScore || 6,
+        feasibilityLabel: generatedIdea.feasibilityLabel || 'Moderate Complexity',
+        timingScore: generatedIdea.timingScore || 7,
+        timingLabel: generatedIdea.timingLabel || 'Good Timing',
+        executionScore: generatedIdea.executionScore || 6,
+        gtmScore: generatedIdea.gtmScore || 7,
+        // Business metrics
+        revenuePotential: generatedIdea.revenuePotential || 'TBD',
+        revenuePotentialNum: generatedIdea.revenuePotentialNum || 1000000,
+        executionDifficulty: generatedIdea.executionDifficulty || 'Medium',
+        gtmStrength: generatedIdea.gtmStrength || 'TBD',
+        keywordVolume: generatedIdea.keywordVolume || 0,
+        keywordGrowth: String(generatedIdea.keywordGrowth || 0),
+        // Comprehensive analysis sections (must match existing apps)
+        offerTiers: generatedIdea.offerTiers,
+        whyNowAnalysis: generatedIdea.whyNowAnalysis,
+        proofSignals: generatedIdea.proofSignals,
+        marketGap: generatedIdea.marketGap,
+        executionPlan: generatedIdea.executionPlan,
+        frameworkData: generatedIdea.frameworkData,
+        trendAnalysis: generatedIdea.trendAnalysis,
+        keywordData: generatedIdea.keywordData,
+        communitySignals: generatedIdea.communitySignals,
+        builderPrompts: generatedIdea.builderPrompts,
+        signalBadges,
+        // Image
+        imageUrl: generatedIdea.imageUrl || null,
+        // Metadata
+        createdBy: userId,
+        sourceType: 'user_generated' as const,
+        sourceData: JSON.stringify({ researchType: 'rapid', originalParams: params }),
+        isPublished: true,
+      };
+
+      // Log comprehensive fields before saving
+      console.log('[Rapid Research] 💾 Preparing to save idea to database...');
+      console.log(`[Rapid Research] Saving idea with comprehensive fields:`, {
+        title: ideaData.title,
+        subtitle: ideaData.subtitle,
+        hasOfferTiers: !!ideaData.offerTiers,
+        hasWhyNowAnalysis: !!ideaData.whyNowAnalysis,
+        hasProofSignals: !!ideaData.proofSignals,
+        hasMarketGap: !!ideaData.marketGap,
+        hasExecutionPlan: !!ideaData.executionPlan,
+        hasFrameworkData: !!ideaData.frameworkData,
+        hasKeywordData: !!ideaData.keywordData,
+        hasCommunitySignals: !!ideaData.communitySignals,
+        hasTrendAnalysis: !!ideaData.trendAnalysis,
+        hasBuilderPrompts: !!ideaData.builderPrompts,
+        signalBadgesCount: signalBadges.length,
+        allRequiredFields: {
+          title: !!ideaData.title,
+          description: !!ideaData.description,
+          content: !!ideaData.content,
+          type: !!ideaData.type,
+          market: !!ideaData.market,
+          opportunityScore: ideaData.opportunityScore > 0,
+          problemScore: ideaData.problemScore > 0,
+          feasibilityScore: ideaData.feasibilityScore > 0,
+          timingScore: ideaData.timingScore > 0,
+          executionScore: ideaData.executionScore > 0,
+          gtmScore: ideaData.gtmScore > 0,
+        },
       });
+      
+      // Validate required fields before saving
+      const requiredFields = {
+        title: ideaData.title,
+        slug: ideaData.slug,
+        description: ideaData.description,
+        content: ideaData.content,
+        type: ideaData.type,
+        market: ideaData.market,
+        opportunityScore: ideaData.opportunityScore,
+        opportunityLabel: ideaData.opportunityLabel,
+        problemScore: ideaData.problemScore,
+        problemLabel: ideaData.problemLabel,
+        feasibilityScore: ideaData.feasibilityScore,
+        feasibilityLabel: ideaData.feasibilityLabel,
+        timingScore: ideaData.timingScore,
+        timingLabel: ideaData.timingLabel,
+        executionScore: ideaData.executionScore,
+        gtmScore: ideaData.gtmScore,
+      };
+      
+      const missingFields = Object.entries(requiredFields)
+        .filter(([key, value]) => value === undefined || value === null || value === '')
+        .map(([key]) => key);
+      
+      if (missingFields.length > 0) {
+        console.error('[Rapid Research] ❌ Missing required fields:', missingFields);
+        throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Validate types
+      if (typeof ideaData.opportunityScore !== 'number' || ideaData.opportunityScore < 1 || ideaData.opportunityScore > 10) {
+        console.error('[Rapid Research] ❌ Invalid opportunityScore:', ideaData.opportunityScore);
+        throw new Error(`Invalid opportunityScore: ${ideaData.opportunityScore}`);
+      }
+      
+      console.log('[Rapid Research] ✅ All required fields validated, types checked');
+
+      try {
+        console.log('[Rapid Research] 💾 Calling storage.createIdea()...');
+        const createdIdea = await storage.createIdea(ideaData);
+        console.log(`[Rapid Research] ✅✅✅ IDEA SAVED SUCCESSFULLY ✅✅✅`);
+        console.log(`[Rapid Research] Idea ID: ${createdIdea.id}`);
+        console.log(`[Rapid Research] Idea Title: ${createdIdea.title}`);
+        console.log(`[Rapid Research] Idea Slug: ${createdIdea.slug}`);
+        console.log(`[Rapid Research] Created At: ${createdIdea.createdAt}`);
+
+        // Generate Opportunity Analysis asynchronously (don't wait)
+        aiService.generateOpportunityAnalysis(createdIdea).then((analysis) => {
+          storage.updateIdea(createdIdea.id, { opportunityAnalysis: analysis });
+          console.log(`[Rapid Research] Opportunity Analysis generated for idea ${createdIdea.id}`);
+        }).catch((error) => {
+          console.error(`[Rapid Research] Error generating Opportunity Analysis for ${createdIdea.id}:`, error);
+        });
+        
+        console.log('[Rapid Research] 📤 Sending response to client...');
+        console.log('[Rapid Research] Response will contain:', {
+          id: createdIdea.id,
+          slug: createdIdea.slug,
+          title: createdIdea.title,
+          hasSlug: !!createdIdea.slug,
+          type: typeof createdIdea
+        });
+        // CRITICAL: Verify we're returning an idea, not a report
+        if (!createdIdea.slug) {
+          console.error('[Rapid Research] ❌❌❌ ERROR: createdIdea has no slug! ❌❌❌');
+          console.error('[Rapid Research] createdIdea keys:', Object.keys(createdIdea || {}));
+          throw new Error('Created idea missing slug - cannot return invalid idea');
+        }
+        // Return the created idea
+        res.json(createdIdea);
+        console.log('[Rapid Research] ✅ Response sent successfully');
+        console.log('[Rapid Research] Response object keys:', Object.keys(createdIdea || {}));
+      } catch (saveError: any) {
+        console.error(`[Rapid Research] ❌❌❌ FAILED TO SAVE IDEA ❌❌❌`);
+        console.error(`[Rapid Research] Save error type:`, saveError?.constructor?.name);
+        console.error(`[Rapid Research] Save error message:`, saveError?.message);
+        console.error(`[Rapid Research] Save error code:`, saveError?.code);
+        console.error(`[Rapid Research] Save error detail:`, saveError?.detail);
+        console.error(`[Rapid Research] Save error constraint:`, saveError?.constraint);
+        console.error(`[Rapid Research] Save error table:`, saveError?.table);
+        console.error(`[Rapid Research] Save error column:`, saveError?.column);
+        console.error(`[Rapid Research] Full error:`, JSON.stringify(saveError, Object.getOwnPropertyNames(saveError), 2));
+        
+        // Handle specific database errors
+        if (saveError?.code === '23505') { // Unique constraint violation
+          console.error(`[Rapid Research] Unique constraint violation - slug may already exist: ${ideaData.slug}`);
+        } else if (saveError?.code === '23503') { // Foreign key violation
+          console.error(`[Rapid Research] Foreign key violation - user may not exist: ${userId}`);
+        } else if (saveError?.code === '23502') { // Not null violation
+          console.error(`[Rapid Research] Not null violation - column: ${saveError?.column}`);
+        } else if (saveError?.code === '42804') { // Type mismatch
+          console.error(`[Rapid Research] Type mismatch - column: ${saveError?.column}`);
+        }
+        
+        logErrorToFile(saveError, 'Rapid Research Save');
+        throw saveError;
+      }
     } catch (error) {
-      console.error("Error generating rapid research report:", error);
+      console.error('[Rapid Research] ❌❌❌ OUTER CATCH BLOCK - ERROR ❌❌❌');
+      console.error('[Rapid Research] Error type:', error?.constructor?.name);
+      console.error('[Rapid Research] Error message:', error instanceof Error ? error.message : String(error));
+      console.error('[Rapid Research] Error stack:', error instanceof Error ? error.stack : undefined);
+      logErrorToFile(error, 'Rapid Research Endpoint');
+      
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      // Provide more specific error messages
+      let userMessage = "Failed to generate rapid research";
+      if (errorMessage.includes('API key') || errorMessage.includes('authentication')) {
+        userMessage = "AI service authentication error. Please check API configuration.";
+      } else if (errorMessage.includes('timeout') || errorMessage.includes('time')) {
+        userMessage = "Request timed out. Please try again with a simpler request.";
+      } else if (errorMessage.includes('rate limit') || errorMessage.includes('quota')) {
+        userMessage = "AI service rate limit exceeded. Please try again later.";
+      } else if (errorMessage.includes('parse') || errorMessage.includes('JSON')) {
+        userMessage = "Error parsing AI response. Please try again.";
+      }
+      
+      // CRITICAL: Make sure we're not returning a report object on error
+      console.error('[Rapid Research] ❌ Sending error response (NOT a report object)');
       res.status(500).json({
-        message: "Failed to generate rapid research report",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        message: userMessage,
+        error: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
       });
     }
   });
@@ -2020,6 +3171,54 @@ Return ONLY valid JSON, no markdown or explanation.`
     }
   });
 
+  // Get user's saved research reports
+  app.get('/api/research/my-reports', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const reports = await storage.getUserResearchReports(userId);
+      res.json(reports);
+    } catch (error) {
+      console.error("Error fetching research reports:", error);
+      res.status(500).json({ message: "Failed to fetch research reports" });
+    }
+  });
+
+  // Get a specific research report
+  app.get('/api/research/reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      const report = await storage.getResearchReportById(id);
+      
+      if (!report) {
+        return res.status(404).json({ message: "Research report not found" });
+      }
+      
+      // Verify user owns the report
+      if (report.userId !== userId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+      
+      res.json(report);
+    } catch (error) {
+      console.error("Error fetching research report:", error);
+      res.status(500).json({ message: "Failed to fetch research report" });
+    }
+  });
+
+  // Delete a research report
+  app.delete('/api/research/reports/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { id } = req.params;
+      await storage.deleteResearchReport(id, userId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting research report:", error);
+      res.status(500).json({ message: "Failed to delete research report" });
+    }
+  });
+
   // Get user's research requests
   app.get('/api/research/my-requests', isAuthenticated, async (req, res) => {
     try {
@@ -2149,7 +3348,7 @@ Return ONLY valid JSON, no markdown or explanation.`
     try {
       const keyword = req.query.keyword as string;
       const growth = req.query.growth ? parseInt(req.query.growth as string) : undefined;
-      const timeRange = (req.query.timeRange as '6m' | '1y' | '2y' | 'all') || '1y';
+      const timeRange = (req.query.timeRange as '30d' | '60d' | '90d' | '6m' | '1y' | 'all') || '1y';
       
       if (!keyword) {
         return res.status(400).json({ message: "Keyword is required" });
@@ -2324,7 +3523,7 @@ Return ONLY valid JSON, no markdown or explanation.`
     }
   });
 
-  // Get detailed explanation for opportunity scores
+  // Get detailed explanation for optimistic analysis
   app.get('/api/external/score-details/:scoreType', async (req, res) => {
     try {
       const { scoreType } = req.params;
@@ -2574,10 +3773,49 @@ Be practical, encouraging, and focus on helping them make real progress.`;
             const aiDuration = Date.now() - aiStartTime;
             console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: ✅ AI complete in ${aiDuration}ms (${(aiDuration/1000).toFixed(1)}s) | Title: "${generatedIdea.title?.substring(0, 40)}"`);
             
+            // Enrich with comprehensive analysis to ensure accurate metrics, scores, and community signals
+            let enrichedIdea = generatedIdea;
+            try {
+              const enrichStartTime = Date.now();
+              console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: 🔄 Enriching with comprehensive analysis...`);
+              const enrichedData = await aiService.enrichIdeaWithComprehensiveAnalysis({
+                title: generatedIdea.title,
+                description: generatedIdea.description,
+                content: generatedIdea.content,
+                type: generatedIdea.type,
+                market: generatedIdea.market,
+                targetAudience: generatedIdea.targetAudience,
+                keyword: generatedIdea.keyword,
+              });
+              
+              // Merge: generated idea takes precedence, enriched fills gaps
+              enrichedIdea = {
+                ...enrichedData,
+                ...generatedIdea, // Generated data overrides enriched defaults
+                // Ensure comprehensive fields use enriched if missing from generated
+                offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
+                whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
+                proofSignals: generatedIdea.proofSignals || enrichedData.proofSignals,
+                marketGap: generatedIdea.marketGap || enrichedData.marketGap,
+                executionPlan: generatedIdea.executionPlan || enrichedData.executionPlan,
+                frameworkData: generatedIdea.frameworkData || enrichedData.frameworkData,
+                keywordData: generatedIdea.keywordData || enrichedData.keywordData,
+                communitySignals: generatedIdea.communitySignals || enrichedData.communitySignals,
+                trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
+                signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
+              };
+              
+              const enrichDuration = Date.now() - enrichStartTime;
+              console.log(`[Bulk Import ${jobId}] Row ${rowNumber}: ✅ Enrichment complete in ${enrichDuration}ms (${(enrichDuration/1000).toFixed(1)}s)`);
+            } catch (enrichError) {
+              console.error(`[Bulk Import ${jobId}] Row ${rowNumber}: ⚠️ Enrichment failed, using generated idea without enrichment:`, enrichError);
+              // Continue with generated idea if enrichment fails
+            }
+            
             // Validate and create idea
             const dbStartTime = Date.now();
             const ideaData = {
-              ...generatedIdea,
+              ...enrichedIdea,
               slug,
               createdBy: userId,
               previewUrl: mappedData.previewUrl || null,
@@ -3159,6 +4397,464 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Collaboration Portal routes
+  app.get('/api/ideas/:ideaId/collaboration/messages', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ideaId } = req.params;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const offset = parseInt(req.query.offset as string) || 0;
+
+      const messages = await db.select({
+        id: collaborationMessages.id,
+        ideaId: collaborationMessages.ideaId,
+        userId: collaborationMessages.userId,
+        content: collaborationMessages.content,
+        createdAt: collaborationMessages.createdAt,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+        .from(collaborationMessages)
+        .leftJoin(users, eq(collaborationMessages.userId, users.id))
+        .where(eq(collaborationMessages.ideaId, ideaId))
+        .orderBy(desc(collaborationMessages.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Reverse to show oldest first (for chat UI)
+      const reversedMessages = messages.reverse().map(msg => ({
+        id: msg.id,
+        ideaId: msg.ideaId,
+        userId: msg.userId,
+        userName: msg.userId === null ? 'AI Assistant' : (msg.user?.firstName || 'Anonymous'),
+        userImage: msg.userId === null ? null : (msg.user?.profileImageUrl || null),
+        content: msg.content,
+        createdAt: msg.createdAt,
+        isAI: msg.userId === null, // Flag to identify AI messages
+      }));
+
+      res.json({ messages: reversedMessages });
+    } catch (error: any) {
+      console.error("Error fetching collaboration messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages", error: error.message });
+    }
+  });
+
+  app.get('/api/ideas/:ideaId/collaboration/active-users', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ideaId } = req.params;
+
+      const activeSessions = await db.select({
+        userId: collaborationSessions.userId,
+        user: {
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          profileImageUrl: users.profileImageUrl,
+        },
+      })
+        .from(collaborationSessions)
+        .leftJoin(users, eq(collaborationSessions.userId, users.id))
+        .where(eq(collaborationSessions.ideaId, ideaId));
+
+      res.json({ 
+        count: activeSessions.length,
+        users: activeSessions.map(s => ({
+          userId: s.userId,
+          userName: s.user?.firstName || 'Anonymous',
+          userImage: s.user?.profileImageUrl || null,
+        })),
+      });
+    } catch (error: any) {
+      console.error("Error fetching active users:", error);
+      res.status(500).json({ message: "Failed to fetch active users", error: error.message });
+    }
+  });
+
+  app.post('/api/ideas/:ideaId/collaboration/ai-insight', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ideaId } = req.params;
+
+      // Get idea info
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // Get recent messages (last 30)
+      const messages = await db.select({
+        userId: collaborationMessages.userId,
+        content: collaborationMessages.content,
+        createdAt: collaborationMessages.createdAt,
+        user: {
+          firstName: users.firstName,
+        },
+      })
+        .from(collaborationMessages)
+        .leftJoin(users, eq(collaborationMessages.userId, users.id))
+        .where(eq(collaborationMessages.ideaId, ideaId))
+        .orderBy(desc(collaborationMessages.createdAt))
+        .limit(30);
+
+      const conversationHistory = messages.reverse().map(msg => ({
+        userName: msg.user?.firstName || 'Anonymous',
+        content: msg.content,
+        createdAt: msg.createdAt,
+      }));
+
+      // Generate AI insight
+      const insight = await aiService.generateCollaborationInsight(
+        ideaId,
+        idea.title,
+        conversationHistory
+      );
+
+      res.json({ insight });
+    } catch (error: any) {
+      console.error("Error generating AI insight:", error);
+      res.status(500).json({ message: "Failed to generate AI insight", error: error.message });
+    }
+  });
+
+  // Collaboration Portal - Interactive AI Chat
+  app.post('/api/ideas/:ideaId/collaboration/ai-chat', isAuthenticated, async (req: any, res) => {
+    try {
+      const { ideaId } = req.params;
+      const { messageId, question, conversationContext, synthesizeState, synthesizeData } = req.body;
+
+      if (!question || typeof question !== 'string' || question.trim().length === 0) {
+        return res.status(400).json({ message: "Question is required" });
+      }
+
+      // Get idea info
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+
+      // If in synthesize flow, use synthesize service
+      if (synthesizeState && synthesizeState !== 'idle') {
+        // Fetch ALL messages for synthesize flow (not just recent)
+        const allMessages = await db.select({
+          id: collaborationMessages.id,
+          userId: collaborationMessages.userId,
+          content: collaborationMessages.content,
+          createdAt: collaborationMessages.createdAt,
+          user: {
+            firstName: users.firstName,
+            lastName: users.lastName,
+          },
+        })
+          .from(collaborationMessages)
+          .leftJoin(users, eq(collaborationMessages.userId, users.id))
+          .where(eq(collaborationMessages.ideaId, ideaId))
+          .orderBy(asc(collaborationMessages.createdAt));
+
+        const allContext = allMessages.map(msg => ({
+          id: msg.id,
+          userName: msg.userId === null ? 'AI Assistant' : (`${msg.user?.firstName || ''} ${msg.user?.lastName || ''}`.trim() || 'Anonymous'),
+          content: msg.content,
+          createdAt: msg.createdAt,
+        }));
+
+        const result = await aiService.generateSynthesizeResponse(
+          ideaId,
+          idea,
+          allContext,
+          synthesizeState,
+          synthesizeData || {},
+          question.trim()
+        );
+
+        // Save AI response to database as a message (userId = null identifies it as AI)
+        const [savedMessage] = await db.insert(collaborationMessages).values({
+          ideaId: ideaId,
+          userId: null, // null userId identifies this as an AI message
+          content: result.response,
+        }).returning();
+
+        // Broadcast AI message via Socket.io to all users in the room
+        const io = (global as any).socketIO;
+        if (io) {
+          io.to(`idea:${ideaId}`).emit('new_message', {
+            id: savedMessage.id,
+            ideaId: savedMessage.ideaId,
+            userId: null,
+            userName: 'AI Assistant',
+            userImage: null,
+            content: savedMessage.content,
+            createdAt: savedMessage.createdAt,
+            isAI: true,
+          });
+        }
+
+        res.json({
+          response: result.response,
+          messageId: savedMessage.id, // Return the saved message ID
+          synthesizeState: result.nextState,
+          synthesizeData: result.data,
+        });
+        return;
+      }
+
+      // Get the specific message if messageId is provided
+      let messageContent: string | undefined;
+      if (messageId) {
+        const message = await db.select({
+          content: collaborationMessages.content,
+        })
+          .from(collaborationMessages)
+          .where(eq(collaborationMessages.id, messageId))
+          .limit(1);
+
+        if (message.length > 0) {
+          messageContent = message[0].content;
+        }
+      }
+
+      // Use provided conversation context or fetch recent messages
+      let context: Array<{ id: string; userName: string; content: string; createdAt: Date }>;
+      if (conversationContext && Array.isArray(conversationContext)) {
+        context = conversationContext.map((msg: any) => ({
+          id: msg.id,
+          userName: msg.userName || 'Anonymous',
+          content: msg.content,
+          createdAt: new Date(msg.createdAt),
+        }));
+      } else {
+        // Fallback: fetch recent messages
+        const messages = await db.select({
+          id: collaborationMessages.id,
+          userId: collaborationMessages.userId,
+          content: collaborationMessages.content,
+          createdAt: collaborationMessages.createdAt,
+          user: {
+            firstName: users.firstName,
+          },
+        })
+          .from(collaborationMessages)
+          .leftJoin(users, eq(collaborationMessages.userId, users.id))
+          .where(eq(collaborationMessages.ideaId, ideaId))
+          .orderBy(desc(collaborationMessages.createdAt))
+          .limit(10);
+
+        context = messages.reverse().map(msg => ({
+          id: msg.id,
+          userName: msg.userId === null ? 'AI Assistant' : (msg.user?.firstName || 'Anonymous'),
+          content: msg.content,
+          createdAt: msg.createdAt,
+        }));
+      }
+
+      // Generate AI response
+      const response = await aiService.generateMessageAnalysis(
+        ideaId,
+        idea.title,
+        messageId,
+        messageContent,
+        question.trim(),
+        context
+      );
+
+      // Save AI response to database as a message (userId = null identifies it as AI)
+      const [savedMessage] = await db.insert(collaborationMessages).values({
+        ideaId: ideaId,
+        userId: null, // null userId identifies this as an AI message
+        content: response,
+      }).returning();
+
+      // Broadcast AI message via Socket.io to all users in the room
+      const io = (global as any).socketIO;
+      if (io) {
+        io.to(`idea:${ideaId}`).emit('new_message', {
+          id: savedMessage.id,
+          ideaId: savedMessage.ideaId,
+          userId: null,
+          userName: 'AI Assistant',
+          userImage: null,
+          content: savedMessage.content,
+          createdAt: savedMessage.createdAt,
+          isAI: true,
+        });
+      }
+
+      res.json({ 
+        response,
+        messageId: savedMessage.id, // Return the saved message ID
+        referencedMessage: messageId && messageContent ? {
+          id: messageId,
+          content: messageContent,
+        } : undefined,
+      });
+    } catch (error: any) {
+      logErrorToFile(error, 'AI Chat Collaboration Endpoint');
+      console.error("Error generating AI chat response:", error);
+      console.error("Error stack:", error?.stack);
+      console.error("Full error details:", JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+      res.status(500).json({ 
+        message: "Failed to generate AI chat response", 
+        error: error.message,
+        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      });
+    }
+  });
+
+  // Password-based login endpoint
+  app.post('/api/auth/login', async (req: any, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      console.log('[Login] Attempting login for email:', email);
+      
+      if (!email || !password) {
+        console.log('[Login] Missing email or password');
+        return res.status(400).json({ message: 'Email and password are required' });
+      }
+
+      const normalizedEmail = email.toLowerCase().trim();
+      console.log('[Login] Normalized email:', normalizedEmail);
+
+      // Find user by email
+      const [user] = await db.select().from(users).where(eq(users.email, normalizedEmail)).limit(1);
+      
+      if (!user) {
+        console.log('[Login] User not found for email:', normalizedEmail);
+        // Check if any users exist
+        const allUsers = await db.select({ email: users.email, id: users.id }).from(users).limit(10);
+        console.log('[Login] Existing users in DB:', allUsers.map(u => ({ id: u.id, email: u.email })));
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+      
+      if (!user.passwordHash) {
+        console.log('[Login] User found but no password hash:', user.id, user.email);
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      console.log('[Login] User found:', user.id, user.email, 'Password hash exists:', !!user.passwordHash);
+
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+      console.log('[Login] Password valid:', isValidPassword);
+      
+      if (!isValidPassword) {
+        console.log('[Login] Invalid password for user:', user.email);
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      // Create session user object
+      const sessionUser = {
+        claims: {
+          sub: user.id,
+          email: user.email,
+          first_name: user.firstName,
+          last_name: user.lastName,
+          profile_image_url: user.profileImageUrl,
+        }
+      };
+
+      // Log in user
+      req.login(sessionUser, (err: any) => {
+        if (err) {
+          console.error('Login error:', err);
+          return res.status(500).json({ message: 'Failed to create session' });
+        }
+        res.json({ 
+          success: true,
+          user: {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.profileImageUrl,
+          }
+        });
+      });
+    } catch (error: any) {
+      console.error('Login error:', error);
+      res.status(500).json({ message: 'Login failed', error: error.message });
+    }
+  });
+
+  // Logout endpoint (supports both GET and POST for compatibility)
+  app.post('/api/auth/logout', (req: any, res) => {
+    const sessionCookieName = req.session?.cookie?.name || 'connect.sid';
+    const cookieOptions: any = {
+      path: '/',
+      httpOnly: true,
+    };
+
+    // Get cookie options from session if available
+    if (req.session?.cookie) {
+      cookieOptions.secure = req.session.cookie.secure;
+      cookieOptions.sameSite = req.session.cookie.sameSite;
+      cookieOptions.domain = req.session.cookie.domain;
+    }
+
+    req.logout((err: any) => {
+      if (err) {
+        console.error('Logout error:', err);
+        // Still try to destroy session and clear cookie
+      }
+      
+      req.session.destroy((destroyErr: any) => {
+        if (destroyErr) {
+          console.error('Session destroy error:', destroyErr);
+        }
+        
+        // Clear the cookie with proper options
+        res.clearCookie(sessionCookieName, cookieOptions);
+        
+        // Also try clearing with default name in case
+        res.clearCookie('connect.sid', cookieOptions);
+        
+        if (err || destroyErr) {
+          return res.status(500).json({ message: 'Logout completed with errors' });
+        }
+        res.json({ success: true });
+      });
+    });
+  });
+
+  // GET logout for backward compatibility
+  app.get('/api/logout', (req: any, res) => {
+    const sessionCookieName = req.session?.cookie?.name || 'connect.sid';
+    const cookieOptions: any = {
+      path: '/',
+      httpOnly: true,
+    };
+
+    // Get cookie options from session if available
+    if (req.session?.cookie) {
+      cookieOptions.secure = req.session.cookie.secure;
+      cookieOptions.sameSite = req.session.cookie.sameSite;
+      cookieOptions.domain = req.session.cookie.domain;
+    }
+
+    req.logout((err: any) => {
+      if (err) {
+        console.error('Logout error:', err);
+      }
+      
+      req.session.destroy((destroyErr: any) => {
+        // Clear the cookie with proper options
+        res.clearCookie(sessionCookieName, cookieOptions);
+        res.clearCookie('connect.sid', cookieOptions);
+        res.redirect('/login');
+      });
+    });
+  });
+
   const httpServer = createServer(app);
-  return httpServer;
+  
+  // Setup Socket.io server for Collaboration Portal
+  // Use the session middleware from setupAuth (already applied to Express)
+  const io = setupSocketServer(httpServer, sessionMiddleware);
+  
+  // Store io instance globally for broadcasting AI messages
+  (global as any).socketIO = io;
+  
+  return { server: httpServer, sessionMiddleware };
 }

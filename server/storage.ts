@@ -288,8 +288,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createIdea(idea: InsertIdea): Promise<Idea> {
-    const [newIdea] = await db.insert(ideas).values(idea).returning();
-    return newIdea;
+    try {
+      console.log('[Storage] Creating idea:', { title: idea.title, slug: idea.slug });
+      const [newIdea] = await db.insert(ideas).values(idea).returning();
+      console.log('[Storage] ✅ Idea created successfully:', newIdea.id);
+      return newIdea;
+    } catch (error: any) {
+      console.error('[Storage] ❌ Failed to create idea:', error);
+      console.error('[Storage] Error details:', {
+        message: error.message,
+        code: error.code,
+        detail: error.detail,
+        constraint: error.constraint,
+        table: error.table,
+        column: error.column
+      });
+      throw error;
+    }
   }
 
   async updateIdea(id: string, idea: Partial<InsertIdea>): Promise<Idea> {

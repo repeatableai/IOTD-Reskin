@@ -1757,9 +1757,37 @@ export default function ScoreAnalysis() {
               <p className="text-white/90 max-w-xl mb-4">
                 Comprehensive analysis with detailed insights, evidence, and actionable recommendations.
               </p>
-              <Badge className="bg-white/20 text-white border-white/30">
-                {getScoreLabel(score)}
-              </Badge>
+              <div className="flex items-center gap-3 flex-wrap">
+                <Badge className="bg-white/20 text-white border-white/30">
+                  {getScoreLabel(score)}
+                </Badge>
+                {/* App Preview Button */}
+                {(() => {
+                  const previewLink = idea?.previewUrl || (
+                    idea?.sourceData && 
+                    (idea.sourceData.startsWith('http://') || idea.sourceData.startsWith('https://') || 
+                     /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(idea.sourceData.trim()))
+                    ? idea.sourceData
+                    : null
+                  );
+                  
+                  if (!previewLink) return null;
+                  
+                  const fullUrl = previewLink.startsWith('http') ? previewLink : `https://${previewLink}`;
+                  
+                  return (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => window.open(fullUrl, '_blank', 'noopener,noreferrer')}
+                      className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" />
+                      View App Preview
+                    </Button>
+                  );
+                })()}
+              </div>
             </div>
             <div className="text-center ml-8">
               <div className="text-7xl font-bold">{score}</div>
@@ -1767,6 +1795,43 @@ export default function ScoreAnalysis() {
             </div>
           </div>
         </div>
+
+        {/* Action Buttons - App Preview and Related Actions */}
+        {(() => {
+          const previewLink = idea?.previewUrl || (
+            idea?.sourceData && 
+            (idea.sourceData.startsWith('http://') || idea.sourceData.startsWith('https://') || 
+             /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(idea.sourceData.trim()))
+            ? idea.sourceData
+            : null
+          );
+          
+          if (!previewLink) return null;
+          
+          const fullUrl = previewLink.startsWith('http') ? previewLink : `https://${previewLink}`;
+          
+          return (
+            <div className="mb-8 flex flex-wrap gap-3">
+              <Button
+                onClick={() => window.open(fullUrl, '_blank', 'noopener,noreferrer')}
+                className="gap-2"
+                size="lg"
+              >
+                <ExternalLink className="w-4 h-4" />
+                View App Preview
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setLocation(`/idea/${slug}`)}
+                className="gap-2"
+                size="lg"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Idea Overview
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Navigation Tabs */}
         <div className="mb-8">

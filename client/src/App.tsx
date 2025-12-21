@@ -47,12 +47,15 @@ import MarketInsightDetail from "@/pages/market-insight-detail";
 import TrendDetail from "@/pages/trend-detail";
 import MyIdeas from "@/pages/my-ideas";
 import BulkImport from "@/pages/bulk-import";
+import Login from "@/pages/login";
+import Dashboard from "@/pages/dashboard";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
   return (
     <Switch>
+      <Route path="/login" component={Login} />
       <Route path="/" component={TopIdeas} />
       <Route path="/database" component={Database} />
       <Route path="/my-ideas" component={MyIdeas} />
@@ -104,6 +107,7 @@ function Router() {
       <Route path="/plan-details" component={PlanDetails} />
       {isAuthenticated && (
         <>
+          <Route path="/dashboard" component={Dashboard} />
           <Route path="/home" component={Home} />
           <Route path="/create-idea" component={CreateIdea} />
           <Route path="/bulk-import" component={BulkImport} />

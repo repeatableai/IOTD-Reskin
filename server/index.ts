@@ -90,7 +90,7 @@ app.use((req, res, next) => {
   await checkAndSeedDatabase();
 
   log('Registering routes...');
-  const server = await registerRoutes(app);
+  const { server } = await registerRoutes(app);
   log('Routes registered successfully');
 
   // Early API route handler - MUST be before Vite to catch all API routes

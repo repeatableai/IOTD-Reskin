@@ -27,7 +27,9 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useLocation } from "wouter";
 import type { ResearchRequest } from "@shared/schema";
+import { Card, CardContent } from "@/components/ui/card";
 
 // Form schema for AI research
 const aiResearchSchema = z.object({
@@ -123,6 +125,7 @@ export default function Research() {
   const [deepReport, setDeepReport] = useState<DeepResearchReport | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
   const { user } = useAuth();
+  const [, setLocation] = useLocation();
 
   const {
     register,
@@ -133,32 +136,150 @@ export default function Research() {
     resolver: zodResolver(aiResearchSchema),
   });
 
+  // Query to fetch user's research-created ideas
+  const { data: createdIdeas, isLoading: isLoadingIdeas } = useQuery({
+    queryKey: ['/api/user/created-ideas'],
+    enabled: !!user,
+    select: (ideas: any[]) => {
+      if (!ideas || !Array.isArray(ideas)) {
+        console.log('[Research] No ideas returned from API');
+        return [];
+      }
+      console.log('[Research] Total ideas from API:', ideas.length);
+      // Filter ideas created via research (rapid or deep)
+      const filtered = ideas.filter(idea => {
+        try {
+          const sourceData = idea.sourceData ? JSON.parse(idea.sourceData) : {};
+          const isResearch = sourceData.researchType === 'rapid' || sourceData.researchType === 'deep';
+          if (isResearch) {
+            console.log('[Research] Found research idea:', idea.title, 'Type:', sourceData.researchType);
+          }
+          return isResearch;
+        } catch (e) {
+          console.log('[Research] Error parsing sourceData for idea:', idea.title, e);
+          return false;
+        }
+      });
+      console.log('[Research] Filtered research ideas:', filtered.length);
+      return filtered;
+    },
+  });
+
   // Mutation for deep research
   const deepResearchMutation = useMutation({
     mutationFn: async (data: AIResearchFormData) => {
-      const res = await apiRequest('POST', '/api/ai/deep-research', data);
-      return res.json();
+      console.log('[Deep Research Mutation] ===== MUTATION CALLED =====');
+      console.log('[Deep Research Mutation] Data:', JSON.stringify(data, null, 2));
+      console.log('[Deep Research Mutation] Calling apiRequest...');
+      
+      try {
+        const res = await apiRequest('POST', '/api/ai/deep-research', data);
+        console.log('[Deep Research Mutation] ✅ Response received');
+        console.log('[Deep Research Mutation] Response status:', res.status);
+        console.log('[Deep Research Mutation] Response ok:', res.ok);
+        
+        const json = await res.json();
+        console.log('[Deep Research Mutation] ✅ JSON parsed:', json);
+        console.log('[Deep Research Mutation] Idea slug:', json?.slug);
+        return json;
+      } catch (error: any) {
+        console.error('[Deep Research Mutation] ❌ ERROR in mutationFn:', error);
+        console.error('[Deep Research Mutation] Error message:', error?.message);
+        console.error('[Deep Research Mutation] Error stack:', error?.stack);
+        throw error;
+      }
     },
-    onSuccess: (data) => {
-      setDeepReport(data as DeepResearchReport);
+    onSuccess: (idea) => {
+      console.log('[Deep Research Mutation] ✅✅✅ ON SUCCESS CALLED ✅✅✅');
+      console.log('[Deep Research Mutation] Idea received:', idea);
+      console.log('[Deep Research Mutation] Idea slug:', idea?.slug);
+      
+      // The API now returns a full idea object, navigate to it
+      if (idea && idea.slug) {
+        console.log('[Deep Research Mutation] Navigating to idea:', `/idea/${idea.slug}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/user/created-ideas'] });
+        setLocation(`/idea/${idea.slug}`);
+      } else {
+        console.warn('[Deep Research Mutation] No slug found, showing report instead');
+        // Fallback: if it's still a report format, show it
+        setDeepReport(idea as DeepResearchReport);
+      }
+    },
+    onError: (error: any) => {
+      console.error('[Deep Research Mutation] ❌❌❌ ON ERROR CALLED ❌❌❌');
+      console.error('[Deep Research Mutation] Error:', error);
+      console.error('[Deep Research Mutation] Error message:', error?.message);
+      console.error('[Deep Research Mutation] Error stack:', error?.stack);
+      alert(`Error: ${error?.message || 'Failed to generate deep research'}`);
     },
   });
 
   // Mutation for rapid research
   const rapidResearchMutation = useMutation({
     mutationFn: async (data: AIResearchFormData) => {
-      const res = await apiRequest('POST', '/api/ai/rapid-research', data);
-      return res.json();
+      console.log('[Rapid Research Mutation] ===== MUTATION CALLED =====');
+      console.log('[Rapid Research Mutation] Data:', JSON.stringify(data, null, 2));
+      console.log('[Rapid Research Mutation] Calling apiRequest...');
+      
+      try {
+        const res = await apiRequest('POST', '/api/ai/rapid-research', data);
+        console.log('[Rapid Research Mutation] ✅ Response received');
+        console.log('[Rapid Research Mutation] Response status:', res.status);
+        console.log('[Rapid Research Mutation] Response ok:', res.ok);
+        
+        const json = await res.json();
+        console.log('[Rapid Research Mutation] ✅ JSON parsed:', json);
+        console.log('[Rapid Research Mutation] Idea slug:', json?.slug);
+        return json;
+      } catch (error: any) {
+        console.error('[Rapid Research Mutation] ❌ ERROR in mutationFn:', error);
+        console.error('[Rapid Research Mutation] Error message:', error?.message);
+        console.error('[Rapid Research Mutation] Error stack:', error?.stack);
+        throw error;
+      }
     },
-    onSuccess: (data) => {
-      setRapidReport(data as RapidResearchReport);
+    onSuccess: (idea) => {
+      console.log('[Rapid Research Mutation] ✅✅✅ ON SUCCESS CALLED ✅✅✅');
+      console.log('[Rapid Research Mutation] Idea received:', idea);
+      console.log('[Rapid Research Mutation] Idea slug:', idea?.slug);
+      
+      // The API now returns a full idea object, navigate to it
+      if (idea && idea.slug) {
+        console.log('[Rapid Research Mutation] Navigating to idea:', `/idea/${idea.slug}`);
+        queryClient.invalidateQueries({ queryKey: ['/api/user/created-ideas'] });
+        setLocation(`/idea/${idea.slug}`);
+      } else {
+        console.warn('[Rapid Research Mutation] No slug found, showing report instead');
+        // Fallback: if it's still a report format, show it
+        setRapidReport(idea as RapidResearchReport);
+      }
+    },
+    onError: (error: any) => {
+      console.error('[Rapid Research Mutation] ❌❌❌ ON ERROR CALLED ❌❌❌');
+      console.error('[Rapid Research Mutation] Error:', error);
+      console.error('[Rapid Research Mutation] Error message:', error?.message);
+      console.error('[Rapid Research Mutation] Error stack:', error?.stack);
+      alert(`Error: ${error?.message || 'Failed to generate rapid research'}`);
     },
   });
 
   const onSubmit = (data: AIResearchFormData) => {
+    console.log('[Research Form] ===== FORM SUBMITTED =====');
+    console.log('[Research Form] Data:', JSON.stringify(data, null, 2));
+    console.log('[Research Form] Selected type:', selectedResearchType);
+    console.log('[Research Form] Form errors:', errors);
+    
+    if (!selectedResearchType) {
+      console.error('[Research Form] ❌ No research type selected!');
+      alert('Please select a research type first');
+      return;
+    }
+    
     if (selectedResearchType === 'deep') {
+      console.log('[Research Form] 🚀 Calling deepResearchMutation...');
       deepResearchMutation.mutate(data);
     } else if (selectedResearchType === 'rapid') {
+      console.log('[Research Form] 🚀 Calling rapidResearchMutation...');
       rapidResearchMutation.mutate(data);
     }
   };
@@ -283,6 +404,60 @@ export default function Research() {
                   <span>~2-5 minutes</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Created Ideas List Below Options - ALWAYS VISIBLE (except when showing reports) */}
+          {!rapidReport && !deepReport && (
+            <div className="mt-12 mb-12">
+              <h2 className="text-2xl font-bold mb-6">Your Research Ideas</h2>
+              {isLoadingIdeas ? (
+                <div className="text-center text-muted-foreground py-8">
+                  Loading your research ideas...
+                </div>
+              ) : createdIdeas && createdIdeas.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {createdIdeas.map((idea: any) => (
+                    <Card 
+                      key={idea.id} 
+                      className="cursor-pointer hover:shadow-lg transition-shadow"
+                      onClick={() => setLocation(`/idea/${idea.slug}`)}
+                    >
+                      <CardContent className="p-4">
+                        {idea.imageUrl && (
+                          <img 
+                            src={idea.imageUrl} 
+                            alt={idea.title}
+                            className="w-full h-32 object-cover rounded-md mb-3"
+                          />
+                        )}
+                        <h3 className="font-semibold mb-2 line-clamp-1">{idea.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                          {idea.description}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span>{idea.createdAt ? new Date(idea.createdAt).toLocaleDateString() : ''}</span>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocation(`/idea/${idea.slug}`);
+                            }}
+                          >
+                            View →
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground py-8 border rounded-lg">
+                  <p className="mb-2">No research ideas yet.</p>
+                  <p className="text-sm">Create your first research idea using Deep Research or Rapid Idea Report above.</p>
+                </div>
+              )}
             </div>
           )}
 

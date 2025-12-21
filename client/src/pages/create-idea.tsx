@@ -57,6 +57,8 @@ interface IdeaFormData {
   frameworkData?: any;
   trendAnalysis?: string;
   keywordData?: any;
+  communitySignals?: any;
+  signalBadges?: string[];
   builderPrompts?: any;
 }
 
@@ -130,10 +132,15 @@ export default function CreateIdea() {
 
       // Create the idea
       const { imageFile, ...ideaData } = data;
-      const response = await apiRequest('POST', '/api/ideas', {
+      
+      // Ensure content field is set - use description as fallback if content is empty
+      const ideaPayload = {
         ...ideaData,
+        content: ideaData.content || ideaData.description || 'No detailed content provided.',
         imageUrl,
-      });
+      };
+      
+      const response = await apiRequest('POST', '/api/ideas', ideaPayload);
       return await response.json();
     },
     onSuccess: (response) => {

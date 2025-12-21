@@ -28,10 +28,15 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  console.log('[apiRequest] ===== API REQUEST =====');
+  console.log('[apiRequest] Method:', method);
+  console.log('[apiRequest] URL:', url);
+  console.log('[apiRequest] Data:', data);
+  
   // Detect FormData instance - needs special handling
   const isFormData = data instanceof FormData;
   
-  const res = await fetch(url, {
+  const fetchOptions: RequestInit = {
     method,
     headers: isFormData 
       ? {} // Browser sets Content-Type with boundary automatically for FormData
@@ -40,10 +45,32 @@ export async function apiRequest(
       ? data as FormData // Pass FormData directly
       : (data ? JSON.stringify(data) : undefined),
     credentials: "include",
+  };
+  
+  console.log('[apiRequest] Fetch options:', {
+    method: fetchOptions.method,
+    headers: fetchOptions.headers,
+    hasBody: !!fetchOptions.body,
+    credentials: fetchOptions.credentials
   });
-
-  await throwIfResNotOk(res);
-  return res;
+  
+  try {
+    console.log('[apiRequest] Calling fetch...');
+    const res = await fetch(url, fetchOptions);
+    console.log('[apiRequest] ✅ Fetch completed');
+    console.log('[apiRequest] Response status:', res.status);
+    console.log('[apiRequest] Response ok:', res.ok);
+    console.log('[apiRequest] Response statusText:', res.statusText);
+    
+    await throwIfResNotOk(res);
+    console.log('[apiRequest] ✅ Response is OK');
+    return res;
+  } catch (error: any) {
+    console.error('[apiRequest] ❌ ERROR:', error);
+    console.error('[apiRequest] Error message:', error?.message);
+    console.error('[apiRequest] Error stack:', error?.stack);
+    throw error;
+  }
 }
 
 type UnauthorizedBehavior = "returnNull" | "throw";
@@ -52,7 +79,29 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
+    // Handle query keys that may contain objects for query parameters
+    const baseUrl = queryKey[0] as string;
+    const params = queryKey.slice(1);
+    
+    let url = baseUrl;
+    const queryParams: string[] = [];
+    
+    // Process any objects in the query key as query parameters
+    params.forEach((param) => {
+      if (typeof param === 'object' && param !== null) {
+        Object.entries(param).forEach(([key, value]) => {
+          queryParams.push(`${key}=${encodeURIComponent(String(value))}`);
+        });
+      } else if (param !== undefined && param !== null) {
+        queryParams.push(String(param));
+      }
+    });
+    
+    if (queryParams.length > 0) {
+      url += '?' + queryParams.join('&');
+    }
+    
+    const res = await fetch(url, {
       credentials: "include",
     });
 

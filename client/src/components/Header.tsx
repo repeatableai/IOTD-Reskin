@@ -435,7 +435,7 @@ export default function Header() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <button
-                    onClick={() => setLocation('/home')}
+                    onClick={() => setLocation('/dashboard')}
                     className="w-full text-left px-3 py-2 hover:bg-muted rounded-md transition-colors"
                     data-testid="link-dashboard"
                   >

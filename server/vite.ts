@@ -25,7 +25,7 @@ export function log(message: string, source = "express") {
 export async function setupVite(app: Express, server: Server) {
   const serverOptions = {
     middlewareMode: true,
-    hmr: { server },
+    hmr: false, // Disable HMR to avoid conflict with Socket.IO
     allowedHosts: true as const,
   };
 

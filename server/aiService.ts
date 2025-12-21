@@ -539,10 +539,16 @@ Make it realistic, innovative, and comprehensive. Use real market insights. Gene
 ${prompt}`;
 
     try {
+      // Use faster model for rapid mode, Opus for deep/comprehensive mode
+      const model = params.constraints === 'rapid_mode' 
+        ? "claude-sonnet-4-20250514"  // Faster for rapid research
+        : "claude-opus-4-5-20251101";  // Slower but more comprehensive
+      
       const message = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model,
         max_tokens: 16000,
         temperature: 0.8,
+        timeout: params.constraints === 'rapid_mode' ? 60000 : 180000, // 1 min for rapid, 3 min for deep
         messages: [
           {
             role: "user",
@@ -2290,6 +2296,215 @@ Return as JSON:
     } catch (error) {
       console.error('Error generating roast:', error);
       throw new Error('Failed to generate roast');
+    }
+  }
+
+  /**
+   * Enrich a basic idea with comprehensive AI analysis, scores, and metrics
+   * This is used for manual entry mode to ensure all ideas have comprehensive analysis
+   */
+  async enrichIdeaWithComprehensiveAnalysis(basicIdea: {
+    title: string;
+    description: string;
+    content?: string;
+    type?: string;
+    market?: string;
+    targetAudience?: string;
+    keyword?: string;
+  }): Promise<Partial<GeneratedIdea>> {
+    const prompt = `You are an elite startup advisor and business analyst. Analyze this startup idea and generate comprehensive metrics, scores, and detailed analysis sections.
+
+STARTUP IDEA:
+Title: ${basicIdea.title}
+Description: ${basicIdea.description}
+${basicIdea.content ? `Content: ${basicIdea.content}` : ''}
+Type: ${basicIdea.type || 'web_app'}
+Market: ${basicIdea.market || 'B2C'}
+Target Audience: ${basicIdea.targetAudience || 'general users'}
+${basicIdea.keyword ? `Keyword: ${basicIdea.keyword}` : ''}
+
+Generate comprehensive analysis with ACCURATE, REALISTIC metrics and scores based on real market research. Be data-driven and specific.
+
+Return as JSON with this EXACT structure:
+{
+  "opportunityScore": 8,
+  "problemScore": 7,
+  "feasibilityScore": 6,
+  "timingScore": 9,
+  "executionScore": 7,
+  "gtmScore": 8,
+  "opportunityLabel": "Excellent Market Fit",
+  "problemLabel": "Clear Pain Point",
+  "feasibilityLabel": "Achievable Build",
+  "timingLabel": "Perfect Timing",
+  "revenuePotential": "Detailed explanation with realistic numbers (e.g., $500K-$2M ARR potential)",
+  "revenuePotentialNum": 1250000,
+  "executionDifficulty": "Detailed explanation of complexity",
+  "gtmStrength": "Detailed explanation of go-to-market viability",
+  "mainCompetitor": "Primary competitor name",
+  "keyword": "primary SEO keyword",
+  "keywordVolume": 50000,
+  "keywordGrowth": 35,
+  "offerTiers": {
+    "leadMagnet": {"name": "Free resource name", "description": "What they get", "price": "$0"},
+    "frontend": {"name": "Entry product", "description": "First paid offer", "price": "$47"},
+    "core": {"name": "Main product", "description": "Core value", "price": "$497"},
+    "backend": {"name": "Premium service", "description": "High-ticket", "price": "$2997"},
+    "continuity": {"name": "Subscription", "description": "Recurring revenue", "price": "$97/mo"}
+  },
+  "whyNowAnalysis": "2-3 paragraph analysis of why this is the perfect time for this idea with specific market trends and catalysts",
+  "proofSignals": "Evidence and signals showing market demand with specific examples, data points, and real-world indicators",
+  "marketGap": "Detailed explanation of the gap in the market this fills with competitive analysis",
+  "executionPlan": "Step-by-step execution roadmap with phases, milestones, and timelines",
+  "frameworkData": {
+    "valueEquation": {
+      "dreamOutcome": "What customers ultimately want",
+      "perceivedLikelihood": "Why they believe it will work",
+      "timeDelay": "How quickly they get results",
+      "effortSacrifice": "How easy it is to use"
+    },
+    "marketMatrix": {
+      "marketSize": "Size and growth assessment with numbers",
+      "painLevel": "Severity of problem with examples",
+      "targetingEase": "How easy to reach with channels",
+      "purchasingPower": "Ability and willingness to pay with data"
+    },
+    "acpFramework": {
+      "avatar": "Detailed customer avatar",
+      "catalyst": "What triggers the purchase",
+      "promise": "Core transformation promise"
+    }
+  },
+  "trendAnalysis": "Analysis of trends making this idea timely and relevant with specific trend data",
+  "keywordData": {
+    "fastestGrowing": [
+      {"keyword": "keyword1", "volume": 10000, "growth": "+150%", "competition": "Low"},
+      {"keyword": "keyword2", "volume": 8000, "growth": "+120%", "competition": "Medium"},
+      {"keyword": "keyword3", "volume": 6000, "growth": "+95%", "competition": "Low"},
+      {"keyword": "keyword4", "volume": 5000, "growth": "+80%", "competition": "High"},
+      {"keyword": "keyword5", "volume": 4000, "growth": "+75%", "competition": "Medium"}
+    ],
+    "highestVolume": [
+      {"keyword": "keyword1", "volume": 500000, "growth": "+10%", "competition": "High"},
+      {"keyword": "keyword2", "volume": 250000, "growth": "+15%", "competition": "High"},
+      {"keyword": "keyword3", "volume": 100000, "growth": "+20%", "competition": "Medium"},
+      {"keyword": "keyword4", "volume": 80000, "growth": "+12%", "competition": "High"},
+      {"keyword": "keyword5", "volume": 60000, "growth": "+18%", "competition": "Medium"}
+    ],
+    "mostRelevant": [
+      {"keyword": "keyword1", "volume": 25000, "growth": "+45%", "competition": "Low"},
+      {"keyword": "keyword2", "volume": 20000, "growth": "+50%", "competition": "Low"},
+      {"keyword": "keyword3", "volume": 15000, "growth": "+40%", "competition": "Medium"},
+      {"keyword": "keyword4", "volume": 12000, "growth": "+35%", "competition": "Low"},
+      {"keyword": "keyword5", "volume": 10000, "growth": "+42%", "competition": "Medium"}
+    ]
+  },
+  "communitySignals": {
+    "reddit": {"subreddits": 5, "members": "2.5M+", "score": 8, "details": "Strong community engagement across relevant subreddits"},
+    "facebook": {"groups": 7, "members": "150K+", "score": 7, "details": "Active Facebook groups discussing this problem"},
+    "youtube": {"channels": 14, "members": "1M+", "score": 7, "details": "Multiple YouTube channels covering this topic"},
+    "other": {"segments": 4, "priorities": 3, "score": 8, "details": "Strong signals across forums, Discord, and Slack communities"}
+  },
+  "signalBadges": ["Perfect Timing", "Unfair Advantage", "Organic Growth"]
+}
+
+Be realistic, data-driven, and specific. Use actual market research insights. Scores should be based on real analysis, not generic values.`;
+
+    try {
+      console.log(`[Idea Enrichment] Enriching idea: ${basicIdea.title}`);
+      
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514", // Faster model for enrichment
+        max_tokens: 16000,
+        temperature: 0.7,
+        timeout: 120000, // 2 minute timeout
+        messages: [
+          {
+            role: "user",
+            content: prompt
+          }
+        ]
+      });
+
+      const textContent = response.content[0]?.type === 'text' ? response.content[0].text : '';
+      
+      if (!textContent) {
+        throw new Error('No response from AI service');
+      }
+
+      // Parse JSON from response
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      const jsonText = jsonMatch ? jsonMatch[0] : textContent;
+      const enrichedData = JSON.parse(jsonText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
+
+      console.log(`[Idea Enrichment] Successfully enriched idea: ${basicIdea.title}`);
+      return enrichedData;
+    } catch (error) {
+      console.error('Error enriching idea with AI:', error);
+      // Return comprehensive defaults if enrichment fails - ensure all fields are present
+      return {
+        opportunityScore: 7,
+        problemScore: 7,
+        feasibilityScore: 6,
+        timingScore: 7,
+        executionScore: 6,
+        gtmScore: 7,
+        opportunityLabel: "Good Opportunity",
+        problemLabel: "Clear Problem",
+        feasibilityLabel: "Moderate Complexity",
+        timingLabel: "Good Timing",
+        revenuePotential: "Analysis pending - AI enrichment failed. Please retry or add details manually.",
+        revenuePotentialNum: 1000000,
+        executionDifficulty: "Medium complexity - analysis pending",
+        gtmStrength: "Analysis pending - AI enrichment failed",
+        mainCompetitor: "Analysis pending",
+        keyword: basicIdea.keyword || "startup solution",
+        keywordVolume: 0,
+        keywordGrowth: 0,
+        offerTiers: {
+          leadMagnet: { name: "Free Resource", description: "Value-add resource to attract leads", price: "$0" },
+          frontend: { name: "Entry Product", description: "Low-ticket entry point", price: "$47" },
+          core: { name: "Core Product", description: "Main value proposition", price: "$497" },
+          backend: { name: "Premium Service", description: "High-ticket premium offering", price: "$2997" },
+          continuity: { name: "Subscription", description: "Recurring revenue stream", price: "$97/mo" }
+        },
+        whyNowAnalysis: "Analysis pending - AI enrichment encountered an error. Market timing analysis will be generated on retry.",
+        proofSignals: "Analysis pending - AI enrichment encountered an error. Market signals will be analyzed on retry.",
+        marketGap: "Analysis pending - AI enrichment encountered an error. Market gap analysis will be generated on retry.",
+        executionPlan: "Analysis pending - AI enrichment encountered an error. Execution plan will be generated on retry.",
+        frameworkData: {
+          valueEquation: {
+            dreamOutcome: "Analysis pending",
+            perceivedLikelihood: "Analysis pending",
+            timeDelay: "Analysis pending",
+            effortSacrifice: "Analysis pending"
+          },
+          marketMatrix: {
+            marketSize: "Analysis pending",
+            painLevel: "Analysis pending",
+            targetingEase: "Analysis pending",
+            purchasingPower: "Analysis pending"
+          },
+          acpFramework: {
+            avatar: "Analysis pending",
+            catalyst: "Analysis pending",
+            promise: "Analysis pending"
+          }
+        },
+        trendAnalysis: "Analysis pending - AI enrichment encountered an error. Trend analysis will be generated on retry.",
+        keywordData: {
+          fastestGrowing: [],
+          highestVolume: [],
+          mostRelevant: []
+        },
+        communitySignals: {
+          reddit: { subreddits: 0, members: "0", score: 0, details: "Analysis pending" },
+          facebook: { groups: 0, members: "0", score: 0, details: "Analysis pending" },
+          youtube: { channels: 0, members: "0", score: 0, details: "Analysis pending" },
+          other: { segments: 0, priorities: 0, score: 0, details: "Analysis pending" }
+        },
+        signalBadges: []
+      };
     }
   }
 }

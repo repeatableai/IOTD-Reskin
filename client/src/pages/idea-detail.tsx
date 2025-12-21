@@ -604,7 +604,7 @@ export default function IdeaDetail() {
               data-testid="button-roast-idea"
             >
               <Flame className="w-4 h-4 mr-2" />
-              Roast
+              Torpedo
             </Button>
             
             <Button 
