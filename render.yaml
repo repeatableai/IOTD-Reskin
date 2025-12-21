@@ -25,8 +25,8 @@ services:
         sync: false  # REQUIRED: Add manually in Render dashboard (from your .env file)
       - key: OPENAI_API_KEY
         sync: false  # OPTIONAL: Add manually if using OpenAI features (from your .env file)
-      - key: SERPAPI_API_KEY
-        sync: false  # OPTIONAL: Add manually for Google Images search (from your .env file)
+      - key: SERP_API_KEY
+        sync: false  # OPTIONAL: Add manually for Google Images search and trends (from your .env file)
       - key: UNSPLASH_ACCESS_KEY
         sync: false  # OPTIONAL: Add manually for Unsplash image search (from your .env file)
 

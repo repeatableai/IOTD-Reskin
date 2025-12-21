@@ -41,10 +41,10 @@ These variables enhance functionality but are not strictly required:
 - **How to set**: Same process as `ANTHROPIC_API_KEY` above
 - **Note**: The app primarily uses Anthropic, but OpenAI can be used as fallback
 
-### 6. `SERPAPI_API_KEY` (Optional)
-- **Purpose**: Used for Google Images search when generating idea images
+### 6. `SERP_API_KEY` (Optional)
+- **Purpose**: Used for Google Images search, Google Trends, and web search when generating idea images and research
 - **How to set**: Same process as `ANTHROPIC_API_KEY` above
-- **Note**: Without this, image search will skip Google Images and use Unsplash/DALL-E
+- **Note**: Without this, image search will skip Google Images and use Unsplash/DALL-E. Trends and web search will use fallback methods.
 
 ### 7. `UNSPLASH_ACCESS_KEY` (Optional)
 - **Purpose**: Used for Unsplash stock photo search when generating idea images
@@ -87,7 +87,7 @@ Based on `render.yaml`:
 - ✅ `NODE_ENV` - Set to `production`
 - ⚠️ `ANTHROPIC_API_KEY` - **NEEDS MANUAL SETUP**
 - ⚠️ `OPENAI_API_KEY` - Optional, needs manual setup if used
-- ⚠️ `SERPAPI_API_KEY` - Optional, needs manual setup if used
+- ⚠️ `SERP_API_KEY` - Optional, needs manual setup if used
 - ⚠️ `UNSPLASH_ACCESS_KEY` - Optional, needs manual setup if used
 
 ## Notes
