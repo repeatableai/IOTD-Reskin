@@ -186,14 +186,15 @@ class ExternalDataService {
         ? Math.min(200, claudeData.marketTrends.length * 25)
         : Math.floor(Math.random() * 150) + 20;
       
-      // Generate timeline data for fallback (12 months)
+      // Generate timeline data for fallback based on timeRange
       const fallbackTimelineData: Array<{ date: string; value: number }> = [];
       const now = new Date();
-      for (let i = 11; i >= 0; i--) {
+      const months = timeRange === '6m' ? 6 : 12;
+      for (let i = months - 1; i >= 0; i--) {
         const date = new Date(now);
         date.setMonth(date.getMonth() - i);
         const baseValue = 50;
-        const trendFactor = (fallbackGrowthRate / 100) * ((11 - i) / 11);
+        const trendFactor = (fallbackGrowthRate / 100) * ((months - 1 - i) / (months - 1));
         const value = Math.max(10, Math.min(100, baseValue + trendFactor * 30));
         fallbackTimelineData.push({
           date: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
