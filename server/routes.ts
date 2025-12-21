@@ -4651,6 +4651,85 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Update existing ideas with previewUrl from export file
+  app.post('/api/admin/update-preview-urls', upload.single('file'), async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const fileContent = file.buffer.toString('utf-8');
+      const exportData = JSON.parse(fileContent);
+      
+      if (!exportData.ideas || !Array.isArray(exportData.ideas)) {
+        return res.status(400).json({ message: "Invalid export file format" });
+      }
+      
+      console.log(`[Update Preview URLs] Updating ${exportData.ideas.length} ideas...`);
+      
+      let updatedCount = 0;
+      let skippedCount = 0;
+      
+      for (const ideaData of exportData.ideas) {
+        const { slug, previewUrl } = ideaData;
+        
+        if (!slug || !previewUrl) {
+          skippedCount++;
+          continue;
+        }
+        
+        try {
+          const [existingIdea] = await db.select().from(ideas).where(eq(ideas.slug, slug));
+          
+          if (existingIdea && !existingIdea.previewUrl) {
+            await db.update(ideas)
+              .set({ previewUrl })
+              .where(eq(ideas.slug, slug));
+            updatedCount++;
+            
+            if (updatedCount % 100 === 0) {
+              console.log(`[Update Preview URLs] Progress: ${updatedCount} updated`);
+            }
+          } else {
+            skippedCount++;
+          }
+        } catch (error: any) {
+          console.error(`[Update Preview URLs] Error updating ${slug}:`, error.message);
+          skippedCount++;
+        }
+      }
+      
+      console.log(`[Update Preview URLs] Complete: ${updatedCount} updated, ${skippedCount} skipped`);
+      
+      res.json({
+        success: true,
+        message: `Updated ${updatedCount} ideas with previewUrl`,
+        updated: updatedCount,
+        skipped: skippedCount
+      });
+    } catch (error: any) {
+      console.error("[Update Preview URLs] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update preview URLs",
+        error: error.message
+      });
+    }
+  });
+
   // Bulk import ideas from JSON export file
   app.post('/api/admin/import-ideas', upload.single('file'), async (req: any, res) => {
     try {
