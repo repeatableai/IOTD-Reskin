@@ -44,14 +44,9 @@ export function OpportunityAnalysisModal({
     if (open) {
       setIframeError(false);
       setCspBlocked(false);
-      
-      // If it's genspark.ai, immediately show CSP blocked message
-      // since we know it will be blocked
-      if (isGensparkAi) {
-        setCspBlocked(true);
-      }
+      // Don't immediately block - let it try to load first
     }
-  }, [open, previewUrl, isGensparkAi]);
+  }, [open, previewUrl]);
   
   const handleOpenInNewTab = () => {
     window.open(fullUrl, '_blank', 'noopener,noreferrer');
@@ -134,10 +129,10 @@ export function OpportunityAnalysisModal({
           </div>
         </DialogHeader>
         <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 120px)' }}>
-          {iframeError || cspBlocked || isGensparkAi ? (
+          {iframeError || cspBlocked ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <p className="text-muted-foreground mb-4">
-                {cspBlocked || isGensparkAi
+                {cspBlocked
                   ? "This preview cannot be displayed in a pop-up window due to security restrictions. Please use the button below to open it in a new tab."
                   : "The preview cannot be displayed in this window due to security restrictions."}
               </p>
@@ -157,20 +152,22 @@ export function OpportunityAnalysisModal({
               style={{ width: '100%', height: '100%' }}
               onError={handleIframeError}
               onLoad={(e) => {
-                // Check if iframe loaded but is blocked (contentWindow will be null if blocked)
+                // Iframe loaded successfully - check if it's actually blocked
                 try {
                   const iframe = e.target as HTMLIFrameElement;
-                  // If CSP blocked, contentWindow will be null
-                  setTimeout(() => {
-                    try {
-                      if (iframe.contentWindow === null) {
-                        setCspBlocked(true);
-                        setIframeError(true);
+                  // For genspark.ai, check if CSP blocked after a short delay
+                  if (isGensparkAi) {
+                    setTimeout(() => {
+                      try {
+                        // Try to access contentWindow - if CSP blocked, this will fail
+                        if (iframe.contentWindow === null || iframe.contentDocument === null) {
+                          // Might be CSP blocked, but don't assume - let it try
+                        }
+                      } catch (err) {
+                        // Cross-origin restrictions are normal, not necessarily CSP blocking
                       }
-                    } catch (err) {
-                      // Cross-origin restrictions prevent checking, which is normal
-                    }
-                  }, 1000);
+                    }, 500);
+                  }
                 } catch (err) {
                   // Cross-origin restrictions prevent checking, which is normal
                 }
