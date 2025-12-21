@@ -1,0 +1,71 @@
+═══════════════════════════════════════════════════════════════
+  SIMPLE GUIDE: Add Environment Variables to Render
+═══════════════════════════════════════════════════════════════
+
+STEP 1: Click this link (it opens Render where you add variables):
+   👉 https://dashboard.render.com/web/iotd-reskin/env
+
+STEP 2: Get your environment variable values
+   Run this command in your terminal:
+   bash scripts/copy-env-to-render.sh
+
+STEP 3: On the Render page, you'll see a button that says:
+   "Add Environment Variable" or "Add"
+   Click it.
+
+STEP 4: For EACH variable from Step 2:
+   
+   Example: If you see "Variable 1: ANTHROPIC_API_KEY"
+   
+   a) In the "Key" box, type: ANTHROPIC_API_KEY
+   b) In the "Value" box, paste: (the value from the script)
+   c) Click "Save Changes"
+   
+   Do this for ALL variables shown by the script.
+
+STEP 5: Done! Render will automatically restart your app.
+
+═══════════════════════════════════════════════════════════════
+  WHAT IT LOOKS LIKE IN RENDER:
+═══════════════════════════════════════════════════════════════
+
+When you click the link, you'll see a page with:
+
+┌─────────────────────────────────────────┐
+│  Environment Variables                   │
+│                                          │
+│  [Add Environment Variable]  ← Click   │
+│                                          │
+│  Existing variables (if any):            │
+│  • DATABASE_URL (auto-set)              │
+│  • SESSION_SECRET (auto-set)            │
+│  • NODE_ENV (auto-set)                  │
+└─────────────────────────────────────────┘
+
+After clicking "Add Environment Variable":
+
+┌─────────────────────────────────────────┐
+│  Add Environment Variable                │
+│                                          │
+│  Key:   [ANTHROPIC_API_KEY        ]     │
+│  Value: [sk-ant-api03-abc123...   ]     │
+│                                          │
+│  [Cancel]  [Save Changes] ← Click      │
+└─────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════
+  QUICK REFERENCE:
+═══════════════════════════════════════════════════════════════
+
+Link: https://dashboard.render.com/web/iotd-reskin/env
+
+Command to get values: bash scripts/copy-env-to-render.sh
+
+Variables to add (from the script output):
+  1. ANTHROPIC_API_KEY
+  2. OPENAI_API_KEY  
+  3. SERP_API_KEY
+  4. UNSPLASH_ACCESS_KEY
+
+═══════════════════════════════════════════════════════════════
+
