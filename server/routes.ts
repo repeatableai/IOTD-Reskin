@@ -3486,21 +3486,31 @@ Return ONLY valid JSON, no markdown or explanation.`
       }
 
       // Generate chat response using AI service
+      console.log("[AI Chat] Starting chat generation for idea:", idea.id);
       const response = await aiService.generateChatResponse(idea, message, history);
+      console.log("[AI Chat] Successfully generated response, length:", response?.length || 0);
       
       res.json({ response });
     } catch (error: any) {
-      console.error("[AI Chat] Error generating chat response:", error);
+      console.error("[AI Chat] ========== ERROR DETAILS ==========");
+      console.error("[AI Chat] Error message:", error?.message);
+      console.error("[AI Chat] Error code:", error?.code);
+      console.error("[AI Chat] Error status:", error?.status);
+      console.error("[AI Chat] Error type:", error?.constructor?.name);
       console.error("[AI Chat] Error stack:", error?.stack);
-      console.error("[AI Chat] Error details:", {
-        message: error?.message,
-        code: error?.code,
-        status: error?.status,
-        type: error?.constructor?.name,
-      });
+      if (error?.originalOpenAIError) {
+        console.error("[AI Chat] Original OpenAI error:", error.originalOpenAIError);
+      }
+      if (error?.originalAnthropicError) {
+        console.error("[AI Chat] Original Anthropic error:", error.originalAnthropicError);
+      }
+      console.error("[AI Chat] ====================================");
+      
+      // Return the actual error message to help with debugging
+      const errorMessage = error instanceof Error ? error.message : (error?.toString() || 'Unknown error');
       res.status(500).json({ 
         message: "Failed to generate chat response",
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: errorMessage
       });
     }
   });
