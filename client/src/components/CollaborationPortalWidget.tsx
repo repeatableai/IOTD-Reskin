@@ -338,7 +338,13 @@ export function CollaborationPortalWidget() {
   }, []);
 
   const widgetWidth = isExpanded ? 500 : 400;
-  const widgetHeight = isExpanded ? Math.floor(windowSize.height / 3) : 600;
+  const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 600;
+  
+  // Constrain position to viewport
+  const constrainedPosition = {
+    x: Math.max(0, Math.min(position.x, windowSize.width - widgetWidth)),
+    y: Math.max(0, Math.min(position.y, windowSize.height - widgetHeight)),
+  };
 
   return (
     <div
