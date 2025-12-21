@@ -2545,9 +2545,7 @@ Be realistic, data-driven, and specific. Use actual market research insights. Sc
       };
     }
   }
-}
 
-export const aiService = new AIService();
   /**
    * Generate collaboration insight - analyzes conversation and provides insights
    */
@@ -2693,3 +2691,5 @@ Provide a comprehensive response that addresses the request and helps move the c
     }
   }
 }
+
+export const aiService = new AIService();
