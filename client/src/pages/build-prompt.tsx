@@ -17,7 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users } from "lucide-react";
+import { MarketTrendGraph } from "@/components/MarketTrendGraph";
 
 interface Template {
   id: string;
@@ -629,6 +630,20 @@ ${idea?.description || 'Description of your solution'}
                     Export
                   </Button>
                   
+                  {isAuthenticated && idea?.id && (
+                    <>
+                      <Separator orientation="vertical" className="h-8 mx-2" />
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setLocation(`/idea/${slug}/collaboration`)}
+                        data-testid="button-collaboration-portal"
+                      >
+                        <Users className="w-4 h-4 mr-2" />
+                        Collaboration Portal
+                      </Button>
+                    </>
+                  )}
+                  
                   <div className="flex gap-3">
                     <ClaimButton 
                       ideaId={idea?.id || ''} 
@@ -636,6 +651,14 @@ ${idea?.description || 'Description of your solution'}
                     />
                   </div>
                 </div>
+
+                {/* Market Trend Graph */}
+                {idea && (idea.keyword || idea.keywordData?.primaryKeyword?.term) && (
+                  <MarketTrendGraph 
+                    keyword={idea.keyword || idea.keywordData?.primaryKeyword?.term || idea.title.split(' ')[0]} 
+                    ideaTitle={idea.title}
+                  />
+                )}
 
                 {/* Build Prompt Selection for Product Requirements Doc */}
                 {selectedTemplate === 'product-requirements-doc' && (
