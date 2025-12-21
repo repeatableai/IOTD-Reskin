@@ -344,31 +344,6 @@ export function CollaborationPortalWidget() {
     });
   };
 
-  useEffect(() => {
-    if (!isDragging) return;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!widgetRef.current) return;
-      const widgetWidth = widgetRef.current.offsetWidth || 350;
-      const widgetHeight = widgetRef.current.offsetHeight || 500;
-      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, window.innerWidth - widgetWidth));
-      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, window.innerHeight - widgetHeight));
-      updatePosition(newX, newY);
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging, dragStart, updatePosition]);
-
   // Calculate widget dimensions - smaller default size
   const widgetWidth = isExpanded ? 500 : 350;
   const widgetHeight = isExpanded ? Math.max(400, Math.floor(windowSize.height / 3)) : 500;
