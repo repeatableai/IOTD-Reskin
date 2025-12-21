@@ -4731,6 +4731,51 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Update a specific idea's previewUrl
+  app.post('/api/admin/update-idea-preview', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      const { slug, previewUrl } = req.body;
+      
+      if (!slug || !previewUrl) {
+        return res.status(400).json({ message: "slug and previewUrl are required" });
+      }
+      
+      const [updated] = await db.update(ideas)
+        .set({ previewUrl })
+        .where(eq(ideas.slug, slug))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Idea not found" });
+      }
+      
+      res.json({
+        success: true,
+        message: `Updated previewUrl for ${slug}`,
+        idea: updated
+      });
+    } catch (error: any) {
+      console.error("[Update Idea Preview] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update previewUrl",
+        error: error.message
+      });
+    }
+  });
+
   // Bulk import ideas from JSON export file
   app.post('/api/admin/import-ideas', upload.single('file'), async (req: any, res) => {
     try {

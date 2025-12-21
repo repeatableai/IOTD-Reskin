@@ -91,10 +91,12 @@ export function OpportunityAnalysisModal({
           <iframe
             src={fullUrl}
             className="w-full h-full border-0 absolute inset-0"
-            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-top-navigation allow-presentation"
+            allow="fullscreen; autoplay; camera; microphone; geolocation"
             title="App Preview"
             loading="lazy"
             style={{ width: '100%', height: '100%' }}
+            allowFullScreen
           />
         </div>
       </DialogContent>
