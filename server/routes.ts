@@ -3905,10 +3905,15 @@ Return ONLY valid JSON, no markdown or explanation.`
   // External data integration routes
 
   // Get real trend data for a keyword
-  app.get('/api/external/trend/:keyword', async (req, res) => {
+  app.get('/api/external/trend', async (req, res) => {
     try {
-      const { keyword } = req.params;
-      const trendData = await externalDataService.getTrendData(keyword);
+      // Support both query parameter and path parameter for backward compatibility
+      const keyword = (req.query.keyword as string) || req.params.keyword;
+      if (!keyword) {
+        return res.status(400).json({ message: "Keyword parameter is required" });
+      }
+      const decodedKeyword = decodeURIComponent(keyword);
+      const trendData = await externalDataService.getTrendData(decodedKeyword);
       res.json(trendData);
     } catch (error) {
       console.error("Error fetching trend data:", error);

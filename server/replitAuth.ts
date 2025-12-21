@@ -66,7 +66,7 @@ async function upsertUser(
   });
 }
 
-export async function setupAuth(app: Express) {
+export async function setupAuth(app: Express): Promise<RequestHandler> {
   app.set("trust proxy", 1);
   
   // Check if we're actually running on Replit (not just local dev with vars set)
@@ -85,7 +85,7 @@ export async function setupAuth(app: Express) {
     const isProduction = process.env.NODE_ENV === 'production';
     const MemoryStore = (await import('memorystore')).default(session);
     
-    app.use(session({
+    const sessionMiddleware = session({
       secret: process.env.SESSION_SECRET || 'local-dev-secret',
       store: new MemoryStore({ checkPeriod: 86400000 }),
       resave: false,
@@ -95,7 +95,9 @@ export async function setupAuth(app: Express) {
         maxAge: 7 * 24 * 60 * 60 * 1000,
         sameSite: isProduction ? 'lax' : 'lax'
       }
-    }));
+    });
+    
+    app.use(sessionMiddleware);
     app.use(passport.initialize());
     app.use(passport.session());
 
@@ -260,11 +262,12 @@ export async function setupAuth(app: Express) {
     app.get("/api/callback", (req, res) => res.redirect('/'));
     app.get("/api/logout", (req, res) => res.redirect('/login'));
     
-    return; // Skip Replit OIDC setup
+    return sessionMiddleware; // Return session middleware for Socket.IO
   }
 
   // Production Replit auth setup
-  app.use(getSession());
+  const sessionMiddleware = getSession();
+  app.use(sessionMiddleware);
   app.use(passport.initialize());
   app.use(passport.session());
 
@@ -321,6 +324,8 @@ export async function setupAuth(app: Express) {
       );
     });
   });
+  
+  return sessionMiddleware; // Return session middleware for Socket.IO
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {

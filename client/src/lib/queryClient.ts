@@ -93,7 +93,12 @@ export const getQueryFn: <T>(options: {
           queryParams.push(`${key}=${encodeURIComponent(String(value))}`);
         });
       } else if (param !== undefined && param !== null) {
-        queryParams.push(String(param));
+        // For trend endpoint, use keyword as query parameter
+        if (baseUrl.includes('/api/external/trend')) {
+          queryParams.push(`keyword=${encodeURIComponent(String(param))}`);
+        } else {
+          queryParams.push(String(param));
+        }
       }
     });
     
