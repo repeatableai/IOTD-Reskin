@@ -94,6 +94,7 @@ export default function IdeaDetail() {
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [showRoastDialog, setShowRoastDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showCollaborationPortal, setShowCollaborationPortal] = useState(false);
 
   const { data: idea, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", slug],
@@ -616,6 +617,19 @@ export default function IdeaDetail() {
               <Download className="w-4 h-4 mr-2" />
               Export
             </Button>
+            
+            <Separator orientation="vertical" className="h-8 mx-2" />
+            
+            {idea?.id && (
+              <Button 
+                variant="outline" 
+                onClick={() => setShowCollaborationPortal(true)}
+                data-testid="button-collaboration-portal"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Collaboration Portal
+              </Button>
+            )}
             
             <ClaimButton 
               ideaId={idea.id} 
