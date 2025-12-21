@@ -120,35 +120,6 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Upgrade Available */}
-            <Card>
-              <div className="bg-purple-100 px-4 py-2 rounded-t-lg">
-                <span className="text-xs font-semibold text-purple-700">Upgrade Available</span>
-              </div>
-              <CardContent className="pt-4">
-                <h3 className="text-xl font-bold mb-2">Empire</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Turn ideas into cash-flowing assets.
-                </p>
-                <ul className="space-y-2 mb-4">
-                  {[
-                    "Weekly coaching & consulting",
-                    "Monthly AMAs with Greg",
-                    "Vibe coding office hours",
-                    "Builder network & community"
-                  ].map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-sm">
-                      <Star className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button className="w-full bg-purple-600 hover:bg-purple-700">
-                  Join Empire <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </CardContent>
-            </Card>
-
             {/* Notifications */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-3">
