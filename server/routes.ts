@@ -4738,13 +4738,12 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       // Import ideas
       for (const ideaData of exportData.ideas) {
         const { tags: ideaTagsData, communitySignals: ideaSignalsData, ...ideaFields } = ideaData;
-        const { id, createdAt, updatedAt, previewUrl, ...ideaToInsert } = ideaFields;
+        const { id, createdAt, updatedAt, ...ideaToInsert } = ideaFields;
         
         // Ensure isPublished is true
         ideaToInsert.isPublished = true;
         
-        // Temporarily exclude previewUrl if column doesn't exist (will be added by migration later)
-        // previewUrl is excluded above - we'll add it back after migrations run
+        // previewUrl is now included since the column exists
         
         if (existingSlugs.has(ideaToInsert.slug)) {
           skippedCount++;

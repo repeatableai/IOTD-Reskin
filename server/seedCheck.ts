@@ -172,13 +172,12 @@ async function importIdeasFromExport(exportData: any) {
   // Import ideas
   for (const ideaData of exportData.ideas) {
     const { tags: ideaTagsData, communitySignals: ideaSignalsData, ...ideaFields } = ideaData;
-    const { id, createdAt, updatedAt, previewUrl, ...ideaToInsert } = ideaFields;
+    const { id, createdAt, updatedAt, ...ideaToInsert } = ideaFields;
     
     // Ensure isPublished is true
     ideaToInsert.isPublished = true;
     
-    // Exclude previewUrl temporarily until migration adds the column
-    // This prevents errors if the column doesn't exist yet
+    // previewUrl is now included since the column exists
     
     if (existingSlugs.has(ideaToInsert.slug)) {
       skippedCount++;
