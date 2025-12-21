@@ -1608,7 +1608,7 @@ ${idea.content ? `\nDetailed Analysis: ${idea.content}` : ''}
         if (process.env.ANTHROPIC_API_KEY) {
           try {
             const anthropicResponse = await getAnthropic().messages.create({
-              model: "claude-3-5-sonnet-20241022",
+              model: "claude-sonnet-4-20250514", // Use valid Claude model
               max_tokens: 4000,
               messages: [
                 {
