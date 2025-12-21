@@ -59,6 +59,9 @@ export function CollaborationPortalWidget() {
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [synthesizeState, setSynthesizeState] = useState<'idle' | 'analyzing' | 'synthesizing' | 'critiquing'>('idle');
   const [windowSize, setWindowSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1920, height: typeof window !== 'undefined' ? window.innerHeight : 1080 });
+  const [aiChatMode, setAiChatMode] = useState<'general' | 'message'>('general');
+  const [aiChatInput, setAiChatInput] = useState("");
+  const [chattingAboutMessage, setChattingAboutMessage] = useState<Message | null>(null);
 
   // Fetch messages - hooks must be called unconditionally
   const { data: messagesData, isLoading: isLoadingMessages } = useQuery<{ messages: Message[] }>({
@@ -122,10 +125,10 @@ export function CollaborationPortalWidget() {
 
   // AI Chat mutation - hooks must be called unconditionally
   const aiChatMutation = useMutation({
-    mutationFn: async ({ question, messages: msgList }: { question: string; messages: Message[] }) => {
+    mutationFn: async ({ question, messages: msgList, messageIdOverride }: { question: string; messages: Message[]; messageIdOverride?: string | null }) => {
       if (!ideaId) throw new Error('Idea ID is required');
       const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-chat`, {
-        messageId: selectedMessageId,
+        messageId: messageIdOverride !== undefined ? messageIdOverride : selectedMessageId,
         question,
         conversationContext: msgList.map(m => ({
           id: m.id,
@@ -145,6 +148,9 @@ export function CollaborationPortalWidget() {
         setSynthesizeState('idle');
       }
       setSelectedMessageId(null);
+      setChattingAboutMessage(null);
+      setAiChatMode('general');
+      setAiChatInput("");
       scrollToBottom();
     },
     onError: (error: any) => {
@@ -154,6 +160,34 @@ export function CollaborationPortalWidget() {
         variant: "destructive",
       });
       setSynthesizeState('idle');
+    },
+  });
+
+  // General AI Chat mutation for free-form conversation
+  const generalAiChatMutation = useMutation({
+    mutationFn: async ({ question }: { question: string }) => {
+      if (!ideaId) throw new Error('Idea ID is required');
+      const response = await apiRequest('POST', `/api/ideas/${ideaId}/collaboration/ai-chat`, {
+        question,
+        conversationContext: messages.map(m => ({
+          id: m.id,
+          userName: m.userName,
+          content: m.content,
+          createdAt: m.createdAt,
+        })),
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setAiChatInput("");
+      scrollToBottom();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to get AI response",
+        variant: "destructive",
+      });
     },
   });
 
@@ -332,6 +366,41 @@ export function CollaborationPortalWidget() {
     aiChatMutation.mutate({ question: "Critique this message and provide constructive feedback.", messages });
   };
 
+  const handleMessageClick = (msg: Message) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to chat with AI about messages.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (msg.isAI) return; // Don't allow clicking on AI messages
+    setChattingAboutMessage(msg);
+    setAiChatMode('message');
+    setSelectedMessageId(msg.id);
+  };
+
+  const handleGeneralAiChat = () => {
+    if (!aiChatInput.trim() || generalAiChatMutation.isPending) return;
+    if (!isAuthenticated) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to chat with AI.",
+        variant: "destructive",
+      });
+      return;
+    }
+    generalAiChatMutation.mutate({ question: aiChatInput.trim() });
+  };
+
+  const handleCancelMessageChat = () => {
+    setChattingAboutMessage(null);
+    setAiChatMode('general');
+    setSelectedMessageId(null);
+    setAiChatInput("");
+  };
+
   // Draggable functionality
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!headerRef.current || !widgetRef.current) return;
@@ -437,13 +506,17 @@ export function CollaborationPortalWidget() {
                       </Avatar>
                     )}
                     <div className={`flex-1 ${msg.userId === user?.id ? 'flex flex-col items-end' : ''}`}>
-                      <div className={`inline-block rounded-lg p-2 max-w-[85%] text-xs ${
-                        msg.isAI
-                          ? 'bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800'
-                          : msg.userId === user?.id
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted'
-                      }`}>
+                      <div 
+                        className={`inline-block rounded-lg p-2 max-w-[85%] text-xs cursor-pointer transition-all ${
+                          msg.isAI
+                            ? 'bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800'
+                            : msg.userId === user?.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted hover:bg-muted/80'
+                        } ${!msg.isAI && isAuthenticated ? 'hover:ring-2 hover:ring-primary/50' : ''}`}
+                        onClick={() => handleMessageClick(msg)}
+                        title={!msg.isAI && isAuthenticated ? "Click to chat with AI about this message" : undefined}
+                      >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className={`text-xs font-semibold ${
                             msg.isAI ? 'text-purple-700 dark:text-purple-300' : ''
@@ -534,39 +607,123 @@ export function CollaborationPortalWidget() {
             </div>
           )}
 
-          {/* Message Input */}
-          <div className="px-3 py-2 border-t flex-shrink-0">
-            {!isAuthenticated ? (
-              <div className="flex items-center justify-center py-2 text-center">
-                <p className="text-xs text-muted-foreground">
-                  Please log in to send messages.
-                </p>
-              </div>
-            ) : (
-              <div className="flex gap-1.5">
-                <Textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your message..."
-                  className="min-h-[60px] max-h-[100px] resize-none text-xs"
-                  disabled={sendMessageMutation.isPending}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!message.trim() || sendMessageMutation.isPending}
-                  size="icon"
-                  className="h-[60px] w-[60px] flex-shrink-0"
-                >
-                  {sendMessageMutation.isPending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
+                  {/* AI Chat Input (when chatting about a message) */}
+                  {aiChatMode === 'message' && chattingAboutMessage && (
+                    <div className="px-3 py-2 border-t bg-purple-50 dark:bg-purple-950/20 flex-shrink-0">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                        <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                          Chatting about: "{chattingAboutMessage.content.substring(0, 50)}{chattingAboutMessage.content.length > 50 ? '...' : ''}"
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleCancelMessageChat}
+                          className="h-5 w-5 p-0 ml-auto"
+                        >
+                          <X className="w-3 h-3" />
+                        </Button>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Textarea
+                          value={aiChatInput}
+                          onChange={(e) => setAiChatInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleGeneralAiChat();
+                            }
+                          }}
+                          placeholder="Ask AI about this message..."
+                          className="min-h-[50px] max-h-[80px] resize-none text-xs"
+                          disabled={generalAiChatMutation.isPending || aiChatMutation.isPending}
+                        />
+                        <Button
+                          onClick={handleGeneralAiChat}
+                          disabled={!aiChatInput.trim() || generalAiChatMutation.isPending || aiChatMutation.isPending}
+                          size="icon"
+                          className="h-[50px] w-[50px] flex-shrink-0 bg-purple-600 hover:bg-purple-700"
+                        >
+                          {generalAiChatMutation.isPending || aiChatMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
                   )}
-                </Button>
-              </div>
-            )}
-          </div>
+
+                  {/* General AI Chat Input */}
+                  {isAuthenticated && aiChatMode === 'general' && (
+                    <div className="px-3 py-2 border-t bg-muted/30 flex-shrink-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Sparkles className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-medium text-muted-foreground">AI Chat</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <Textarea
+                          value={aiChatInput}
+                          onChange={(e) => setAiChatInput(e.target.value)}
+                          onKeyPress={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleGeneralAiChat();
+                            }
+                          }}
+                          placeholder="Ask AI about this idea..."
+                          className="min-h-[50px] max-h-[80px] resize-none text-xs"
+                          disabled={generalAiChatMutation.isPending}
+                        />
+                        <Button
+                          onClick={handleGeneralAiChat}
+                          disabled={!aiChatInput.trim() || generalAiChatMutation.isPending}
+                          size="icon"
+                          className="h-[50px] w-[50px] flex-shrink-0"
+                        >
+                          {generalAiChatMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Message Input */}
+                  <div className="px-3 py-2 border-t flex-shrink-0">
+                    {!isAuthenticated ? (
+                      <div className="flex items-center justify-center py-2 text-center">
+                        <p className="text-xs text-muted-foreground">
+                          Please log in to send messages.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex gap-1.5">
+                        <Textarea
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value)}
+                          onKeyPress={handleKeyPress}
+                          placeholder="Type your message..."
+                          className="min-h-[60px] max-h-[100px] resize-none text-xs"
+                          disabled={sendMessageMutation.isPending}
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={!message.trim() || sendMessageMutation.isPending}
+                          size="icon"
+                          className="h-[60px] w-[60px] flex-shrink-0"
+                        >
+                          {sendMessageMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
         </div>
 
         {/* Active Users Sidebar */}
