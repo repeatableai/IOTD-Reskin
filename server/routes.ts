@@ -4397,6 +4397,80 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Add missing database columns (works with current deployment)
+  app.post('/api/admin/add-missing-columns', async (req: any, res) => {
+    try {
+      // Simple token check
+      const token = req.query?.token || req.body?.token;
+      if (token !== 'iotd-fix-2024') {
+        return res.status(401).json({ message: "Invalid token" });
+      }
+
+      console.log("[Add Columns] Starting to add missing columns...");
+      
+      // Use the pool directly from db.ts - it's already connected to Render's database
+      const { pool } = await import('./db.js');
+      const client = await pool.connect();
+      
+      const columns = [
+        { name: 'preview_url', type: 'VARCHAR' },
+        { name: 'offer_tiers', type: 'JSONB' },
+        { name: 'why_now_analysis', type: 'TEXT' },
+        { name: 'proof_signals', type: 'TEXT' },
+        { name: 'market_gap', type: 'TEXT' },
+        { name: 'execution_plan', type: 'TEXT' },
+        { name: 'framework_data', type: 'JSONB' },
+        { name: 'trend_analysis', type: 'TEXT' },
+        { name: 'keyword_data', type: 'JSONB' },
+        { name: 'builder_prompts', type: 'JSONB' },
+        { name: 'community_signals', type: 'JSONB' },
+        { name: 'signal_badges', type: 'TEXT[]' },
+      ];
+      
+      const results = { added: [], existing: [], errors: [] };
+      
+      try {
+        for (const col of columns) {
+          try {
+            const checkQuery = `SELECT column_name FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = $1`;
+            const check = await client.query(checkQuery, [col.name]);
+            
+            if (check.rows.length === 0) {
+              await client.query(`ALTER TABLE ideas ADD COLUMN ${col.name} ${col.type}`);
+              results.added.push(col.name);
+              console.log(`[Add Columns] ✅ Added: ${col.name}`);
+            } else {
+              results.existing.push(col.name);
+              console.log(`[Add Columns] ✓ Already exists: ${col.name}`);
+            }
+          } catch (error: any) {
+            results.errors.push({ column: col.name, error: error.message });
+            console.error(`[Add Columns] ❌ Error adding ${col.name}:`, error.message);
+          }
+        }
+      } finally {
+        client.release();
+      }
+      
+      console.log(`[Add Columns] Complete: ${results.added.length} added, ${results.existing.length} existing, ${results.errors.length} errors`);
+      
+      res.json({
+        success: true,
+        message: `Added ${results.added.length} columns, ${results.existing.length} already existed`,
+        added: results.added,
+        existing: results.existing,
+        errors: results.errors
+      });
+    } catch (error: any) {
+      console.error("[Add Columns] Fatal error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to add columns",
+        error: error.message 
+      });
+    }
+  });
+
   // Export all ideas to JSON
   app.get('/api/admin/export-ideas', async (req: any, res) => {
     try {
