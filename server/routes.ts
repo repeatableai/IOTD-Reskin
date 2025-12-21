@@ -3489,8 +3489,15 @@ Return ONLY valid JSON, no markdown or explanation.`
       const response = await aiService.generateChatResponse(idea, message, history);
       
       res.json({ response });
-    } catch (error) {
-      console.error("Error generating AI chat response:", error);
+    } catch (error: any) {
+      console.error("[AI Chat] Error generating chat response:", error);
+      console.error("[AI Chat] Error stack:", error?.stack);
+      console.error("[AI Chat] Error details:", {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        type: error?.constructor?.name,
+      });
       res.status(500).json({ 
         message: "Failed to generate chat response",
         error: error instanceof Error ? error.message : 'Unknown error'

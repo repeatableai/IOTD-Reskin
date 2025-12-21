@@ -218,6 +218,12 @@ export interface RapidResearchReport {
 class AIService {
   private async callOpenAI(messages: ChatCompletionMessageParam[]): Promise<string> {
     try {
+      // Check if API key is set
+      if (!process.env.OPENAI_API_KEY) {
+        console.error('[OpenAI] OPENAI_API_KEY is not set');
+        throw new Error('OPENAI_API_KEY is not set. Please configure it in your environment variables.');
+      }
+
       const completion = await getOpenAI().chat.completions.create({
         model: "gpt-4o-mini",
         messages: messages,
@@ -225,9 +231,19 @@ class AIService {
         max_tokens: 4000,
       });
 
-      return completion.choices[0]?.message?.content || '';
-    } catch (error) {
-      console.error('OpenAI API error:', error);
+      const content = completion.choices[0]?.message?.content;
+      if (!content) {
+        console.error('[OpenAI] No content in response:', completion);
+        throw new Error('OpenAI returned an empty response');
+      }
+
+      return content;
+    } catch (error: any) {
+      console.error('[OpenAI] API error:', error);
+      // Provide more detailed error message
+      if (error?.message) {
+        throw new Error(`OpenAI API error: ${error.message}`);
+      }
       throw new Error('Failed to generate AI response');
     }
   }
@@ -1509,7 +1525,8 @@ Return as JSON with the same structure as the HTML analysis prompt. Extract all 
   }
 
   async generateChatResponse(idea: any, userMessage: string, history: Array<{ role: string; content: string }>): Promise<string> {
-    const context = `
+    try {
+      const context = `
 Idea: ${idea.title}
 Description: ${idea.description}
 Market: ${idea.market}
@@ -1518,25 +1535,61 @@ Opportunity Score: ${idea.opportunityScore}/10
 Problem Score: ${idea.problemScore}/10
 Execution Difficulty: ${idea.executionDifficulty}
 ${idea.content ? `\nDetailed Analysis: ${idea.content}` : ''}
-    `;
+      `;
 
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: "system",
-        content: `You are an expert startup advisor and business consultant. You're helping entrepreneurs understand and evaluate the following startup idea:\n\n${context}\n\nProvide helpful, practical, and insightful answers to questions about this idea. Be concise but thorough. Focus on actionable advice.`
-      },
-      ...history.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      })),
-      {
-        role: "user" as const,
-        content: userMessage
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: "system",
+          content: `You are an expert startup advisor and business consultant. You're helping entrepreneurs understand and evaluate the following startup idea:\n\n${context}\n\nProvide helpful, practical, and insightful answers to questions about this idea. Be concise but thorough. Focus on actionable advice.`
+        },
+        ...history.map(msg => ({
+          role: msg.role as 'user' | 'assistant',
+          content: msg.content
+        })),
+        {
+          role: "user" as const,
+          content: userMessage
+        }
+      ];
+
+      // Try OpenAI first
+      try {
+        const response = await this.callOpenAI(messages);
+        return response;
+      } catch (openAIError: any) {
+        console.error('[AI Chat] OpenAI failed, trying Anthropic fallback:', openAIError?.message);
+        
+        // Fallback to Anthropic if OpenAI fails
+        if (process.env.ANTHROPIC_API_KEY) {
+          try {
+            const anthropicResponse = await getAnthropic().messages.create({
+              model: "claude-3-5-sonnet-20241022",
+              max_tokens: 4000,
+              messages: [
+                {
+                  role: "user",
+                  content: `You are an expert startup advisor and business consultant. You're helping entrepreneurs understand and evaluate the following startup idea:\n\n${context}\n\nProvide helpful, practical, and insightful answers to questions about this idea. Be concise but thorough. Focus on actionable advice.\n\nConversation history:\n${history.map(m => `${m.role}: ${m.content}`).join('\n')}\n\nUser question: ${userMessage}`
+                }
+              ]
+            });
+            
+            const content = anthropicResponse.content[0];
+            if (content.type === 'text') {
+              return content.text;
+            }
+          } catch (anthropicError: any) {
+            console.error('[AI Chat] Anthropic fallback also failed:', anthropicError?.message);
+            throw new Error(`Both OpenAI and Anthropic failed. OpenAI: ${openAIError?.message || 'Unknown error'}, Anthropic: ${anthropicError?.message || 'Unknown error'}`);
+          }
+        }
+        
+        // If no Anthropic fallback available, throw the original OpenAI error
+        throw openAIError;
       }
-    ];
-
-    const response = await this.callOpenAI(messages);
-    return response;
+    } catch (error: any) {
+      console.error('[AI Chat] generateChatResponse error:', error);
+      throw error;
+    }
   }
 
   async performComprehensiveResearch(params: {
