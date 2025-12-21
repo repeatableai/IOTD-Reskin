@@ -5515,7 +5515,9 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       res.json({ insight });
     } catch (error: any) {
       console.error("Error generating AI insight:", error);
-      res.status(500).json({ message: "Failed to generate AI insight", error: error.message });
+      console.error("Error stack:", error?.stack);
+      const errorMessage = error?.message || 'Unknown error';
+      res.status(500).json({ message: "Failed to generate AI insight", error: errorMessage });
     }
   });
 

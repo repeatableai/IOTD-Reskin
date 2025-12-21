@@ -2583,10 +2583,20 @@ Be concise but comprehensive. Format as a clear, actionable insight that helps m
         ]
       });
 
+      if (!response.content || response.content.length === 0) {
+        throw new Error('Empty response from AI');
+      }
       return response.content[0].type === 'text' ? response.content[0].text : '';
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error generating collaboration insight:', error);
-      throw new Error('Failed to generate collaboration insight');
+      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      console.error('Error details:', {
+        message: errorMessage,
+        stack: error?.stack,
+        status: error?.status,
+        statusText: error?.statusText,
+      });
+      throw new Error(`Failed to generate collaboration insight: ${errorMessage}`);
     }
   }
 
