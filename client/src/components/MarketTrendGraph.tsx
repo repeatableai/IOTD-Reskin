@@ -78,6 +78,35 @@ const SparklineChart = ({ data, color = "#22c55e", height = 60 }: { data: number
   );
 };
 
+// Generate sparkline data from API data or fallback (matching Trends tab)
+const generateSparklineData = (growth: number, data?: TrendData) => {
+  // If we have fetched data, use it
+  if (data?.timelineData && data.timelineData.length > 0) {
+    return data.timelineData.map(d => d.value);
+  }
+  
+  // Fallback (matching Trends tab logic)
+  const points = 12;
+  const result = [];
+  let value = 50;
+  
+  for (let i = 0; i < points; i++) {
+    const trend = (growth / 100) * (i / points) * 30;
+    value = Math.max(10, Math.min(100, value + trend / points));
+    result.push(value);
+  }
+  
+  return result;
+};
+
+// Get growth color (matching Trends tab)
+const getGrowthColor = (growth: number) => {
+  if (growth >= 500) return "text-green-600";
+  if (growth >= 100) return "text-green-500";
+  if (growth >= 50) return "text-emerald-500";
+  return "text-teal-500";
+};
+
 export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) {
   const { data: trendData, isLoading } = useQuery<TrendData>({
     queryKey: ['/api/external/trend', keyword],
@@ -88,106 +117,62 @@ export function MarketTrendGraph({ keyword, ideaTitle }: MarketTrendGraphProps) 
     return null;
   }
 
-  // Generate sparkline data from API data or fallback
-  const generateSparklineData = (growth: number, data?: TrendData) => {
-    // If we have fetched data, use it
-    if (data?.timelineData && data.timelineData.length > 0) {
-      return data.timelineData.map(d => d.value);
-    }
-    
-    // Fallback
-    const points = 12;
-    const result = [];
-    let value = 50;
-    
-    for (let i = 0; i < points; i++) {
-      const trend = (growth / 100) * (i / points);
-      value = Math.max(10, Math.min(100, value + trend / points));
-      result.push(value);
-    }
-    
-    return result;
-  };
-
-  const growthNum = trendData?.growth ? parseFloat(trendData.growth.replace(/[^0-9.-]/g, '')) : 0;
+  // Calculate growth number from API data or fallback
+  const growthNum = trendData?.growthRate ?? (trendData?.growth ? parseFloat(trendData.growth.replace(/[^0-9.-]/g, '')) : 0);
   const sparklineData = generateSparklineData(growthNum, trendData);
-  const color = growthNum > 0 ? "#22c55e" : "#ef4444";
+  
+  // Use color from trendData if available, otherwise determine from growth
+  const color = trendData?.growthRate !== undefined 
+    ? (growthNum >= 500 ? "#22c55e" : growthNum >= 100 ? "#22c55e" : growthNum >= 50 ? "#84cc16" : "#ef4444")
+    : (growthNum > 0 ? "#22c55e" : "#ef4444");
+
+  // Format volume display (matching Trends tab)
+  const displayVolume = trendData?.currentValue 
+    ? trendData.currentValue >= 1000 
+      ? `${(trendData.currentValue / 1000).toFixed(1)}K`
+      : trendData.currentValue.toString()
+    : trendData?.volume
+    ? trendData.volume >= 1000
+      ? `${(trendData.volume / 1000).toFixed(1)}K`
+      : trendData.volume.toString()
+    : "N/A";
+
+  // Format growth display (matching Trends tab)
+  const displayGrowth = trendData?.growthRate !== undefined
+    ? `${trendData.growthRate >= 0 ? '+' : ''}${trendData.growthRate}%`
+    : trendData?.growth || "N/A";
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <CardTitle>Market Trend Analysis</CardTitle>
-          </div>
-          {trendData && trendData.growth && (
-            <Badge variant={growthNum > 0 ? "default" : "destructive"} className="text-sm">
-              {trendData.growth} YoY Growth
-            </Badge>
+    <Card className="border-2">
+      <CardContent className="p-5">
+        {/* Title */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-lg line-clamp-1">
+            {ideaTitle || keyword}
+          </h3>
+          {isLoading && (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           )}
         </div>
-        {ideaTitle && (
-          <p className="text-sm text-muted-foreground mt-1">
-            Keyword: <span className="font-medium">{keyword}</span>
-          </p>
-        )}
-      </CardHeader>
-      <CardContent>
-        {isLoading ? (
-          <div className="flex items-center justify-center h-[200px]">
-            <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-2 text-primary" />
-              <p className="text-sm text-muted-foreground">Loading trend data...</p>
-            </div>
+        
+        {/* Chart (matching Trends tab height) */}
+        <div className="mb-4 -mx-2">
+          <SparklineChart data={sparklineData} color={color} height={80} />
+        </div>
+        
+        {/* Stats Row (matching Trends tab style) */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-medium">{displayVolume}</span>
+            <span className="text-xs text-muted-foreground">volume</span>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Sparkline Chart */}
-            <div className="h-[60px] w-full">
-              <SparklineChart data={sparklineData} color={color} height={60} />
-            </div>
-
-            {/* Metrics Grid (matching Trends tab style) */}
-            {trendData && (
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-                {trendData.currentValue ? (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Current Volume</div>
-                    <div className="text-2xl font-bold">{trendData.currentValue.toLocaleString()}</div>
-                  </div>
-                ) : trendData.volume ? (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Monthly Volume</div>
-                    <div className="text-2xl font-bold">{trendData.volume.toLocaleString()}</div>
-                  </div>
-                ) : null}
-                
-                {trendData.peakValue && (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Peak Volume</div>
-                    <div className="text-2xl font-bold">{trendData.peakValue.toLocaleString()}</div>
-                    {trendData.peakDate && (
-                      <div className="text-xs text-muted-foreground mt-1">{trendData.peakDate}</div>
-                    )}
-                  </div>
-                )}
-                
-                {trendData.averageValue ? (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Average Volume</div>
-                    <div className="text-2xl font-bold">{trendData.averageValue.toLocaleString()}</div>
-                  </div>
-                ) : trendData.volume ? (
-                  <div>
-                    <div className="text-sm text-muted-foreground mb-1">Growth Rate</div>
-                    <div className="text-2xl font-bold text-green-600">{trendData.growth || 'N/A'}</div>
-                  </div>
-                ) : null}
-              </div>
-            )}
+          <div className="flex items-center gap-1">
+            <TrendingUp className={`w-4 h-4 ${getGrowthColor(growthNum)}`} />
+            <span className={`text-sm font-bold ${getGrowthColor(growthNum)}`}>
+              {displayGrowth}
+            </span>
           </div>
-        )}
+        </div>
       </CardContent>
     </Card>
   );
