@@ -4651,6 +4651,98 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Update first page of ideas with previewUrl from export file
+  app.post('/api/admin/update-first-page-preview-urls', upload.single('file'), async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+      
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+        
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+      
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      
+      const fileContent = file.buffer.toString('utf-8');
+      const exportData = JSON.parse(fileContent);
+      
+      if (!exportData.ideas || !Array.isArray(exportData.ideas)) {
+        return res.status(400).json({ message: "Invalid export file format" });
+      }
+      
+      // Get first page of ideas (50 most recent)
+      const firstPageIdeas = await db.select()
+        .from(ideas)
+        .where(eq(ideas.isPublished, true))
+        .orderBy(desc(ideas.createdAt))
+        .limit(50);
+      
+      console.log(`[Update First Page] Found ${firstPageIdeas.length} ideas on first page`);
+      
+      // Create a map of slug -> previewUrl from export file
+      const exportMap = new Map<string, string>();
+      for (const ideaData of exportData.ideas) {
+        if (ideaData.slug && ideaData.previewUrl) {
+          exportMap.set(ideaData.slug, ideaData.previewUrl);
+        }
+      }
+      
+      console.log(`[Update First Page] Export file has ${exportMap.size} ideas with previewUrl`);
+      
+      let updatedCount = 0;
+      let skippedCount = 0;
+      const updatedSlugs: string[] = [];
+      
+      for (const idea of firstPageIdeas) {
+        const previewUrl = exportMap.get(idea.slug);
+        
+        if (previewUrl && (!idea.previewUrl || idea.previewUrl.trim() === '')) {
+          try {
+            await db.update(ideas)
+              .set({ previewUrl })
+              .where(eq(ideas.slug, idea.slug));
+            updatedCount++;
+            updatedSlugs.push(idea.slug);
+            
+            if (updatedCount % 10 === 0) {
+              console.log(`[Update First Page] Progress: ${updatedCount} updated`);
+            }
+          } catch (error: any) {
+            console.error(`[Update First Page] Error updating ${idea.slug}:`, error.message);
+            skippedCount++;
+          }
+        } else {
+          skippedCount++;
+        }
+      }
+      
+      console.log(`[Update First Page] Complete: ${updatedCount} updated, ${skippedCount} skipped`);
+      
+      res.json({
+        success: true,
+        message: `Updated ${updatedCount} ideas on first page with previewUrl`,
+        updated: updatedCount,
+        skipped: skippedCount,
+        updatedSlugs: updatedSlugs.slice(0, 20) // Return first 20 for verification
+      });
+    } catch (error: any) {
+      console.error("[Update First Page] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update preview URLs",
+        error: error.message
+      });
+    }
+  });
+
   // Update existing ideas with previewUrl from export file
   app.post('/api/admin/update-preview-urls', upload.single('file'), async (req: any, res) => {
     try {
