@@ -1862,6 +1862,16 @@ export default function IdeaDetail() {
           ideaTitle={idea.title}
         />
       )}
+
+      {/* Collaboration Portal */}
+      {idea?.id && (
+        <CollaborationPortal
+          ideaId={idea.id}
+          ideaTitle={idea.title}
+          open={showCollaborationPortal}
+          onOpenChange={setShowCollaborationPortal}
+        />
+      )}
     </div>
   );
 }
