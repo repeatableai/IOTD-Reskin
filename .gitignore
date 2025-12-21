@@ -10,3 +10,4 @@ server-errors.log
 .cursor/
 ideas-export.json
 COPY_PASTE_VALUES.txt
+.env

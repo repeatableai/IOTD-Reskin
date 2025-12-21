@@ -269,16 +269,20 @@ export function CollaborationPortalWidget() {
     }
   }, [messagesData?.messages?.length, isOpen]);
 
+  // Calculate widget dimensions - wider to show all areas (moved before drag handler)
+  const widgetWidth = isExpanded ? 700 : 550;
+  const widgetHeight = isExpanded ? Math.max(500, Math.floor(windowSize.height / 2.5)) : 600;
+
   // Draggable mouse move handler - hooks must be called unconditionally
   useEffect(() => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!widgetRef.current) return;
-      const widgetWidth = widgetRef.current.offsetWidth || 350;
-      const widgetHeight = widgetRef.current.offsetHeight || 500;
-      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, window.innerWidth - widgetWidth));
-      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, window.innerHeight - widgetHeight));
+      const currentWidth = widgetRef.current.offsetWidth || widgetWidth;
+      const currentHeight = widgetRef.current.offsetHeight || widgetHeight;
+      const newX = Math.max(0, Math.min(e.clientX - dragStart.x, window.innerWidth - currentWidth));
+      const newY = Math.max(0, Math.min(e.clientY - dragStart.y, window.innerHeight - currentHeight));
       updatePosition(newX, newY);
     };
 
@@ -293,7 +297,7 @@ export function CollaborationPortalWidget() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging, dragStart, updatePosition]);
+  }, [isDragging, dragStart, updatePosition, widgetWidth, widgetHeight]);
 
   // Early return AFTER all hooks
   if (!isOpen || !ideaId || !ideaTitle) {
