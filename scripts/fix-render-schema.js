@@ -66,26 +66,6 @@ async function fixSchema() {
       }
     }
     
-    // Fix collaboration_sessions socket_id column (make it nullable)
-    try {
-      const socketIdCheck = await client.query(`
-        SELECT column_name, is_nullable
-        FROM information_schema.columns 
-        WHERE table_name = 'collaboration_sessions' AND column_name = 'socket_id';
-      `);
-      
-      if (socketIdCheck.rows.length > 0 && socketIdCheck.rows[0].is_nullable === 'NO') {
-        console.log(`[Schema Fix] 🔧 Making socket_id column nullable in collaboration_sessions...`);
-        await client.query(`
-          ALTER TABLE collaboration_sessions 
-          ALTER COLUMN socket_id DROP NOT NULL;
-        `);
-        console.log(`[Schema Fix] ✅ Made socket_id nullable`);
-      }
-    } catch (error) {
-      console.error(`[Schema Fix] ⚠️ Could not fix socket_id column:`, error.message);
-    }
-    
     console.log(`[Schema Fix] ✅ Schema fix complete! Added ${addedCount} columns, ${existingCount} already existed`);
   } catch (error) {
     console.error('[Schema Fix] ❌ Error fixing schema:', error.message);
