@@ -86,6 +86,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add iframe headers middleware - allows embedding in iframes
+app.use((req, res, next) => {
+  res.removeHeader('X-Frame-Options');
+  res.setHeader('X-Frame-Options', 'ALLOWALL');
+  res.setHeader('Content-Security-Policy', "frame-ancestors *");
+  next();
+});
+
 (async () => {
   // Check and seed database if empty
   await checkAndSeedDatabase();
