@@ -249,6 +249,44 @@ export default function BuildPrompt() {
   const [selectedBuildPrompt, setSelectedBuildPrompt] = useState<string | null>(null);
   const [buildPrompts, setBuildPrompts] = useState<any>(null);
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
+  const [landingPagePrompt, setLandingPagePrompt] = useState<string | null>(null);
+  const [isGeneratingLandingPage, setIsGeneratingLandingPage] = useState(false);
+  const [brandPackagePrompt, setBrandPackagePrompt] = useState<string | null>(null);
+  const [isGeneratingBrandPackage, setIsGeneratingBrandPackage] = useState(false);
+  const [adCreativesPrompt, setAdCreativesPrompt] = useState<string | null>(null);
+  const [isGeneratingAdCreatives, setIsGeneratingAdCreatives] = useState(false);
+  const [contentCalendarPrompt, setContentCalendarPrompt] = useState<string | null>(null);
+  const [isGeneratingContentCalendar, setIsGeneratingContentCalendar] = useState(false);
+  const [emailFunnelPrompt, setEmailFunnelPrompt] = useState<string | null>(null);
+  const [isGeneratingEmailFunnel, setIsGeneratingEmailFunnel] = useState(false);
+  const [emailNurturePrompt, setEmailNurturePrompt] = useState<string | null>(null);
+  const [isGeneratingEmailNurture, setIsGeneratingEmailNurture] = useState(false);
+  const [leadMagnetPrompt, setLeadMagnetPrompt] = useState<string | null>(null);
+  const [isGeneratingLeadMagnet, setIsGeneratingLeadMagnet] = useState(false);
+  const [userPersonasPrompt, setUserPersonasPrompt] = useState<string | null>(null);
+  const [isGeneratingUserPersonas, setIsGeneratingUserPersonas] = useState(false);
+  const [salesFunnelPrompt, setSalesFunnelPrompt] = useState<string | null>(null);
+  const [isGeneratingSalesFunnel, setIsGeneratingSalesFunnel] = useState(false);
+  const [seoContentPrompt, setSeoContentPrompt] = useState<string | null>(null);
+  const [isGeneratingSeoContent, setIsGeneratingSeoContent] = useState(false);
+  const [tweetLandingPrompt, setTweetLandingPrompt] = useState<string | null>(null);
+  const [isGeneratingTweetLanding, setIsGeneratingTweetLanding] = useState(false);
+  const [featureSpecsPrompt, setFeatureSpecsPrompt] = useState<string | null>(null);
+  const [isGeneratingFeatureSpecs, setIsGeneratingFeatureSpecs] = useState(false);
+  const [mvpRoadmapPrompt, setMvpRoadmapPrompt] = useState<string | null>(null);
+  const [isGeneratingMvpRoadmap, setIsGeneratingMvpRoadmap] = useState(false);
+  const [gtmLaunchCalendarPrompt, setGtmLaunchCalendarPrompt] = useState<string | null>(null);
+  const [isGeneratingGtmLaunchCalendar, setIsGeneratingGtmLaunchCalendar] = useState(false);
+  const [gtmStrategyPrompt, setGtmStrategyPrompt] = useState<string | null>(null);
+  const [isGeneratingGtmStrategy, setIsGeneratingGtmStrategy] = useState(false);
+  const [kpiDashboardPrompt, setKpiDashboardPrompt] = useState<string | null>(null);
+  const [isGeneratingKpiDashboard, setIsGeneratingKpiDashboard] = useState(false);
+  const [pricingStrategyPrompt, setPricingStrategyPrompt] = useState<string | null>(null);
+  const [isGeneratingPricingStrategy, setIsGeneratingPricingStrategy] = useState(false);
+  const [competitiveAnalysisPrompt, setCompetitiveAnalysisPrompt] = useState<string | null>(null);
+  const [isGeneratingCompetitiveAnalysis, setIsGeneratingCompetitiveAnalysis] = useState(false);
+  const [customerInterviewGuidePrompt, setCustomerInterviewGuidePrompt] = useState<string | null>(null);
+  const [isGeneratingCustomerInterviewGuide, setIsGeneratingCustomerInterviewGuide] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [updateInstruction, setUpdateInstruction] = useState("");
@@ -332,6 +370,785 @@ export default function BuildPrompt() {
     // Reset selection when template changes
     if (selectedTemplate !== 'product-requirements-doc') {
       setSelectedBuildPrompt(null);
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate landing page prompt (force=true skips cache and regenerates)
+  const generateLandingPagePrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingLandingPage(true);
+    try {
+      const response = await fetch('/api/ai/generate-landing-page-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate landing page prompt');
+      }
+
+      const data = await response.json();
+      setLandingPagePrompt(data.prompt);
+      toast({
+        title: force ? "Landing page prompt regenerated!" : "Landing page prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate landing page prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingLandingPage(false);
+    }
+  };
+
+  // Auto-generate landing page prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'landing-page' && !landingPagePrompt && idea && !isGeneratingLandingPage) {
+      generateLandingPagePrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate brand package prompt (force=true skips cache and regenerates)
+  const generateBrandPackagePrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingBrandPackage(true);
+    try {
+      const response = await fetch('/api/ai/generate-brand-package-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate brand package prompt');
+      }
+
+      const data = await response.json();
+      setBrandPackagePrompt(data.prompt);
+      toast({
+        title: force ? "Brand package prompt regenerated!" : "Brand package prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate brand package prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingBrandPackage(false);
+    }
+  };
+
+  // Auto-generate brand package prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'brand-package' && !brandPackagePrompt && idea && !isGeneratingBrandPackage) {
+      generateBrandPackagePrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate ad creatives prompt (force=true skips cache and regenerates)
+  const generateAdCreativesPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingAdCreatives(true);
+    try {
+      const response = await fetch('/api/ai/generate-ad-creatives-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate ad creatives prompt');
+      }
+
+      const data = await response.json();
+      setAdCreativesPrompt(data.prompt);
+      toast({
+        title: force ? "Ad creatives prompt regenerated!" : "Ad creatives prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate ad creatives prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingAdCreatives(false);
+    }
+  };
+
+  // Auto-generate ad creatives prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'ad-creatives' && !adCreativesPrompt && idea && !isGeneratingAdCreatives) {
+      generateAdCreativesPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate content calendar prompt (force=true skips cache and regenerates)
+  const generateContentCalendarPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingContentCalendar(true);
+    try {
+      const response = await fetch('/api/ai/generate-content-calendar-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate content calendar prompt');
+      }
+
+      const data = await response.json();
+      setContentCalendarPrompt(data.prompt);
+      toast({
+        title: force ? "Content calendar prompt regenerated!" : "Content calendar prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate content calendar prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingContentCalendar(false);
+    }
+  };
+
+  // Auto-generate content calendar prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'content-calendar' && !contentCalendarPrompt && idea && !isGeneratingContentCalendar) {
+      generateContentCalendarPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate email funnel prompt (force=true skips cache and regenerates)
+  const generateEmailFunnelPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingEmailFunnel(true);
+    try {
+      const response = await fetch('/api/ai/generate-email-funnel-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate email funnel prompt');
+      }
+
+      const data = await response.json();
+      setEmailFunnelPrompt(data.prompt);
+      toast({
+        title: force ? "Email funnel prompt regenerated!" : "Email funnel prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate email funnel prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingEmailFunnel(false);
+    }
+  };
+
+  // Auto-generate email funnel prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'email-funnel-system' && !emailFunnelPrompt && idea && !isGeneratingEmailFunnel) {
+      generateEmailFunnelPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate email nurture sequence prompt (force=true skips cache and regenerates)
+  const generateEmailNurturePrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingEmailNurture(true);
+    try {
+      const response = await fetch('/api/ai/generate-email-nurture-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate email nurture prompt');
+      }
+
+      const data = await response.json();
+      setEmailNurturePrompt(data.prompt);
+      toast({
+        title: force ? "Email nurture prompt regenerated!" : "Email nurture prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate email nurture prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingEmailNurture(false);
+    }
+  };
+
+  // Auto-generate email nurture prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'email-sequence' && !emailNurturePrompt && idea && !isGeneratingEmailNurture) {
+      generateEmailNurturePrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate lead magnet prompt (force=true skips cache and regenerates)
+  const generateLeadMagnetPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingLeadMagnet(true);
+    try {
+      const response = await fetch('/api/ai/generate-lead-magnet-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate lead magnet prompt');
+      }
+
+      const data = await response.json();
+      setLeadMagnetPrompt(data.prompt);
+      toast({
+        title: force ? "Lead magnet prompt regenerated!" : "Lead magnet prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate lead magnet prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingLeadMagnet(false);
+    }
+  };
+
+  // Auto-generate lead magnet prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'lead-magnet' && !leadMagnetPrompt && idea && !isGeneratingLeadMagnet) {
+      generateLeadMagnetPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate user personas prompt (force=true skips cache and regenerates)
+  const generateUserPersonasPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingUserPersonas(true);
+    try {
+      const response = await fetch('/api/ai/generate-user-personas-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate user personas prompt');
+      }
+
+      const data = await response.json();
+      setUserPersonasPrompt(data.prompt);
+      toast({
+        title: force ? "User personas prompt regenerated!" : "User personas prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate user personas prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingUserPersonas(false);
+    }
+  };
+
+  // Auto-generate user personas prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'user-personas' && !userPersonasPrompt && idea && !isGeneratingUserPersonas) {
+      generateUserPersonasPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate sales funnel prompt (force=true skips cache and regenerates)
+  const generateSalesFunnelPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingSalesFunnel(true);
+    try {
+      const response = await fetch('/api/ai/generate-sales-funnel-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate sales funnel prompt');
+      }
+
+      const data = await response.json();
+      setSalesFunnelPrompt(data.prompt);
+      toast({
+        title: force ? "Sales funnel prompt regenerated!" : "Sales funnel prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate sales funnel prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSalesFunnel(false);
+    }
+  };
+
+  // Auto-generate sales funnel prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'sales-funnel' && !salesFunnelPrompt && idea && !isGeneratingSalesFunnel) {
+      generateSalesFunnelPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate SEO content prompt (force=true skips cache and regenerates)
+  const generateSeoContentPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingSeoContent(true);
+    try {
+      const response = await fetch('/api/ai/generate-seo-content-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate SEO content prompt');
+      }
+
+      const data = await response.json();
+      setSeoContentPrompt(data.prompt);
+      toast({
+        title: force ? "SEO content prompt regenerated!" : "SEO content prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate SEO content prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingSeoContent(false);
+    }
+  };
+
+  // Auto-generate SEO content prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'seo-content' && !seoContentPrompt && idea && !isGeneratingSeoContent) {
+      generateSeoContentPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate tweet-sized landing page prompt (force=true skips cache and regenerates)
+  const generateTweetLandingPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingTweetLanding(true);
+    try {
+      const response = await fetch('/api/ai/generate-tweet-landing-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate tweet landing prompt');
+      }
+
+      const data = await response.json();
+      setTweetLandingPrompt(data.prompt);
+      toast({
+        title: force ? "Tweet landing prompt regenerated!" : "Tweet landing prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate tweet landing prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingTweetLanding(false);
+    }
+  };
+
+  // Auto-generate tweet landing prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'tweet-sized-landing-page' && !tweetLandingPrompt && idea && !isGeneratingTweetLanding) {
+      generateTweetLandingPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate feature specs prompt (force=true skips cache and regenerates)
+  const generateFeatureSpecsPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingFeatureSpecs(true);
+    try {
+      const response = await fetch('/api/ai/generate-feature-specs-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate feature specs prompt');
+      }
+
+      const data = await response.json();
+      setFeatureSpecsPrompt(data.prompt);
+      toast({
+        title: force ? "Feature specs prompt regenerated!" : "Feature specs prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate feature specs prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingFeatureSpecs(false);
+    }
+  };
+
+  // Auto-generate feature specs prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'feature-specs' && !featureSpecsPrompt && idea && !isGeneratingFeatureSpecs) {
+      generateFeatureSpecsPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate MVP roadmap prompt (force=true skips cache and regenerates)
+  const generateMvpRoadmapPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingMvpRoadmap(true);
+    try {
+      const response = await fetch('/api/ai/generate-mvp-roadmap-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate MVP roadmap prompt');
+      }
+
+      const data = await response.json();
+      setMvpRoadmapPrompt(data.prompt);
+      toast({
+        title: force ? "MVP roadmap prompt regenerated!" : "MVP roadmap prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate MVP roadmap prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingMvpRoadmap(false);
+    }
+  };
+
+  // Auto-generate MVP roadmap prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'mvp-roadmap' && !mvpRoadmapPrompt && idea && !isGeneratingMvpRoadmap) {
+      generateMvpRoadmapPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate GTM strategy prompt (force=true skips cache and regenerates)
+  const generateGtmStrategyPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingGtmStrategy(true);
+    try {
+      const response = await fetch('/api/ai/generate-gtm-strategy-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate GTM strategy prompt');
+      }
+
+      const data = await response.json();
+      setGtmStrategyPrompt(data.prompt);
+      toast({
+        title: force ? "GTM strategy prompt regenerated!" : "GTM strategy prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate GTM strategy prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingGtmStrategy(false);
+    }
+  };
+
+  // Auto-generate GTM strategy prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'gtm-strategy' && !gtmStrategyPrompt && idea && !isGeneratingGtmStrategy) {
+      generateGtmStrategyPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate GTM launch calendar prompt (force=true skips cache and regenerates)
+  const generateGtmLaunchCalendarPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingGtmLaunchCalendar(true);
+    try {
+      const response = await fetch('/api/ai/generate-gtm-launch-calendar-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate GTM launch calendar prompt');
+      }
+
+      const data = await response.json();
+      setGtmLaunchCalendarPrompt(data.prompt);
+      toast({
+        title: force ? "GTM launch calendar prompt regenerated!" : "GTM launch calendar prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate GTM launch calendar prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingGtmLaunchCalendar(false);
+    }
+  };
+
+  // Auto-generate GTM launch calendar prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'gtm-launch-calendar' && !gtmLaunchCalendarPrompt && idea && !isGeneratingGtmLaunchCalendar) {
+      generateGtmLaunchCalendarPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate KPI dashboard prompt (force=true skips cache and regenerates)
+  const generateKpiDashboardPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingKpiDashboard(true);
+    try {
+      const response = await fetch('/api/ai/generate-kpi-dashboard-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate KPI dashboard prompt');
+      }
+
+      const data = await response.json();
+      setKpiDashboardPrompt(data.prompt);
+      toast({
+        title: force ? "KPI dashboard prompt regenerated!" : "KPI dashboard prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate KPI dashboard prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingKpiDashboard(false);
+    }
+  };
+
+  // Auto-generate KPI dashboard prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'kpi-dashboard' && !kpiDashboardPrompt && idea && !isGeneratingKpiDashboard) {
+      generateKpiDashboardPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate pricing strategy prompt (force=true skips cache and regenerates)
+  const generatePricingStrategyPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingPricingStrategy(true);
+    try {
+      const response = await fetch('/api/ai/generate-pricing-strategy-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate pricing strategy prompt');
+      }
+
+      const data = await response.json();
+      setPricingStrategyPrompt(data.prompt);
+      toast({
+        title: force ? "Pricing strategy prompt regenerated!" : "Pricing strategy prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate pricing strategy prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingPricingStrategy(false);
+    }
+  };
+
+  // Auto-generate pricing strategy prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'pricing-strategy' && !pricingStrategyPrompt && idea && !isGeneratingPricingStrategy) {
+      generatePricingStrategyPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate competitive analysis prompt (force=true skips cache and regenerates)
+  const generateCompetitiveAnalysisPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingCompetitiveAnalysis(true);
+    try {
+      const response = await fetch('/api/ai/generate-competitive-analysis-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate competitive analysis prompt');
+      }
+
+      const data = await response.json();
+      setCompetitiveAnalysisPrompt(data.prompt);
+      toast({
+        title: force ? "Competitive analysis prompt regenerated!" : "Competitive analysis prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate competitive analysis prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingCompetitiveAnalysis(false);
+    }
+  };
+
+  // Auto-generate competitive analysis prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'competitive-analysis' && !competitiveAnalysisPrompt && idea && !isGeneratingCompetitiveAnalysis) {
+      generateCompetitiveAnalysisPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
+  // Generate customer interview guide prompt (force=true skips cache and regenerates)
+  const generateCustomerInterviewGuidePrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingCustomerInterviewGuide(true);
+    try {
+      const response = await fetch('/api/ai/generate-customer-interview-guide-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate customer interview guide prompt');
+      }
+
+      const data = await response.json();
+      setCustomerInterviewGuidePrompt(data.prompt);
+      toast({
+        title: force ? "Customer interview guide prompt regenerated!" : "Customer interview guide prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate customer interview guide prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingCustomerInterviewGuide(false);
+    }
+  };
+
+  // Auto-generate customer interview guide prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'customer-interview-guide' && !customerInterviewGuidePrompt && idea && !isGeneratingCustomerInterviewGuide) {
+      generateCustomerInterviewGuidePrompt();
     }
   }, [selectedTemplate, idea]);
 
@@ -423,6 +1240,139 @@ export default function BuildPrompt() {
 
   // Get current prompt content based on template and selection
   const getPromptContent = (): string => {
+    // Landing Page template
+    if (selectedTemplate === 'landing-page') {
+      if (isGeneratingLandingPage) return '';
+      if (landingPagePrompt) return landingPagePrompt;
+      return 'Select this template to generate a landing page prompt tailored to this idea.';
+    }
+
+    // Brand Package template
+    if (selectedTemplate === 'brand-package') {
+      if (isGeneratingBrandPackage) return '';
+      if (brandPackagePrompt) return brandPackagePrompt;
+      return 'Select this template to generate a brand package prompt tailored to this idea.';
+    }
+
+    // Ad Creatives template
+    if (selectedTemplate === 'ad-creatives') {
+      if (isGeneratingAdCreatives) return '';
+      if (adCreativesPrompt) return adCreativesPrompt;
+      return 'Select this template to generate an ad creatives prompt tailored to this idea.';
+    }
+
+    // Content Calendar template
+    if (selectedTemplate === 'content-calendar') {
+      if (isGeneratingContentCalendar) return '';
+      if (contentCalendarPrompt) return contentCalendarPrompt;
+      return 'Select this template to generate a content calendar prompt tailored to this idea.';
+    }
+
+    // Email Funnel System template
+    if (selectedTemplate === 'email-funnel-system') {
+      if (isGeneratingEmailFunnel) return '';
+      if (emailFunnelPrompt) return emailFunnelPrompt;
+      return 'Select this template to generate an email funnel prompt tailored to this idea.';
+    }
+
+    // Email Nurture Sequence template
+    if (selectedTemplate === 'email-sequence') {
+      if (isGeneratingEmailNurture) return '';
+      if (emailNurturePrompt) return emailNurturePrompt;
+      return 'Select this template to generate an email nurture sequence prompt tailored to this idea.';
+    }
+
+    // Lead Magnet template
+    if (selectedTemplate === 'lead-magnet') {
+      if (isGeneratingLeadMagnet) return '';
+      if (leadMagnetPrompt) return leadMagnetPrompt;
+      return 'Select this template to generate a lead magnet blueprint prompt tailored to this idea.';
+    }
+
+    // User Personas template
+    if (selectedTemplate === 'user-personas') {
+      if (isGeneratingUserPersonas) return '';
+      if (userPersonasPrompt) return userPersonasPrompt;
+      return 'Select this template to generate a user personas system prompt tailored to this idea.';
+    }
+
+    // Sales Funnel template
+    if (selectedTemplate === 'sales-funnel') {
+      if (isGeneratingSalesFunnel) return '';
+      if (salesFunnelPrompt) return salesFunnelPrompt;
+      return 'Select this template to generate a sales funnel strategy prompt tailored to this idea.';
+    }
+
+    // SEO Content template
+    if (selectedTemplate === 'seo-content') {
+      if (isGeneratingSeoContent) return '';
+      if (seoContentPrompt) return seoContentPrompt;
+      return 'Select this template to generate an SEO content strategy prompt tailored to this idea.';
+    }
+
+    // Tweet-Sized Landing Page template
+    if (selectedTemplate === 'tweet-sized-landing-page') {
+      if (isGeneratingTweetLanding) return '';
+      if (tweetLandingPrompt) return tweetLandingPrompt;
+      return 'Select this template to generate a tweet-sized landing page prompt tailored to this idea.';
+    }
+
+    // MVP Roadmap template
+    if (selectedTemplate === 'mvp-roadmap') {
+      if (isGeneratingMvpRoadmap) return '';
+      if (mvpRoadmapPrompt) return mvpRoadmapPrompt;
+      return 'Select this template to generate an MVP roadmap prompt tailored to this idea.';
+    }
+
+    // Customer Interview Guide template
+    if (selectedTemplate === 'customer-interview-guide') {
+      if (isGeneratingCustomerInterviewGuide) return '';
+      if (customerInterviewGuidePrompt) return customerInterviewGuidePrompt;
+      return 'Select this template to generate a customer interview guide prompt tailored to this idea.';
+    }
+
+    // Competitive Analysis template
+    if (selectedTemplate === 'competitive-analysis') {
+      if (isGeneratingCompetitiveAnalysis) return '';
+      if (competitiveAnalysisPrompt) return competitiveAnalysisPrompt;
+      return 'Select this template to generate a competitive analysis prompt tailored to this idea.';
+    }
+
+    // Pricing Strategy template
+    if (selectedTemplate === 'pricing-strategy') {
+      if (isGeneratingPricingStrategy) return '';
+      if (pricingStrategyPrompt) return pricingStrategyPrompt;
+      return 'Select this template to generate a pricing strategy prompt tailored to this idea.';
+    }
+
+    // KPI Dashboard template
+    if (selectedTemplate === 'kpi-dashboard') {
+      if (isGeneratingKpiDashboard) return '';
+      if (kpiDashboardPrompt) return kpiDashboardPrompt;
+      return 'Select this template to generate a KPI dashboard prompt tailored to this idea.';
+    }
+
+    // GTM Strategy template
+    if (selectedTemplate === 'gtm-strategy') {
+      if (isGeneratingGtmStrategy) return '';
+      if (gtmStrategyPrompt) return gtmStrategyPrompt;
+      return 'Select this template to generate a GTM strategy prompt tailored to this idea.';
+    }
+
+    // GTM Launch Calendar template
+    if (selectedTemplate === 'gtm-launch-calendar') {
+      if (isGeneratingGtmLaunchCalendar) return '';
+      if (gtmLaunchCalendarPrompt) return gtmLaunchCalendarPrompt;
+      return 'Select this template to generate a GTM launch calendar prompt tailored to this idea.';
+    }
+
+    // Feature Specs template
+    if (selectedTemplate === 'feature-specs') {
+      if (isGeneratingFeatureSpecs) return '';
+      if (featureSpecsPrompt) return featureSpecsPrompt;
+      return 'Select this template to generate a feature specs prompt tailored to this idea.';
+    }
+
     // If Product Requirements Doc is selected and build prompts are available
     if (selectedTemplate === 'product-requirements-doc' && buildPrompts) {
       if (selectedBuildPrompt) {
@@ -707,7 +1657,307 @@ ${idea?.description || 'Description of your solution'}
                   </Card>
                 )}
 
-                {/* Prompt Display Section */}
+                {/* Landing Page Loading State */}
+                {selectedTemplate === 'landing-page' && isGeneratingLandingPage && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating landing page prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Analyzing idea data and building your custom prompt</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Brand Package Loading State */}
+                {selectedTemplate === 'brand-package' && isGeneratingBrandPackage && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating brand package prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your complete brand identity prompt</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Ad Creatives Loading State */}
+                {selectedTemplate === 'ad-creatives' && isGeneratingAdCreatives && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating ad creatives prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your multi-platform campaign brief</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Content Calendar Loading State */}
+                {selectedTemplate === 'content-calendar' && isGeneratingContentCalendar && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating content calendar prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your 90-day editorial calendar</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Email Funnel System Loading State */}
+                {selectedTemplate === 'email-funnel-system' && isGeneratingEmailFunnel && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating email funnel prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your lifecycle email automation system</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Email Nurture Sequence Loading State */}
+                {selectedTemplate === 'email-sequence' && isGeneratingEmailNurture && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating email nurture sequence prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your 5-email conversion sequence</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Lead Magnet Loading State */}
+                {selectedTemplate === 'lead-magnet' && isGeneratingLeadMagnet && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating lead magnet prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your lead generation blueprint</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* User Personas Loading State */}
+                {selectedTemplate === 'user-personas' && isGeneratingUserPersonas && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating user personas prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your customer psychology system</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Sales Funnel Loading State */}
+                {selectedTemplate === 'sales-funnel' && isGeneratingSalesFunnel && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating sales funnel prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your conversion optimization strategy</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* SEO Content Loading State */}
+                {selectedTemplate === 'seo-content' && isGeneratingSeoContent && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating SEO content prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your search-optimized content strategy</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Tweet-Sized Landing Page Loading State */}
+                {selectedTemplate === 'tweet-sized-landing-page' && isGeneratingTweetLanding && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating tweet-sized landing page prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Crafting your ultra-minimal conversion page</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* MVP Roadmap Loading State */}
+                {selectedTemplate === 'mvp-roadmap' && isGeneratingMvpRoadmap && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating MVP roadmap prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your 90-day development blueprint</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Customer Interview Guide Loading State */}
+                {selectedTemplate === 'customer-interview-guide' && isGeneratingCustomerInterviewGuide && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating customer interview guide prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your user research playbook</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Competitive Analysis Loading State */}
+                {selectedTemplate === 'competitive-analysis' && isGeneratingCompetitiveAnalysis && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating competitive analysis prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Mapping your competitive landscape</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Pricing Strategy Loading State */}
+                {selectedTemplate === 'pricing-strategy' && isGeneratingPricingStrategy && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating pricing strategy prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your revenue optimization framework</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* KPI Dashboard Loading State */}
+                {selectedTemplate === 'kpi-dashboard' && isGeneratingKpiDashboard && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating KPI dashboard prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your metrics tracking system</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* GTM Strategy Loading State */}
+                {selectedTemplate === 'gtm-strategy' && isGeneratingGtmStrategy && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating GTM strategy prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your go-to-market strategy</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* GTM Launch Calendar Loading State */}
+                {selectedTemplate === 'gtm-launch-calendar' && isGeneratingGtmLaunchCalendar && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating GTM launch calendar prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your 90-day go-to-market plan</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Feature Specs Loading State */}
+                {selectedTemplate === 'feature-specs' && isGeneratingFeatureSpecs && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating feature specs prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Building your developer-ready specification</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Prompt Display Section - hide when a dynamic template is generating */}
+                {!(
+                  (selectedTemplate === 'landing-page' && isGeneratingLandingPage) ||
+                  (selectedTemplate === 'brand-package' && isGeneratingBrandPackage) ||
+                  (selectedTemplate === 'ad-creatives' && isGeneratingAdCreatives) ||
+                  (selectedTemplate === 'content-calendar' && isGeneratingContentCalendar) ||
+                  (selectedTemplate === 'email-funnel-system' && isGeneratingEmailFunnel) ||
+                  (selectedTemplate === 'feature-specs' && isGeneratingFeatureSpecs) ||
+                  (selectedTemplate === 'mvp-roadmap' && isGeneratingMvpRoadmap) ||
+                  (selectedTemplate === 'customer-interview-guide' && isGeneratingCustomerInterviewGuide) ||
+                  (selectedTemplate === 'competitive-analysis' && isGeneratingCompetitiveAnalysis) ||
+                  (selectedTemplate === 'pricing-strategy' && isGeneratingPricingStrategy) ||
+                  (selectedTemplate === 'kpi-dashboard' && isGeneratingKpiDashboard) ||
+                  (selectedTemplate === 'gtm-strategy' && isGeneratingGtmStrategy) ||
+                  (selectedTemplate === 'gtm-launch-calendar' && isGeneratingGtmLaunchCalendar)
+                ) && (
                 <Card>
                   <CardHeader className="pb-4">
                     <div className="flex items-center justify-between">
@@ -716,18 +1966,248 @@ ${idea?.description || 'Description of your solution'}
                           ? `Your ${buildPromptOptions.find(o => o.id === selectedBuildPrompt)?.name || 'Build'} Prompt`
                           : `Your ${currentTemplate?.name || 'Template'} Prompt`}
                       </CardTitle>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={copyPromptToClipboard}
-                        className="h-8 w-8"
-                      >
-                        {copied ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600" />
-                        ) : (
-                          <Copy className="w-4 h-4" />
+                      <div className="flex items-center gap-1">
+                        {selectedTemplate === 'landing-page' && landingPagePrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateLandingPagePrompt(true)}
+                            disabled={isGeneratingLandingPage}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
                         )}
-                      </Button>
+                        {selectedTemplate === 'brand-package' && brandPackagePrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateBrandPackagePrompt(true)}
+                            disabled={isGeneratingBrandPackage}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'ad-creatives' && adCreativesPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateAdCreativesPrompt(true)}
+                            disabled={isGeneratingAdCreatives}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'content-calendar' && contentCalendarPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateContentCalendarPrompt(true)}
+                            disabled={isGeneratingContentCalendar}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'email-funnel-system' && emailFunnelPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateEmailFunnelPrompt(true)}
+                            disabled={isGeneratingEmailFunnel}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'email-sequence' && emailNurturePrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateEmailNurturePrompt(true)}
+                            disabled={isGeneratingEmailNurture}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'lead-magnet' && leadMagnetPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateLeadMagnetPrompt(true)}
+                            disabled={isGeneratingLeadMagnet}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'user-personas' && userPersonasPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateUserPersonasPrompt(true)}
+                            disabled={isGeneratingUserPersonas}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'sales-funnel' && salesFunnelPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateSalesFunnelPrompt(true)}
+                            disabled={isGeneratingSalesFunnel}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'seo-content' && seoContentPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateSeoContentPrompt(true)}
+                            disabled={isGeneratingSeoContent}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'tweet-sized-landing-page' && tweetLandingPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateTweetLandingPrompt(true)}
+                            disabled={isGeneratingTweetLanding}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'customer-interview-guide' && customerInterviewGuidePrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateCustomerInterviewGuidePrompt(true)}
+                            disabled={isGeneratingCustomerInterviewGuide}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'competitive-analysis' && competitiveAnalysisPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateCompetitiveAnalysisPrompt(true)}
+                            disabled={isGeneratingCompetitiveAnalysis}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'pricing-strategy' && pricingStrategyPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generatePricingStrategyPrompt(true)}
+                            disabled={isGeneratingPricingStrategy}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'kpi-dashboard' && kpiDashboardPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateKpiDashboardPrompt(true)}
+                            disabled={isGeneratingKpiDashboard}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'gtm-strategy' && gtmStrategyPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateGtmStrategyPrompt(true)}
+                            disabled={isGeneratingGtmStrategy}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'gtm-launch-calendar' && gtmLaunchCalendarPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateGtmLaunchCalendarPrompt(true)}
+                            disabled={isGeneratingGtmLaunchCalendar}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'feature-specs' && featureSpecsPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateFeatureSpecsPrompt(true)}
+                            disabled={isGeneratingFeatureSpecs}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'mvp-roadmap' && mvpRoadmapPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateMvpRoadmapPrompt(true)}
+                            disabled={isGeneratingMvpRoadmap}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={copyPromptToClipboard}
+                          className="h-8 w-8"
+                        >
+                          {copied ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -766,6 +2246,7 @@ ${idea?.description || 'Description of your solution'}
                     </div>
                   </CardContent>
                 </Card>
+                )}
               </div>
              )}
             </div>

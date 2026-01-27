@@ -143,7 +143,9 @@ async function importIdeasFromExport(exportData: any) {
   const existingTagNames = new Set(allTags.map(t => t.name));
   
   if (exportData.tags && Array.isArray(exportData.tags)) {
-    const tagsToInsert = exportData.tags.filter((t: any) => !existingTagNames.has(t.name));
+    const tagsToInsert = exportData.tags
+      .filter((t: any) => !existingTagNames.has(t.name))
+      .map(({ id, createdAt, ...rest }: any) => rest);
     if (tagsToInsert.length > 0) {
       await db.insert(tags).values(tagsToInsert);
       console.log(`[Import] Imported ${tagsToInsert.length} new tags`);
@@ -188,7 +190,16 @@ async function importIdeasFromExport(exportData: any) {
       // Remove any fields that might not exist in the database schema yet
       // This prevents errors if migrations haven't run or columns are missing
       const safeIdeaToInsert: any = { ...ideaToInsert };
-      
+
+      // Convert claimedAt string to Date object if present
+      if (safeIdeaToInsert.claimedAt) {
+        safeIdeaToInsert.claimedAt = new Date(safeIdeaToInsert.claimedAt);
+      }
+
+      // Clear foreign key references to users that don't exist in a fresh database
+      delete safeIdeaToInsert.createdBy;
+      delete safeIdeaToInsert.claimedBy;
+
       // Remove fields that might cause issues if columns don't exist
       // The schema fix script will add these columns, but we need to be defensive
       // These are already excluded above, but be extra safe
