@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import Header from "@/components/Header";
@@ -30,7 +30,8 @@ import {
   Sparkles,
   ExternalLink,
   Loader2,
-  Wand2
+  Wand2,
+  RefreshCw
 } from "lucide-react";
 import { format, subDays, addDays, isAfter } from "date-fns";
 
@@ -42,10 +43,12 @@ export default function TopIdeas() {
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [generatedPrompts, setGeneratedPrompts] = useState<{ claude: string; gemini: string; gpt: string } | null>(null);
   const [isGeneratingPrompts, setIsGeneratingPrompts] = useState(false);
+  const [storytellingNarrative, setStorytellingNarrative] = useState<string | null>(null);
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
   const { toast } = useToast();
 
   const dateString = format(selectedDate, 'yyyy-MM-dd');
-  
+
   const { data: featuredIdea, isLoading } = useQuery<any>({
     queryKey: ["/api/ideas/featured", dateString],
     queryFn: async () => {
@@ -54,6 +57,47 @@ export default function TopIdeas() {
       return response.json();
     },
   });
+
+  const generateNarrative = async (force = false) => {
+    if (!featuredIdea) return;
+    setIsGeneratingNarrative(true);
+    try {
+      const response = await apiRequest('POST', '/api/ai/generate-storytelling-narrative', {
+        ideaId: featuredIdea.id,
+        slug: featuredIdea.slug,
+        force,
+      });
+      const data = await response.json();
+      setStorytellingNarrative(data.narrative);
+      if (force) {
+        toast({
+          title: "Narrative Regenerated",
+          description: "A fresh storytelling narrative has been generated.",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating storytelling narrative:', error);
+      if (force) {
+        toast({
+          title: "Generation Failed",
+          description: "Failed to generate storytelling narrative. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsGeneratingNarrative(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!featuredIdea) return;
+    if (featuredIdea.storytellingNarrative) {
+      setStorytellingNarrative(featuredIdea.storytellingNarrative);
+    } else {
+      setStorytellingNarrative(null);
+      generateNarrative();
+    }
+  }, [featuredIdea?.id]);
 
   const ratingMutation = useMutation({
     mutationFn: async (rating: number) => {
@@ -226,6 +270,43 @@ export default function TopIdeas() {
                 <p className="text-white/90 mb-6 leading-relaxed text-lg">
                   {featuredIdea.description}
                 </p>
+
+                {/* Storytelling Narrative */}
+                {isGeneratingNarrative && !storytellingNarrative ? (
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 text-sm text-white/60 mb-3">
+                      <Sparkles className="h-4 w-4 animate-pulse" />
+                      <span>Generating storytelling narrative...</span>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-full" />
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-11/12" />
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-10/12" />
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-full" />
+                      <div className="h-4 bg-white/10 rounded animate-pulse w-9/12" />
+                    </div>
+                  </div>
+                ) : storytellingNarrative ? (
+                  <div className="mb-6">
+                    <div className="space-y-4">
+                      {storytellingNarrative.split('\n\n').map((paragraph, index) => (
+                        <p key={index} className="text-white/90 leading-relaxed text-lg">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="mt-3 flex justify-end">
+                      <button
+                        onClick={() => generateNarrative(true)}
+                        disabled={isGeneratingNarrative}
+                        className="flex items-center gap-1 text-xs text-white/40 hover:text-white/70 transition-colors"
+                      >
+                        <RefreshCw className={`h-3 w-3 ${isGeneratingNarrative ? 'animate-spin' : ''}`} />
+                        Regenerate narrative
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
 
                 {/* Keyword Info */}
                 {featuredIdea.keyword && (

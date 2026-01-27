@@ -4063,6 +4063,1148 @@ Return ONLY valid JSON, no markdown or explanation.`
     }
   });
 
+  // Generate Storytelling Narrative (AI-generated persuasive narrative for idea detail page)
+  app.post('/api/ai/generate-storytelling-narrative', async (req, res) => {
+    try {
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      // Fetch the full idea object
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      // Check cache: return existing narrative if not forcing regeneration
+      if (!force && idea.storytellingNarrative) {
+        console.log(`[StorytellingNarrative] Cache hit for idea ${idea.id}`);
+        return res.json({ narrative: idea.storytellingNarrative });
+      }
+
+      // Verify Anthropic API key is available
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      // Generate the storytelling narrative
+      const narrative = await aiService.generateStorytellingNarrative(idea);
+
+      // Save to database
+      await storage.updateIdea(idea.id, { storytellingNarrative: narrative });
+      console.log(`[StorytellingNarrative] Saved to idea ${idea.id}`);
+
+      res.json({ narrative });
+    } catch (error) {
+      console.error('Error generating storytelling narrative:', error);
+      res.status(500).json({
+        message: 'Failed to generate storytelling narrative',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Landing Page Prompt (enriched with per-idea BUSINESS_CONTEXT)
+  app.post('/api/ai/generate-landing-page-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      // Fetch the full idea object
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating landing page prompt for idea: ${idea.title} (${idea.id})`);
+
+      // Check cache: builderPrompts.landingPagePrompt (skip if force=true)
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.landingPagePrompt) {
+        console.log(`[LandingPagePrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.landingPagePrompt });
+      }
+
+      // Verify Anthropic API key is available
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      // Generate the enriched landing page prompt
+      const prompt = await aiService.assembleLandingPagePrompt(idea);
+
+      // Save to builderPrompts.landingPagePrompt
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        landingPagePrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[LandingPagePrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating landing page prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate landing page prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Brand Package Prompt (enriched with per-idea context)
+  app.post('/api/ai/generate-brand-package-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating brand package prompt for idea: ${idea.title} (${idea.id})`);
+
+      // Check cache (skip if force=true)
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.brandPackagePrompt) {
+        console.log(`[BrandPackagePrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.brandPackagePrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleBrandPackagePrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        brandPackagePrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[BrandPackagePrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating brand package prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate brand package prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Ad Creatives Prompt (enriched with per-idea context)
+  app.post('/api/ai/generate-ad-creatives-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating ad creatives prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.adCreativesPrompt) {
+        console.log(`[AdCreativesPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.adCreativesPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleAdCreativesPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        adCreativesPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[AdCreativesPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating ad creatives prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate ad creatives prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Content Calendar Prompt (enriched with per-idea context)
+  app.post('/api/ai/generate-content-calendar-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating content calendar prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.contentCalendarPrompt) {
+        console.log(`[ContentCalendarPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.contentCalendarPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleContentCalendarPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        contentCalendarPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[ContentCalendarPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating content calendar prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate content calendar prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Email Funnel System Prompt (enriched with per-idea context)
+  app.post('/api/ai/generate-email-funnel-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating email funnel prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.emailFunnelPrompt) {
+        console.log(`[EmailFunnelPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.emailFunnelPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleEmailFunnelPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        emailFunnelPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[EmailFunnelPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating email funnel prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate email funnel prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate email nurture sequence prompt
+  app.post('/api/ai/generate-email-nurture-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating email nurture prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.emailNurturePrompt) {
+        console.log(`[EmailNurturePrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.emailNurturePrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleEmailNurturePrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        emailNurturePrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[EmailNurturePrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating email nurture prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate email nurture prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate lead magnet prompt
+  app.post('/api/ai/generate-lead-magnet-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating lead magnet prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.leadMagnetPrompt) {
+        console.log(`[LeadMagnetPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.leadMagnetPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleLeadMagnetPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        leadMagnetPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[LeadMagnetPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating lead magnet prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate lead magnet prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate user personas prompt
+  app.post('/api/ai/generate-user-personas-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating user personas prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.userPersonasPrompt) {
+        console.log(`[UserPersonasPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.userPersonasPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleUserPersonasPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        userPersonasPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[UserPersonasPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating user personas prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate user personas prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate sales funnel prompt
+  app.post('/api/ai/generate-sales-funnel-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating sales funnel prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.salesFunnelPrompt) {
+        console.log(`[SalesFunnelPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.salesFunnelPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleSalesFunnelPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        salesFunnelPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[SalesFunnelPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating sales funnel prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate sales funnel prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate SEO content prompt
+  app.post('/api/ai/generate-seo-content-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating SEO content prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.seoContentPrompt) {
+        console.log(`[SeoContentPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.seoContentPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleSeoContentPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        seoContentPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[SeoContentPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating SEO content prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate SEO content prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate tweet-sized landing page prompt
+  app.post('/api/ai/generate-tweet-landing-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating tweet landing prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.tweetLandingPrompt) {
+        console.log(`[TweetLandingPrompt] Cache hit for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.tweetLandingPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured. AI features require ANTHROPIC_API_KEY.' });
+      }
+
+      const prompt = await aiService.assembleTweetLandingPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        tweetLandingPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[TweetLandingPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating tweet landing prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate tweet landing prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Feature Specs prompt
+  app.post('/api/ai/generate-feature-specs-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating feature specs prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.featureSpecsPrompt) {
+        console.log(`[FeatureSpecsPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.featureSpecsPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleFeatureSpecsPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        featureSpecsPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[FeatureSpecsPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating feature specs prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate feature specs prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate MVP Roadmap prompt
+  app.post('/api/ai/generate-mvp-roadmap-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating MVP roadmap prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.mvpRoadmapPrompt) {
+        console.log(`[MvpRoadmapPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.mvpRoadmapPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleMvpRoadmapPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        mvpRoadmapPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[MvpRoadmapPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating MVP roadmap prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate MVP roadmap prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate GTM Strategy prompt
+  app.post('/api/ai/generate-gtm-strategy-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating GTM strategy prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.gtmStrategyPrompt) {
+        console.log(`[GtmStrategyPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.gtmStrategyPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleGtmStrategyPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        gtmStrategyPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[GtmStrategyPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating GTM strategy prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate GTM strategy prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Customer Interview Guide prompt
+  app.post('/api/ai/generate-customer-interview-guide-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating customer interview guide prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.customerInterviewGuidePrompt) {
+        console.log(`[CustomerInterviewGuidePrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.customerInterviewGuidePrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleCustomerInterviewGuidePrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        customerInterviewGuidePrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[CustomerInterviewGuidePrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating customer interview guide prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate customer interview guide prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Competitive Analysis prompt
+  app.post('/api/ai/generate-competitive-analysis-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating competitive analysis prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.competitiveAnalysisPrompt) {
+        console.log(`[CompetitiveAnalysisPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.competitiveAnalysisPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleCompetitiveAnalysisPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        competitiveAnalysisPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[CompetitiveAnalysisPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating competitive analysis prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate competitive analysis prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate Pricing Strategy prompt
+  app.post('/api/ai/generate-pricing-strategy-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating pricing strategy prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.pricingStrategyPrompt) {
+        console.log(`[PricingStrategyPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.pricingStrategyPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assemblePricingStrategyPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        pricingStrategyPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[PricingStrategyPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating pricing strategy prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate pricing strategy prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate KPI Dashboard prompt
+  app.post('/api/ai/generate-kpi-dashboard-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating KPI dashboard prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.kpiDashboardPrompt) {
+        console.log(`[KpiDashboardPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.kpiDashboardPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleKpiDashboardPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        kpiDashboardPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[KpiDashboardPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating KPI dashboard prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate KPI dashboard prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate GTM Launch Calendar prompt
+  app.post('/api/ai/generate-gtm-launch-calendar-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating GTM launch calendar prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.gtmLaunchCalendarPrompt) {
+        console.log(`[GtmLaunchCalendarPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.gtmLaunchCalendarPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleGtmLaunchCalendarPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        gtmLaunchCalendarPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[GtmLaunchCalendarPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating GTM launch calendar prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate GTM launch calendar prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   // Claude AI building prompts - Interactive chat
   app.post('/api/ai/build-chat', isAuthenticated, async (req, res) => {
     try {

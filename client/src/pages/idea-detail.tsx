@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useLocation, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
@@ -45,7 +45,8 @@ import {
   Flame,
   ChevronRight,
   Play,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -127,6 +128,48 @@ export default function IdeaDetail() {
 
   const [researchReport, setResearchReport] = useState<any>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [storytellingNarrative, setStorytellingNarrative] = useState<string | null>(null);
+  const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
+
+  const generateNarrative = async (force = false) => {
+    if (!idea) return;
+    setIsGeneratingNarrative(true);
+    try {
+      const response = await apiRequest('POST', '/api/ai/generate-storytelling-narrative', {
+        ideaId: idea.id,
+        slug: idea.slug,
+        force,
+      });
+      const data = await response.json();
+      setStorytellingNarrative(data.narrative);
+      if (force) {
+        toast({
+          title: "Narrative Regenerated",
+          description: "A fresh storytelling narrative has been generated.",
+        });
+      }
+    } catch (error) {
+      console.error('Error generating storytelling narrative:', error);
+      if (force) {
+        toast({
+          title: "Generation Failed",
+          description: "Failed to generate storytelling narrative. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsGeneratingNarrative(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!idea) return;
+    if (idea.storytellingNarrative) {
+      setStorytellingNarrative(idea.storytellingNarrative);
+    } else {
+      generateNarrative();
+    }
+  }, [idea?.id]);
 
   const saveIdeaMutation = useMutation({
     mutationFn: async () => {
@@ -653,12 +696,53 @@ export default function IdeaDetail() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Description */}
+            {/* Description / Storytelling Narrative */}
             <Card>
               <CardContent className="p-6">
-                <p className="text-lg leading-relaxed" data-testid="text-idea-description">
-                  {idea.description}
-                </p>
+                {isGeneratingNarrative && !storytellingNarrative ? (
+                  <div>
+                    <p className="text-lg leading-relaxed text-muted-foreground mb-4" data-testid="text-idea-description">
+                      {idea.description}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
+                      <Sparkles className="h-4 w-4 animate-pulse" />
+                      <span>Generating storytelling narrative...</span>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="h-4 bg-muted rounded animate-pulse w-full" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-11/12" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-10/12" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-full" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-9/12" />
+                    </div>
+                  </div>
+                ) : storytellingNarrative ? (
+                  <div>
+                    <div className="space-y-4" data-testid="text-idea-description">
+                      {storytellingNarrative.split('\n\n').map((paragraph, index) => (
+                        <p key={index} className="text-lg leading-relaxed">
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => generateNarrative(true)}
+                        disabled={isGeneratingNarrative}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <RefreshCw className={`h-3 w-3 mr-1 ${isGeneratingNarrative ? 'animate-spin' : ''}`} />
+                        Regenerate narrative
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-lg leading-relaxed" data-testid="text-idea-description">
+                    {idea.description}
+                  </p>
+                )}
               </CardContent>
             </Card>
 

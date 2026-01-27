@@ -100,6 +100,7 @@ export const ideas = pgTable("ideas", {
   executionPlan: text("execution_plan"), // Execution Plan section content
   frameworkData: jsonb("framework_data"), // All framework analyses (Value Equation, Market Matrix, A.C.P., Value Ladder)
   trendAnalysis: text("trend_analysis"), // Trend analysis content
+  storytellingNarrative: text("storytelling_narrative"), // AI-generated persuasive storytelling narrative
   keywordData: jsonb("keyword_data"), // Enhanced keyword data with categories and competition
   builderPrompts: jsonb("builder_prompts"), // Pre-built prompts for various AI builders
   
