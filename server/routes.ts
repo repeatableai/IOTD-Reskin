@@ -29,6 +29,26 @@ import bcrypt from 'bcrypt';
 // Create error log file
 const ERROR_LOG_PATH = path.join(process.cwd(), 'server-errors.log');
 
+// Cache control helpers for HTTP caching
+const CACHE_DURATIONS = {
+  STATIC: 3600,      // 1 hour for static data (tags, tools, FAQ)
+  DYNAMIC: 300,      // 5 minutes for dynamic lists (ideas)
+  FEATURED: 86400,   // 24 hours for featured idea (changes daily)
+  PRIVATE: 60,       // 1 minute for user-specific data
+  NONE: 0,           // No caching
+} as const;
+
+function setCacheHeaders(res: any, type: keyof typeof CACHE_DURATIONS, isPrivate = false) {
+  const duration = CACHE_DURATIONS[type];
+  if (duration === 0) {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  } else if (isPrivate) {
+    res.set('Cache-Control', `private, max-age=${duration}`);
+  } else {
+    res.set('Cache-Control', `public, max-age=${duration}, stale-while-revalidate=${duration * 2}`);
+  }
+}
+
 function logErrorToFile(error: any, context: string) {
   const timestamp = new Date().toISOString();
   const errorMessage = error instanceof Error ? error.message : String(error);
@@ -111,6 +131,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       const filters = ideaFiltersSchema.parse(req.query);
       const userId = req.user?.claims?.sub; // Get userId if authenticated
       const result = await storage.getIdeas(filters, userId);
+      setCacheHeaders(res, 'DYNAMIC');
       res.json(result);
     } catch (error: any) {
       console.error("Error fetching ideas:", error);
@@ -132,6 +153,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       if (!idea) {
         return res.status(404).json({ message: "No featured idea found" });
       }
+      setCacheHeaders(res, 'FEATURED'); // Featured idea changes daily
       res.json(idea);
     } catch (error: any) {
       console.error("Error fetching featured idea:", error);
@@ -149,6 +171,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     try {
       const limit = parseInt(req.query.limit as string) || 10;
       const ideas = await storage.getTopIdeas(limit);
+      setCacheHeaders(res, 'DYNAMIC');
       res.json(ideas);
     } catch (error) {
       console.error("Error fetching top ideas:", error);
@@ -170,18 +193,60 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
-  app.get('/api/ideas/:slug', async (req, res) => {
+  app.get('/api/ideas/:slug', async (req: any, res) => {
     try {
       const { slug } = req.params;
       const idea = await storage.getIdeaBySlug(slug);
       if (!idea) {
         return res.status(404).json({ message: "Idea not found" });
       }
-      
-      // Increment view count
-      await storage.incrementIdeaView(idea.id);
-      
-      res.json(idea);
+
+      // Session-based view count debouncing - only count once per session per idea
+      const session = req.session;
+      if (session) {
+        if (!session.viewedIdeas) {
+          session.viewedIdeas = {};
+        }
+        // Only increment if not viewed in this session
+        if (!session.viewedIdeas[idea.id]) {
+          await storage.incrementIdeaView(idea.id);
+          session.viewedIdeas[idea.id] = Date.now();
+        }
+      } else {
+        // No session, increment anyway (fallback for non-session requests)
+        await storage.incrementIdeaView(idea.id);
+      }
+
+      // Get user-specific data if authenticated (eliminates waterfall queries on frontend)
+      const userId = req.user?.claims?.sub;
+      let userData = null;
+
+      if (userId) {
+        // Fetch all user data in parallel
+        const [userVote, userRating, isSaved, interaction] = await Promise.all([
+          storage.getUserVoteOnIdea(userId, idea.id),
+          storage.getUserRating(userId, idea.id),
+          storage.isIdeaSavedByUser(userId, idea.id),
+          storage.getUserIdeaInteraction(userId, idea.id),
+        ]);
+
+        userData = {
+          vote: userVote,
+          rating: userRating,
+          isSaved,
+          interaction,
+        };
+      }
+
+      // Get community signals
+      const communitySignalsData = await storage.getCommunitySignalsForIdea(idea.id);
+
+      setCacheHeaders(res, userId ? 'PRIVATE' : 'DYNAMIC', !!userId);
+      res.json({
+        ...idea,
+        userData,
+        communitySignalsData,
+      });
     } catch (error) {
       console.error("Error fetching idea:", error);
       res.status(500).json({ message: "Failed to fetch idea" });
@@ -3910,6 +3975,7 @@ Return ONLY valid JSON, no markdown or explanation.`
     try {
       const category = req.query.category as string | undefined;
       const questions = await storage.getFaqQuestions(category);
+      setCacheHeaders(res, 'STATIC'); // FAQ rarely changes
       res.json(questions);
     } catch (error) {
       console.error("Error fetching FAQ questions:", error);
@@ -3937,6 +4003,7 @@ Return ONLY valid JSON, no markdown or explanation.`
       const category = req.query.category as string | undefined;
       const search = req.query.search as string | undefined;
       const tools = await storage.getTools(category, search);
+      setCacheHeaders(res, 'STATIC'); // Tools list rarely changes
       res.json(tools);
     } catch (error) {
       console.error("Error fetching tools:", error);

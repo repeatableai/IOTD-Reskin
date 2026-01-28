@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, STALE_TIMES } from "@/lib/queryClient";
 import { useState } from "react";
 import type { FaqQuestion } from "@shared/schema";
 
@@ -20,6 +20,7 @@ export default function FAQ() {
   
   const { data: faqQuestions, isLoading } = useQuery<FaqQuestion[]>({
     queryKey: ["/api/faq", selectedCategory === "all" ? undefined : selectedCategory],
+    staleTime: STALE_TIMES.STATIC, // FAQ data rarely changes
   });
 
   const voteMutation = useMutation({

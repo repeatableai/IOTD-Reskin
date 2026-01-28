@@ -98,10 +98,13 @@ export default function IdeaDetail() {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { openPortal } = useCollaborationPortal();
 
-  const { data: idea, isLoading, error } = useQuery({
+  // Fetch idea with user data and community signals in a single request
+  const { data: ideaResponse, isLoading, error } = useQuery({
     queryKey: ["/api/ideas", slug],
     queryFn: async () => {
-      const response = await fetch(`/api/ideas/${slug}`);
+      const response = await fetch(`/api/ideas/${slug}`, {
+        credentials: 'include', // Include cookies for auth
+      });
       if (!response.ok) {
         throw new Error('Failed to fetch idea');
       }
@@ -109,22 +112,15 @@ export default function IdeaDetail() {
     },
   });
 
-  const { data: userVote } = useQuery({
-    queryKey: ["/api/ideas", idea?.id, "vote"],
-    enabled: isAuthenticated && !!idea?.id,
-    retry: false,
-  });
-
-  const { data: userRating } = useQuery({
-    queryKey: ["/api/ideas", idea?.id, "rating"],
-    enabled: isAuthenticated && !!idea?.id,
-    retry: false,
-  });
-
-  const { data: communitySignals } = useQuery({
-    queryKey: ["/api/ideas", idea?.id, "community-signals"],
-    enabled: !!idea?.id,
-  });
+  // Extract data from combined response
+  const idea = ideaResponse ? {
+    ...ideaResponse,
+    userData: undefined,
+    communitySignalsData: undefined,
+  } : null;
+  const userVote = ideaResponse?.userData?.vote ? { voteType: ideaResponse.userData.vote } : null;
+  const userRating = ideaResponse?.userData?.rating ? { rating: ideaResponse.userData.rating } : null;
+  const communitySignals = ideaResponse?.communitySignalsData || [];
 
   const [researchReport, setResearchReport] = useState<any>(null);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);

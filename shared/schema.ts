@@ -45,18 +45,18 @@ export const ideas = pgTable("ideas", {
   description: text("description").notNull(),
   content: text("content").notNull(),
   imageUrl: varchar("image_url"),
-  
+
   // Categorization
   type: varchar("type").notNull(), // mobile_app, web_app, saas, marketplace, etc.
   market: varchar("market").notNull(), // B2B, B2C, B2B2C
   targetAudience: text("target_audience"),
   mainCompetitor: varchar("main_competitor"),
-  
+
   // Keywords and search data
   keyword: varchar("keyword"),
   keywordVolume: integer("keyword_volume"),
   keywordGrowth: varchar("keyword_growth"),
-  
+
   // Scoring metrics (1-10 scale)
   opportunityScore: integer("opportunity_score").notNull(),
   opportunityLabel: varchar("opportunity_label").notNull(),
@@ -68,30 +68,30 @@ export const ideas = pgTable("ideas", {
   timingLabel: varchar("timing_label").notNull(),
   executionScore: integer("execution_score").notNull(),
   gtmScore: integer("gtm_score").notNull(),
-  
+
   // Revenue and business metrics
   revenuePotential: text("revenue_potential"),
   revenuePotentialNum: integer("revenue_potential_num"), // For sorting
   executionDifficulty: text("execution_difficulty"),
   gtmStrength: text("gtm_strength"),
-  
+
   // Engagement metrics
   viewCount: integer("view_count").default(0),
   saveCount: integer("save_count").default(0),
   voteCount: integer("vote_count").default(0),
-  
+
   // Status and visibility
   isPublished: boolean("is_published").default(true),
   isFeatured: boolean("is_featured").default(false),
   isGregsPick: boolean("is_gregs_pick").default(false), // Premium: Greg's personally picked ideas
-  
+
   // User creation tracking
   createdBy: varchar("created_by").references(() => users.id),
   sourceType: varchar("source_type").default('curated'), // 'curated', 'user_import', 'user_generated'
   sourceData: text("source_data"), // Original imported HTML/instructions
   builderUrl: varchar("builder_url"), // URL to no-code builder project
   previewUrl: varchar("preview_url"), // Preview URL from spreadsheet (for app previews)
-  
+
   // Detailed analysis sections (for 1:1 ideabrowser.com copy)
   offerTiers: jsonb("offer_tiers"), // Value ladder with lead magnet, frontend, core, backend, continuity
   whyNowAnalysis: text("why_now_analysis"), // Why Now section content
@@ -103,11 +103,11 @@ export const ideas = pgTable("ideas", {
   storytellingNarrative: text("storytelling_narrative"), // AI-generated persuasive storytelling narrative
   keywordData: jsonb("keyword_data"), // Enhanced keyword data with categories and competition
   builderPrompts: jsonb("builder_prompts"), // Pre-built prompts for various AI builders
-  
+
   // Community signals data
   communitySignals: jsonb("community_signals"), // Reddit, Facebook, YouTube, Other community data with scores
   signalBadges: text("signal_badges").array(), // Badge tags like "Perfect Timing", "Unfair Advantage", etc.
-  
+
   // Claim feature - social proof and accountability
   claimedBy: varchar("claimed_by").references(() => users.id), // User who claimed the idea
   claimedAt: timestamp("claimed_at"), // When the idea was claimed
@@ -115,15 +115,32 @@ export const ideas = pgTable("ideas", {
   maxClaimSlots: integer("max_claim_slots").default(5), // Max concurrent claimers (for future multi-claim)
   claimProgress: integer("claim_progress").default(0), // 0-100% progress
   claimMilestones: jsonb("claim_milestones"), // Array of milestone objects {name, completed, date}
-  
+
   // User engagement
   averageRating: decimal("average_rating", { precision: 3, scale: 2 }), // Average user rating
   ratingCount: integer("rating_count").default(0), // Number of ratings
-  
+
   // Timestamps
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Performance indexes for frequently queried columns
+  index("IDX_ideas_is_published").on(table.isPublished),
+  index("IDX_ideas_created_at").on(table.createdAt),
+  index("IDX_ideas_market").on(table.market),
+  index("IDX_ideas_type").on(table.type),
+  index("IDX_ideas_opportunity_score").on(table.opportunityScore),
+  index("IDX_ideas_revenue_potential_num").on(table.revenuePotentialNum),
+  index("IDX_ideas_vote_count").on(table.voteCount),
+  index("IDX_ideas_save_count").on(table.saveCount),
+  index("IDX_ideas_is_gregs_pick").on(table.isGregsPick),
+  index("IDX_ideas_created_by").on(table.createdBy),
+  index("IDX_ideas_claimed_by").on(table.claimedBy),
+  // Composite indexes for common filter + sort combinations
+  index("IDX_ideas_published_created").on(table.isPublished, table.createdAt),
+  index("IDX_ideas_published_opportunity").on(table.isPublished, table.opportunityScore),
+  index("IDX_ideas_published_vote").on(table.isPublished, table.voteCount),
+]);
 
 // Tags table
 export const tags = pgTable("tags", {
@@ -139,7 +156,10 @@ export const ideaTags = pgTable("idea_tags", {
   ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
   tagId: varchar("tag_id").references(() => tags.id, { onDelete: 'cascade' }),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_idea_tags_idea_id").on(table.ideaId),
+  index("IDX_idea_tags_tag_id").on(table.tagId),
+]);
 
 // User saved ideas
 export const userSavedIdeas = pgTable("user_saved_ideas", {
@@ -147,7 +167,11 @@ export const userSavedIdeas = pgTable("user_saved_ideas", {
   userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
   ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_user_saved_ideas_user_id").on(table.userId),
+  index("IDX_user_saved_ideas_idea_id").on(table.ideaId),
+  index("IDX_user_saved_ideas_user_idea").on(table.userId, table.ideaId),
+]);
 
 // User idea interactions (interested, not interested, building status)
 // Redesigned to support multiple independent statuses per idea
@@ -175,7 +199,11 @@ export const userIdeaVotes = pgTable("user_idea_votes", {
   ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
   voteType: varchar("vote_type").notNull(), // 'up' or 'down'
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_user_idea_votes_user_id").on(table.userId),
+  index("IDX_user_idea_votes_idea_id").on(table.ideaId),
+  index("IDX_user_idea_votes_user_idea").on(table.userId, table.ideaId),
+]);
 
 // Community signals table
 export const communitySignals = pgTable("community_signals", {
@@ -189,7 +217,9 @@ export const communitySignals = pgTable("community_signals", {
   url: varchar("url"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_community_signals_idea_id").on(table.ideaId),
+]);
 
 // User ratings table
 export const userIdeaRatings = pgTable("user_idea_ratings", {
@@ -198,7 +228,11 @@ export const userIdeaRatings = pgTable("user_idea_ratings", {
   ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
   rating: integer("rating").notNull(), // 1-5 scale
   createdAt: timestamp("created_at").defaultNow(),
-});
+}, (table) => [
+  index("IDX_user_idea_ratings_user_id").on(table.userId),
+  index("IDX_user_idea_ratings_idea_id").on(table.ideaId),
+  index("IDX_user_idea_ratings_user_idea").on(table.userId, table.ideaId),
+]);
 
 // Contact submissions table
 export const contactSubmissions = pgTable("contact_submissions", {

@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, STALE_TIMES } from "@/lib/queryClient";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import type { Tool } from "@shared/schema";
@@ -17,11 +17,13 @@ export default function ToolsLibrary() {
 
   const { data: tools, isLoading } = useQuery<Tool[]>({
     queryKey: ["/api/tools", selectedCategory === "all" ? undefined : selectedCategory],
+    staleTime: STALE_TIMES.STATIC, // Tools list rarely changes
   });
 
   const { data: favoriteTools } = useQuery<Tool[]>({
     queryKey: ["/api/tools/favorites"],
     enabled: !!user,
+    staleTime: STALE_TIMES.USER, // User favorites can change
   });
 
   const favoriteMutation = useMutation({

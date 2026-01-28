@@ -118,14 +118,28 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// Stale time constants for different data types
+export const STALE_TIMES = {
+  // Static data that rarely changes (tags, tools, FAQ)
+  STATIC: 60 * 60 * 1000, // 1 hour
+  // Dynamic lists that change occasionally (ideas list, top ideas)
+  DYNAMIC: 5 * 60 * 1000, // 5 minutes
+  // User-specific data that should stay fresh (votes, ratings, saved)
+  USER: 60 * 1000, // 1 minute
+  // Real-time data (collaboration, notifications)
+  REALTIME: 10 * 1000, // 10 seconds
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
-      refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
+      refetchOnWindowFocus: true, // Enable refetch on tab focus for fresh data
+      staleTime: STALE_TIMES.DYNAMIC, // Default 5 minutes
+      gcTime: 10 * 60 * 1000, // Keep unused data in cache for 10 minutes
+      retry: 1, // Retry once on failure
+      retryDelay: 1000, // Wait 1 second before retry
     },
     mutations: {
       retry: false,

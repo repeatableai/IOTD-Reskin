@@ -63,6 +63,7 @@ export interface IStorage {
   saveIdeaForUser(userId: string, ideaId: string): Promise<void>;
   unsaveIdeaForUser(userId: string, ideaId: string): Promise<void>;
   getUserSavedIdeas(userId: string): Promise<Idea[]>;
+  isIdeaSavedByUser(userId: string, ideaId: string): Promise<boolean>;
   voteOnIdea(userId: string, ideaId: string, voteType: 'up' | 'down'): Promise<void>;
   removeVoteOnIdea(userId: string, ideaId: string): Promise<void>;
   getUserVoteOnIdea(userId: string, ideaId: string): Promise<'up' | 'down' | null>;
@@ -434,8 +435,17 @@ export class DatabaseStorage implements IStorage {
       .innerJoin(userSavedIdeas, eq(ideas.id, userSavedIdeas.ideaId))
       .where(eq(userSavedIdeas.userId, userId))
       .orderBy(desc(userSavedIdeas.createdAt));
-    
+
     return result.map(row => row.ideas);
+  }
+
+  async isIdeaSavedByUser(userId: string, ideaId: string): Promise<boolean> {
+    const result = await db
+      .select({ id: userSavedIdeas.id })
+      .from(userSavedIdeas)
+      .where(and(eq(userSavedIdeas.userId, userId), eq(userSavedIdeas.ideaId, ideaId)))
+      .limit(1);
+    return result.length > 0;
   }
 
   async voteOnIdea(userId: string, ideaId: string, voteType: 'up' | 'down'): Promise<void> {
