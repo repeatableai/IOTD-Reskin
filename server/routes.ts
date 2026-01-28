@@ -1412,7 +1412,21 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
       };
 
       const createdIdea = await storage.createIdea(mergedIdea);
-      
+
+      // Generate storytelling narrative in background (don't wait for response)
+      if (process.env.ANTHROPIC_API_KEY && !createdIdea.storytellingNarrative) {
+        setImmediate(async () => {
+          try {
+            console.log(`[Background] Generating storytelling narrative for new idea: ${createdIdea.title}`);
+            const narrative = await aiService.generateStorytellingNarrative(createdIdea);
+            await storage.updateIdea(createdIdea.id, { storytellingNarrative: narrative });
+            console.log(`[Background] Successfully generated narrative for: ${createdIdea.title}`);
+          } catch (error) {
+            console.error(`[Background] Failed to generate narrative for ${createdIdea.title}:`, error);
+          }
+        });
+      }
+
       // Return the created idea immediately
         res.json(createdIdea);
     } catch (error: any) {
@@ -7268,6 +7282,126 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       });
     }
   });
-  
+
+  // Admin endpoint to check narrative generation status
+  app.get('/api/admin/narrative-status', async (req: any, res) => {
+    try {
+      // Count ideas with and without narratives
+      const result = await db
+        .select({
+          total: sql<number>`count(*)`,
+          withNarrative: sql<number>`count(${ideas.storytellingNarrative})`,
+          published: sql<number>`count(*) filter (where ${ideas.isPublished} = true)`,
+          publishedWithNarrative: sql<number>`count(*) filter (where ${ideas.isPublished} = true and ${ideas.storytellingNarrative} is not null)`,
+        })
+        .from(ideas);
+
+      const stats = result[0];
+      const total = Number(stats.total);
+      const withNarrative = Number(stats.withNarrative);
+      const published = Number(stats.published);
+      const publishedWithNarrative = Number(stats.publishedWithNarrative);
+
+      res.json({
+        total,
+        withNarrative,
+        withoutNarrative: total - withNarrative,
+        published,
+        publishedWithNarrative,
+        publishedWithoutNarrative: published - publishedWithNarrative,
+        percentComplete: total > 0 ? Math.round((withNarrative / total) * 100) : 100,
+        publishedPercentComplete: published > 0 ? Math.round((publishedWithNarrative / published) * 100) : 100,
+      });
+    } catch (error) {
+      console.error('[Admin] Error checking narrative status:', error);
+      res.status(500).json({ message: 'Failed to check narrative status' });
+    }
+  });
+
+  // Admin endpoint to batch generate narratives
+  // This runs in chunks to avoid API rate limits
+  app.post('/api/admin/generate-narratives', async (req: any, res) => {
+    try {
+      const batchSize = parseInt(req.query.batchSize as string) || 10;
+      const delayMs = parseInt(req.query.delay as string) || 2000; // 2 seconds between requests
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'ANTHROPIC_API_KEY not configured' });
+      }
+
+      // Get ideas without narratives (prioritize published ones)
+      const ideasWithoutNarrative = await db
+        .select()
+        .from(ideas)
+        .where(sql`${ideas.storytellingNarrative} is null and ${ideas.isPublished} = true`)
+        .orderBy(desc(ideas.createdAt))
+        .limit(batchSize);
+
+      if (ideasWithoutNarrative.length === 0) {
+        return res.json({
+          success: true,
+          message: 'All published ideas already have narratives',
+          processed: 0,
+          remaining: 0,
+        });
+      }
+
+      console.log(`[Admin] Generating narratives for ${ideasWithoutNarrative.length} ideas...`);
+
+      const results: { id: string; title: string; success: boolean; error?: string }[] = [];
+
+      for (let i = 0; i < ideasWithoutNarrative.length; i++) {
+        const idea = ideasWithoutNarrative[i];
+        try {
+          console.log(`[Admin] Generating narrative ${i + 1}/${ideasWithoutNarrative.length}: ${idea.title}`);
+
+          const narrative = await aiService.generateStorytellingNarrative(idea);
+          await storage.updateIdea(idea.id, { storytellingNarrative: narrative });
+
+          results.push({ id: idea.id, title: idea.title, success: true });
+          console.log(`[Admin] Successfully generated narrative for: ${idea.title}`);
+
+          // Add delay between requests to avoid rate limiting
+          if (i < ideasWithoutNarrative.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+          }
+        } catch (error: any) {
+          console.error(`[Admin] Failed to generate narrative for ${idea.title}:`, error);
+          results.push({
+            id: idea.id,
+            title: idea.title,
+            success: false,
+            error: error?.message || 'Unknown error',
+          });
+        }
+      }
+
+      // Count remaining
+      const remainingResult = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(ideas)
+        .where(sql`${ideas.storytellingNarrative} is null and ${ideas.isPublished} = true`);
+
+      const remaining = Number(remainingResult[0].count);
+      const successful = results.filter(r => r.success).length;
+
+      res.json({
+        success: true,
+        message: `Generated ${successful}/${ideasWithoutNarrative.length} narratives`,
+        processed: ideasWithoutNarrative.length,
+        successful,
+        failed: results.filter(r => !r.success).length,
+        remaining,
+        results,
+      });
+    } catch (error) {
+      console.error('[Admin] Error batch generating narratives:', error);
+      res.status(500).json({
+        message: 'Failed to batch generate narratives',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   return { server: httpServer, sessionMiddleware };
 }
