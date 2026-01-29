@@ -1877,7 +1877,7 @@ Format as JSON:
     }
   }
 
-  // Deep Research with Claude Sonnet 4.5 and Extended Thinking
+  // Deep Research with Claude Opus 4.5 and Extended Thinking
   async generateDeepResearch(params: {
     ideaTitle: string;
     ideaDescription: string;
@@ -2027,7 +2027,7 @@ Return your analysis as a comprehensive JSON object with this exact structure:
 Be thorough, data-driven, and provide specific, actionable insights. This is a premium research report.`;
 
     try {
-      console.log('Starting deep research with Claude Sonnet 4.5...');
+      console.log('Starting deep research with Claude Opus 4.5...');
 
       const response = await getAnthropic().messages.create({
         model: "claude-opus-4-5-20251101",
@@ -3450,6 +3450,18 @@ Write the narrative now. Remember: pure prose paragraphs only, 350-500 words, us
     return prompt;
   }
 
+  async assembleDistributionChannelsPrompt(idea: any): Promise<string> {
+    const rawContext = this.buildRawBusinessContext(idea);
+    const enrichedContext = await this.enrichBusinessContext(rawContext);
+
+    let prompt = DISTRIBUTION_CHANNELS_PROMPT_TEMPLATE;
+    prompt = prompt.replace('{{BUSINESS_CONTEXT}}', enrichedContext);
+    prompt = prompt.replace('{{APP_NAME}}', idea.title || '');
+    prompt = prompt.replace('{{TARGET_AUDIENCE}}', idea.targetAudience || '(Infer from business context)');
+    prompt = prompt.replace('{{MARKET}}', idea.market || '(Infer from business context)');
+    return prompt;
+  }
+
   async assembleGtmLaunchCalendarPrompt(idea: any): Promise<string> {
     const rawContext = this.buildRawBusinessContext(idea);
     const enrichedContext = await this.enrichBusinessContext(rawContext);
@@ -3458,6 +3470,314 @@ Write the narrative now. Remember: pure prose paragraphs only, 350-500 words, us
     prompt = prompt.replace('{{SELECTED_APP_CONTEXT}}', enrichedContext);
     prompt = prompt.replace('{{OPTIONAL_SYSTEM_CONSTRAINTS}}', '(No additional constraints specified — infer from business context)');
     return prompt;
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════════
+  // APP BUILDER PROMPTS - Generate DOCX with chunked prompts for no-code builders
+  // ══════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Research similar apps using web search to inform UI/UX and feature recommendations
+   */
+  async researchSimilarApps(idea: any): Promise<string> {
+    console.log('[App Builder Prompts] Researching similar apps for:', idea.title);
+
+    try {
+      // Use Claude to search and synthesize information about similar apps
+      const anthropicClient = getAnthropic();
+
+      const response = await anthropicClient.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        messages: [
+          {
+            role: 'user',
+            content: `You are a product researcher. Research and describe similar apps/solutions to the following idea:
+
+Title: ${idea.title}
+Description: ${idea.description || ''}
+Market: ${idea.market || ''}
+Target Audience: ${idea.targetAudience || ''}
+Type: ${idea.type || ''}
+
+Provide a concise research summary including:
+1. 2-3 similar existing apps/tools (if any exist)
+2. Common UI/UX patterns used in this space
+3. Key features that successful apps in this space typically have
+4. Technology stack recommendations based on the app type
+5. Potential differentiators for this new app
+
+Keep the response focused and actionable - this will inform the implementation prompts.`
+          }
+        ],
+      });
+
+      const textContent = response.content.find(c => c.type === 'text');
+      return textContent?.text || 'No research data available.';
+    } catch (error: any) {
+      console.error('[App Builder Prompts] Research error:', error.message);
+      return 'Research unavailable - proceeding with idea context only.';
+    }
+  }
+
+  /**
+   * Analyze the idea complexity to determine optimal prompt count (3-8)
+   */
+  async analyzeAppComplexity(idea: any, researchContext: string): Promise<{ promptCount: number; phases: string[] }> {
+    console.log('[App Builder Prompts] Analyzing complexity for:', idea.title);
+
+    try {
+      const anthropicClient = getAnthropic();
+
+      const response = await anthropicClient.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this app idea and determine the optimal number of implementation phases/prompts needed.
+
+App Idea:
+- Title: ${idea.title}
+- Description: ${idea.description || ''}
+- Market: ${idea.market || ''}
+- Target Audience: ${idea.targetAudience || ''}
+- Type: ${idea.type || ''}
+- Content/Details: ${idea.content || ''}
+
+Research Context:
+${researchContext}
+
+Based on the complexity, determine:
+1. How many prompts are TRULY needed - be honest about complexity. Don't default to any number.
+2. What each phase should focus on
+
+Return ONLY a JSON object in this exact format:
+{
+  "promptCount": <integer - use exactly what's needed, minimum 3>,
+  "phases": [
+    "Phase 1: <name and brief focus>",
+    "Phase 2: <name and brief focus>",
+    ...
+  ]
+}
+
+IMPORTANT: Analyze the ACTUAL complexity. Consider:
+- Number of distinct features/modules
+- Database complexity (tables, relationships)
+- User roles and permissions
+- Third-party integrations
+- UI complexity (pages, components)
+- Business logic complexity
+
+A simple landing page might need 3-4 prompts.
+A full SaaS with multiple user types, complex workflows, admin panels, integrations, and reporting might need 15+ prompts.
+
+DO NOT default to any particular number. Truly analyze what this specific app requires.
+
+The phases should logically build on each other, with earlier phases setting up the foundation.`
+          }
+        ],
+      });
+
+      const textContent = response.content.find(c => c.type === 'text');
+      if (!textContent?.text) {
+        throw new Error('No response from AI');
+      }
+
+      // Parse the JSON response
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+      return {
+        promptCount: Math.max(3, result.promptCount || 5), // Minimum 3, no maximum
+        phases: result.phases || []
+      };
+    } catch (error: any) {
+      console.error('[App Builder Prompts] Complexity analysis error:', error.message);
+      // Default fallback
+      return {
+        promptCount: 5,
+        phases: [
+          'Phase 1: Project Setup & Foundation',
+          'Phase 2: Core Data Models & Database',
+          'Phase 3: Main User Interface',
+          'Phase 4: Core Features & Logic',
+          'Phase 5: Final Polish & Deployment Prep'
+        ]
+      };
+    }
+  }
+
+  /**
+   * Generate a single chunked prompt for the app builder
+   */
+  async generateSingleAppBuilderPrompt(
+    idea: any,
+    promptNumber: number,
+    totalPrompts: number,
+    phaseName: string,
+    previousPhases: string[],
+    researchContext: string
+  ): Promise<{
+    taskDescription: string;
+    previousContext: string;
+    technicalSpecs: string;
+    features: string[];
+    uiRequirements: string[];
+    completionChecklist: string[];
+  }> {
+    console.log(`[App Builder Prompts] Generating prompt ${promptNumber} of ${totalPrompts}: ${phaseName}`);
+
+    const anthropicClient = getAnthropic();
+
+    const previousContextSummary = previousPhases.length > 0
+      ? `Previous phases completed:\n${previousPhases.map((p, i) => `${i + 1}. ${p}`).join('\n')}`
+      : 'This is the first prompt - no previous phases.';
+
+    const response = await anthropicClient.messages.create({
+      model: 'claude-opus-4-20250514',
+      max_tokens: 16000,
+      thinking: {
+        type: 'enabled',
+        budget_tokens: 10000
+      },
+      messages: [
+        {
+          role: 'user',
+          content: `You are an expert software architect creating detailed, copy-paste-ready prompts for no-code AI builders (Lovable, Claude Code, Replit).
+
+Generate PROMPT ${promptNumber} of ${totalPrompts} for building this app:
+
+App Details:
+- Name: ${idea.title}
+- Description: ${idea.description || ''}
+- Market: ${idea.market || ''}
+- Target Audience: ${idea.targetAudience || ''}
+- Type: ${idea.type || ''}
+- Additional Details: ${idea.content || ''}
+
+Research Context (similar apps & patterns):
+${researchContext}
+
+Phase Focus: ${phaseName}
+
+${previousContextSummary}
+
+Generate the prompt content in JSON format:
+{
+  "taskDescription": "A 2-3 paragraph description starting with 'You are building [App Name]...' that sets context and describes this phase's goal. Should be detailed enough to stand alone when copy/pasted.",
+  "previousContext": "Summary of what should have been built in previous prompts (empty string for prompt 1)",
+  "technicalSpecs": "Specific tech stack, frameworks, database requirements for this phase",
+  "features": ["Array of 3-7 specific features to implement in this phase, with enough detail to be actionable"],
+  "uiRequirements": ["Array of 3-5 specific UI/UX requirements for this phase"],
+  "completionChecklist": ["Array of 3-5 verifiable outcomes that confirm this phase is complete"]
+}
+
+IMPORTANT:
+- Make the taskDescription comprehensive - it will be copy/pasted directly into an AI builder
+- Include specific component names, API endpoints, or database tables where relevant
+- Features should be concrete and implementable in one prompt session
+- The prompt should work for Lovable, Claude Code, or Replit (React/TypeScript/Tailwind stack preferred)
+- For prompt 1, include project setup and initial structure
+- For the final prompt, include deployment prep and polish
+
+Return ONLY the JSON object, no additional text.`
+        }
+      ],
+    });
+
+    // Extract the text content (skip thinking blocks)
+    const textContent = response.content.find(c => c.type === 'text');
+    if (!textContent || textContent.type !== 'text') {
+      throw new Error('No text response from AI');
+    }
+
+    // Parse the JSON response
+    const jsonMatch = textContent.text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No JSON found in response');
+    }
+
+    return JSON.parse(jsonMatch[0]);
+  }
+
+  /**
+   * Main orchestration method: Generate complete App Builder Prompts document
+   */
+  async generateAppBuilderPrompts(idea: any): Promise<{
+    appName: string;
+    appDescription: string;
+    prompts: Array<{
+      promptNumber: number;
+      totalPrompts: number;
+      phaseName: string;
+      previousContext: string;
+      taskDescription: string;
+      technicalSpecs: string;
+      features: string[];
+      uiRequirements: string[];
+      completionChecklist: string[];
+    }>;
+  }> {
+    console.log('[App Builder Prompts] Starting generation for:', idea.title);
+
+    // Step 1: Research similar apps
+    const researchContext = await this.researchSimilarApps(idea);
+    console.log('[App Builder Prompts] Research complete');
+
+    // Step 2: Analyze complexity and determine prompt count
+    const { promptCount, phases } = await this.analyzeAppComplexity(idea, researchContext);
+    console.log(`[App Builder Prompts] Complexity analysis: ${promptCount} prompts needed`);
+
+    // Step 3: Generate each prompt
+    const prompts: Array<{
+      promptNumber: number;
+      totalPrompts: number;
+      phaseName: string;
+      previousContext: string;
+      taskDescription: string;
+      technicalSpecs: string;
+      features: string[];
+      uiRequirements: string[];
+      completionChecklist: string[];
+    }> = [];
+
+    const completedPhases: string[] = [];
+
+    for (let i = 0; i < promptCount; i++) {
+      const phaseName = phases[i] || `Phase ${i + 1}`;
+
+      const promptContent = await this.generateSingleAppBuilderPrompt(
+        idea,
+        i + 1,
+        promptCount,
+        phaseName,
+        completedPhases,
+        researchContext
+      );
+
+      prompts.push({
+        promptNumber: i + 1,
+        totalPrompts: promptCount,
+        phaseName: phaseName.replace(/^Phase \d+:\s*/, ''), // Remove "Phase N:" prefix
+        ...promptContent
+      });
+
+      // Track completed phases for context in next prompt
+      completedPhases.push(`${phaseName}: ${promptContent.features.slice(0, 2).join(', ')}...`);
+
+      console.log(`[App Builder Prompts] Generated prompt ${i + 1} of ${promptCount}`);
+    }
+
+    return {
+      appName: idea.title,
+      appDescription: idea.description || idea.subtitle || 'A powerful application built with AI assistance.',
+      prompts
+    };
   }
 }
 
@@ -6997,6 +7317,140 @@ C) Excel
 
 Quality bar:
 This should be good enough that a team can implement the dashboard without follow-up questions.`;
+
+// ── Distribution Channels Prompt Template ──────────────────────────────────
+const DISTRIBUTION_CHANNELS_PROMPT_TEMPLATE = `You are a growth strategist and distribution expert with deep experience across B2B, B2C, marketplaces, and SaaS.
+
+Your task is to create a comprehensive distribution channels analysis for {{APP_NAME}}, identifying both OBVIOUS and NON-OBVIOUS channels to reach {{TARGET_AUDIENCE}} in the {{MARKET}} market.
+
+## BUSINESS CONTEXT
+{{BUSINESS_CONTEXT}}
+
+---
+
+## YOUR DELIVERABLE
+
+Create a detailed distribution channels strategy with the following sections:
+
+### 1. OBVIOUS CHANNELS (Expected, Standard Approaches)
+These are the channels your competitors are likely already using. For each channel:
+- **Channel Name**
+- **Why It's Obvious**: Why this is a standard choice for this market
+- **Expected CAC Range**: Estimated customer acquisition cost
+- **Saturation Level**: Low / Medium / High / Oversaturated
+- **Time to Results**: Immediate / 1-3 months / 3-6 months / 6-12 months
+- **Recommended Tactics**: 3-5 specific tactics within this channel
+- **Risks & Limitations**: What could go wrong or limit scale
+
+Include at minimum:
+- Paid advertising channels (Google, Meta, LinkedIn, etc.)
+- Organic search/SEO
+- Content marketing
+- Social media presence
+- Email marketing
+- Industry events/conferences
+- Partner/affiliate programs
+- PR and media outreach
+
+### 2. NON-OBVIOUS CHANNELS (Unconventional, Creative Approaches)
+These are channels your competitors are likely NOT using or underutilizing. For each channel:
+- **Channel Name**
+- **Why It's Non-Obvious**: Why others haven't exploited this
+- **Unfair Advantage Potential**: How this could become a moat
+- **Expected CAC Range**: Often lower than obvious channels
+- **Effort Level**: Low / Medium / High
+- **Time to Results**: Immediate / 1-3 months / 3-6 months / 6-12 months
+- **Specific Playbook**: Step-by-step how to execute
+- **Examples/Proof**: Companies that have succeeded with this approach
+
+Think creatively about:
+- Niche communities (Discord servers, Slack groups, subreddits, forums)
+- Micro-influencers and thought leaders in adjacent spaces
+- Integration partnerships with complementary tools
+- Platform-specific opportunities (Product Hunt, Hacker News, etc.)
+- Offline-to-online bridges
+- Educational content in unexpected places (YouTube tutorials, podcasts)
+- API/developer ecosystem plays
+- User-generated content loops
+- Reverse engineering competitor traffic sources
+- Geographic or demographic arbitrage
+- Timing-based opportunities (seasonal, event-driven)
+- Community building before product launch
+- Strategic free tools or calculators
+- Job board and career site presence
+- University/student programs
+- Open source contributions
+- Industry-specific directories and databases
+- LinkedIn personal branding plays
+- Podcast guest strategy
+- Newsletter sponsorships in niche publications
+
+### 3. CHANNEL PRIORITIZATION MATRIX
+Create a 2x2 matrix ranking all channels by:
+- **X-axis**: Effort Required (Low to High)
+- **Y-axis**: Expected Impact (Low to High)
+
+Categorize into:
+- **Quick Wins** (Low Effort, High Impact) - Do these first
+- **Strategic Bets** (High Effort, High Impact) - Plan for these
+- **Fill-ins** (Low Effort, Low Impact) - Do when you have spare capacity
+- **Deprioritize** (High Effort, Low Impact) - Avoid unless circumstances change
+
+### 4. 90-DAY CHANNEL LAUNCH SEQUENCE
+Provide a week-by-week rollout plan:
+- **Weeks 1-2**: Foundation & Quick Wins
+- **Weeks 3-4**: Scale What Works
+- **Weeks 5-8**: Add Secondary Channels
+- **Weeks 9-12**: Optimize & Experiment
+
+For each phase, specify:
+- Which channels to activate
+- Budget allocation (% of total)
+- Key metrics to track
+- Decision criteria for scaling up or killing
+
+### 5. CHANNEL-SPECIFIC METRICS & BENCHMARKS
+For each recommended channel, provide:
+- Primary KPI to track
+- Industry benchmark (what "good" looks like)
+- Leading indicators (early signals of success)
+- Attribution approach (how to measure this channel's contribution)
+
+### 6. BUDGET ALLOCATION RECOMMENDATIONS
+Based on a hypothetical budget of $10,000/month:
+- Provide specific $ allocations across channels
+- Include rationale for each allocation
+- Show how allocation should shift as you learn
+
+Also show allocations for:
+- Bootstrap mode ($1,000/month)
+- Growth mode ($50,000/month)
+
+### 7. COMPETITIVE CHANNEL INTELLIGENCE
+Analyze where competitors in this space are likely acquiring customers:
+- **Competitor 1**: Primary channels, estimated spend, gaps to exploit
+- **Competitor 2**: Primary channels, estimated spend, gaps to exploit
+- **Competitor 3**: Primary channels, estimated spend, gaps to exploit
+
+Identify underserved channel opportunities they're missing.
+
+### 8. RISK MITIGATION
+For each major channel:
+- What could cause this channel to fail or become less effective?
+- Backup plan if this channel underperforms
+- Signs to watch for that indicate channel is declining
+
+---
+
+## OUTPUT REQUIREMENTS
+- Be specific to this business, not generic advice
+- Include actual numbers and estimates where possible
+- Prioritize actionable recommendations over theory
+- Consider the stage of the business (likely early-stage)
+- Balance short-term wins with long-term sustainable channels
+- Highlight 2-3 "secret weapon" channels that could provide outsized returns
+
+Format the output in clean Markdown with clear headers and bullet points.`;
 
 // ── GTM Launch Calendar Prompt Template ──────────────────────────────────
 const GTM_LAUNCH_CALENDAR_PROMPT_TEMPLATE = `You are a prompt architect for a product-ideation platform.

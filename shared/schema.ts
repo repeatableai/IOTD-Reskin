@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   index,
+  uniqueIndex,
   jsonb,
   pgTable,
   text,
@@ -189,7 +190,7 @@ export const userIdeaInteractions = pgTable("user_idea_interactions", {
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   // Unique constraint to ensure one row per user-idea pair
-  sql`UNIQUE (user_id, idea_id)`,
+  uniqueIndex("IDX_user_idea_interactions_user_idea").on(table.userId, table.ideaId),
 ]);
 
 // User votes on ideas
@@ -231,7 +232,7 @@ export const userIdeaRatings = pgTable("user_idea_ratings", {
 }, (table) => [
   index("IDX_user_idea_ratings_user_id").on(table.userId),
   index("IDX_user_idea_ratings_idea_id").on(table.ideaId),
-  index("IDX_user_idea_ratings_user_idea").on(table.userId, table.ideaId),
+  uniqueIndex("IDX_user_idea_ratings_user_idea").on(table.userId, table.ideaId),
 ]);
 
 // Contact submissions table

@@ -356,7 +356,7 @@ export default function Research() {
                   </div>
                 </div>
                 <p className="text-muted-foreground mb-4">
-                  Comprehensive 20+ page analysis using Claude Sonnet 4.5 with extended thinking for maximum depth.
+                  Comprehensive 20+ page analysis using Claude Opus 4.5 with extended thinking for maximum depth.
                 </p>
                 <div className="space-y-2 mb-4">
                   <div className="flex items-center gap-2 text-sm">

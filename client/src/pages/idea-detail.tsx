@@ -19,14 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { 
-  Bookmark, 
-  BookmarkCheck, 
-  ThumbsUp, 
-  ThumbsDown, 
-  Eye, 
-  Download, 
-  Code, 
+import {
+  Bookmark,
+  BookmarkCheck,
+  ThumbsUp,
+  ThumbsDown,
+  Eye,
+  Download,
+  Code,
   ExternalLink,
   TrendingUp,
   Users,
@@ -46,7 +46,8 @@ import {
   ChevronRight,
   Play,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -671,8 +672,8 @@ export default function IdeaDetail() {
               </Button>
             )}
             
-            <ClaimButton 
-              ideaId={idea.id} 
+            <ClaimButton
+              ideaId={idea.id}
               ideaTitle={idea.title}
             />
           </div>
@@ -1888,7 +1889,7 @@ export default function IdeaDetail() {
             </Card>
 
             {/* CLI Option */}
-            <Card 
+            <Card
               className="cursor-pointer hover:border-primary hover:shadow-md transition-all group"
               onClick={() => {
                 setLocation(`/idea/${slug}/build/cursor`);

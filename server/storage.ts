@@ -88,7 +88,12 @@ export interface IStorage {
   // Research requests
   createResearchRequest(request: InsertResearchRequest): Promise<ResearchRequest>;
   getUserResearchRequests(userId: string): Promise<ResearchRequest[]>;
-  
+
+  // Research reports (stub - no table yet)
+  getUserResearchReports(userId: string): Promise<any[]>;
+  getResearchReportById(id: string): Promise<any | undefined>;
+  deleteResearchReport(id: string, userId: string): Promise<void>;
+
   // FAQ questions
   getFaqQuestions(category?: string): Promise<FaqQuestion[]>;
   voteFaqQuestion(id: string, helpful: boolean): Promise<void>;
@@ -670,6 +675,22 @@ export class DatabaseStorage implements IStorage {
       .from(researchRequests)
       .where(eq(researchRequests.userId, userId))
       .orderBy(desc(researchRequests.createdAt));
+  }
+
+  // Research reports (stub implementations - no table yet)
+  async getUserResearchReports(userId: string): Promise<any[]> {
+    // Research reports table not yet implemented
+    return [];
+  }
+
+  async getResearchReportById(id: string): Promise<any | undefined> {
+    // Research reports table not yet implemented
+    return undefined;
+  }
+
+  async deleteResearchReport(id: string, userId: string): Promise<void> {
+    // Research reports table not yet implemented
+    // No-op until table is created
   }
 
   // FAQ questions

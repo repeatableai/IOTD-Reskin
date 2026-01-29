@@ -5058,6 +5058,63 @@ Return ONLY valid JSON, no markdown or explanation.`
     }
   });
 
+  // Generate Distribution Channels prompt
+  app.post('/api/ai/generate-distribution-channels-prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+        force: z.boolean().optional(),
+      }).refine(data => data.ideaId || data.slug, {
+        message: 'Either ideaId or slug is required',
+      });
+
+      const { ideaId, slug, force } = bodySchema.parse(req.body);
+
+      let idea;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`User ${userId} generating distribution channels prompt for idea: ${idea.title} (${idea.id})`);
+
+      const existingPrompts = idea.builderPrompts as any;
+      if (!force && existingPrompts?.distributionChannelsPrompt) {
+        console.log(`[DistributionChannelsPrompt] Using cached prompt for idea ${idea.id}`);
+        return res.json({ prompt: existingPrompts.distributionChannelsPrompt });
+      }
+
+      if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ message: 'Anthropic API key not configured.' });
+      }
+
+      const prompt = await aiService.assembleDistributionChannelsPrompt(idea);
+
+      const updatedBuilderPrompts = {
+        ...(existingPrompts || {}),
+        distributionChannelsPrompt: prompt,
+      };
+      await storage.updateIdea(idea.id, { builderPrompts: updatedBuilderPrompts });
+      console.log(`[DistributionChannelsPrompt] Saved to idea ${idea.id}`);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error('Error generating distribution channels prompt:', error);
+      res.status(500).json({
+        message: 'Failed to generate distribution channels prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
   // Generate Competitive Analysis prompt
   app.post('/api/ai/generate-competitive-analysis-prompt', isAuthenticated, async (req: any, res) => {
     try {
@@ -5281,6 +5338,66 @@ Return ONLY valid JSON, no markdown or explanation.`
       console.error('Error generating GTM launch calendar prompt:', error);
       res.status(500).json({
         message: 'Failed to generate GTM launch calendar prompt',
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  });
+
+  // Generate App Builder Prompts DOCX (chunked prompts for no-code builders)
+  app.post('/api/ai/generate-app-builder-docx', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log(`[App Builder DOCX] Request from user: ${userId}`);
+
+      const bodySchema = z.object({
+        ideaId: z.string().optional(),
+        slug: z.string().optional(),
+      });
+
+      const validation = bodySchema.safeParse(req.body);
+      if (!validation.success) {
+        return res.status(400).json({
+          message: 'Invalid request body',
+          errors: validation.error.errors,
+        });
+      }
+
+      const { ideaId, slug } = validation.data;
+
+      // Fetch the idea
+      let idea: any = null;
+      if (ideaId) {
+        idea = await storage.getIdeaById(ideaId);
+      } else if (slug) {
+        idea = await storage.getIdeaBySlug(slug);
+      }
+
+      if (!idea) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      console.log(`[App Builder DOCX] Generating for idea: ${idea.title}`);
+
+      // Generate the prompts using AI
+      const promptsData = await aiService.generateAppBuilderPrompts(idea);
+
+      // Import and use the DOCX generator
+      const { generateAppBuilderDocx } = await import('./docxGenerator.js');
+      const docxBuffer = await generateAppBuilderDocx(promptsData);
+
+      // Send the DOCX file
+      const filename = `${idea.title.replace(/[^a-zA-Z0-9]/g, '-')}-app-builder-prompts.docx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', docxBuffer.length);
+      res.send(docxBuffer);
+
+      console.log(`[App Builder DOCX] Successfully generated ${promptsData.prompts.length} prompts for: ${idea.title}`);
+    } catch (error: any) {
+      console.error('[App Builder DOCX] Error:', error);
+      logErrorToFile(error, 'App Builder DOCX Generation');
+      res.status(500).json({
+        message: 'Failed to generate App Builder prompts document',
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }

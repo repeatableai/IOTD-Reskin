@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users, Loader2, FileText } from "lucide-react";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
 import { useCollaborationPortal } from "@/contexts/CollaborationPortalContext";
 
@@ -94,6 +94,12 @@ const TEMPLATES_BY_CATEGORY = {
       id: "trade-association-platform",
       name: "Trade Association Platform",
       description: "Platform for trade associations and professional networks.",
+      category: "Popular"
+    },
+    {
+      id: "distribution-channels",
+      name: "Non-Obvious and Obvious Distribution Channels",
+      description: "Discover unconventional and standard channels to reach your market.",
       category: "Popular"
     }
   ],
@@ -287,9 +293,12 @@ export default function BuildPrompt() {
   const [isGeneratingCompetitiveAnalysis, setIsGeneratingCompetitiveAnalysis] = useState(false);
   const [customerInterviewGuidePrompt, setCustomerInterviewGuidePrompt] = useState<string | null>(null);
   const [isGeneratingCustomerInterviewGuide, setIsGeneratingCustomerInterviewGuide] = useState(false);
+  const [distributionChannelsPrompt, setDistributionChannelsPrompt] = useState<string | null>(null);
+  const [isGeneratingDistributionChannels, setIsGeneratingDistributionChannels] = useState(false);
   const [copied, setCopied] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [updateInstruction, setUpdateInstruction] = useState("");
+  const [isGeneratingAppBuilderDoc, setIsGeneratingAppBuilderDoc] = useState(false);
 
   // Campaign Angle 1: Problem-Focused
   const [angle1PrimaryText, setAngle1PrimaryText] = useState("");
@@ -1152,6 +1161,47 @@ export default function BuildPrompt() {
     }
   }, [selectedTemplate, idea]);
 
+  // Generate distribution channels prompt (force=true skips cache and regenerates)
+  const generateDistributionChannelsPrompt = async (force = false) => {
+    if (!idea) return;
+
+    setIsGeneratingDistributionChannels(true);
+    try {
+      const response = await fetch('/api/ai/generate-distribution-channels-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ ideaId: idea.id, force }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate distribution channels prompt');
+      }
+
+      const data = await response.json();
+      setDistributionChannelsPrompt(data.prompt);
+      toast({
+        title: force ? "Distribution channels prompt regenerated!" : "Distribution channels prompt generated!",
+        description: "Your prompt is ready to copy.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate distribution channels prompt",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingDistributionChannels(false);
+    }
+  };
+
+  // Auto-generate distribution channels prompt when template is selected
+  useEffect(() => {
+    if (selectedTemplate === 'distribution-channels' && !distributionChannelsPrompt && idea && !isGeneratingDistributionChannels) {
+      generateDistributionChannelsPrompt();
+    }
+  }, [selectedTemplate, idea]);
+
   const copyPromptToClipboard = async () => {
     try {
       const textToCopy = getPromptContent();
@@ -1329,6 +1379,13 @@ export default function BuildPrompt() {
       if (isGeneratingCustomerInterviewGuide) return '';
       if (customerInterviewGuidePrompt) return customerInterviewGuidePrompt;
       return 'Select this template to generate a customer interview guide prompt tailored to this idea.';
+    }
+
+    // Distribution Channels template
+    if (selectedTemplate === 'distribution-channels') {
+      if (isGeneratingDistributionChannels) return '';
+      if (distributionChannelsPrompt) return distributionChannelsPrompt;
+      return 'Select this template to generate a distribution channels prompt tailored to this idea.';
     }
 
     // Competitive Analysis template
@@ -1587,10 +1644,72 @@ ${idea?.description || 'Description of your solution'}
                         Collaboration Portal
                       </Button>
                     )}
-                    <ClaimButton 
-                      ideaId={idea?.id || ''} 
+                    <ClaimButton
+                      ideaId={idea?.id || ''}
                       ideaTitle={idea?.title || ''}
                     />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        if (isGeneratingAppBuilderDoc || !idea) return;
+
+                        setIsGeneratingAppBuilderDoc(true);
+                        toast({
+                          title: "Generating App Builder Prompts",
+                          description: "Gathering context and generating comprehensive prompts... This may take 2-3 minutes.",
+                        });
+
+                        try {
+                          const response = await fetch('/api/ai/generate-app-builder-docx', {
+                            method: 'POST',
+                            headers: {
+                              'Content-Type': 'application/json',
+                            },
+                            credentials: 'include',
+                            body: JSON.stringify({ slug: slug }),
+                          });
+
+                          if (!response.ok) {
+                            const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+                            throw new Error(errorData.message || 'Failed to generate document');
+                          }
+
+                          // Download the file
+                          const blob = await response.blob();
+                          const url = window.URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `${idea.title.replace(/[^a-zA-Z0-9]/g, '-')}-app-builder-prompts.docx`;
+                          document.body.appendChild(a);
+                          a.click();
+                          window.URL.revokeObjectURL(url);
+                          document.body.removeChild(a);
+
+                          toast({
+                            title: "Download Complete",
+                            description: "Your App Builder Prompts document has been downloaded!",
+                          });
+                        } catch (error: any) {
+                          console.error('Error generating app builder doc:', error);
+                          toast({
+                            title: "Error",
+                            description: error.message || "Failed to generate App Builder Prompts. Please try again.",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setIsGeneratingAppBuilderDoc(false);
+                        }
+                      }}
+                      disabled={isGeneratingAppBuilderDoc}
+                      data-testid="button-app-builder-prompts"
+                    >
+                      {isGeneratingAppBuilderDoc ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4 mr-2" />
+                      )}
+                      {isGeneratingAppBuilderDoc ? "Generating..." : "App Builder Prompts"}
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -1852,6 +1971,21 @@ ${idea?.description || 'Description of your solution'}
                   </Card>
                 )}
 
+                {/* Distribution Channels Loading State */}
+                {selectedTemplate === 'distribution-channels' && isGeneratingDistributionChannels && (
+                  <Card>
+                    <CardContent className="py-8">
+                      <div className="flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+                          <p className="text-sm text-muted-foreground">Generating distribution channels prompt...</p>
+                          <p className="text-xs text-muted-foreground mt-1">Discovering obvious and non-obvious channels</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Competitive Analysis Loading State */}
                 {selectedTemplate === 'competitive-analysis' && isGeneratingCompetitiveAnalysis && (
                   <Card>
@@ -1952,6 +2086,7 @@ ${idea?.description || 'Description of your solution'}
                   (selectedTemplate === 'feature-specs' && isGeneratingFeatureSpecs) ||
                   (selectedTemplate === 'mvp-roadmap' && isGeneratingMvpRoadmap) ||
                   (selectedTemplate === 'customer-interview-guide' && isGeneratingCustomerInterviewGuide) ||
+                  (selectedTemplate === 'distribution-channels' && isGeneratingDistributionChannels) ||
                   (selectedTemplate === 'competitive-analysis' && isGeneratingCompetitiveAnalysis) ||
                   (selectedTemplate === 'pricing-strategy' && isGeneratingPricingStrategy) ||
                   (selectedTemplate === 'kpi-dashboard' && isGeneratingKpiDashboard) ||
@@ -2105,6 +2240,18 @@ ${idea?.description || 'Description of your solution'}
                             size="sm"
                             onClick={() => generateCustomerInterviewGuidePrompt(true)}
                             disabled={isGeneratingCustomerInterviewGuide}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            Regenerate
+                          </Button>
+                        )}
+                        {selectedTemplate === 'distribution-channels' && distributionChannelsPrompt && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => generateDistributionChannelsPrompt(true)}
+                            disabled={isGeneratingDistributionChannels}
                             className="h-8 text-xs gap-1"
                           >
                             <Sparkles className="w-3 h-3" />

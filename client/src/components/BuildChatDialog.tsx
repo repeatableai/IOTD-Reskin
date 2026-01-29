@@ -98,7 +98,7 @@ export function BuildChatDialog({ ideaContext, open, onOpenChange }: BuildChatDi
             AI Building Assistant (Claude 4.5)
           </DialogTitle>
           <DialogDescription>
-            Get expert guidance on building your startup with Claude 4.5 Sonnet
+            Get expert guidance on building your startup with Claude Opus 4.5
           </DialogDescription>
         </DialogHeader>
 
