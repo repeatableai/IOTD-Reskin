@@ -152,6 +152,105 @@ export async function generateAppBuilderDocx(data: AppBuilderDocument): Promise<
             spacing: { after: 400 },
           }),
 
+          // CRITICAL REQUIREMENTS section
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "CRITICAL REQUIREMENTS",
+                bold: true,
+                size: 28,
+                color: "DC2626",
+              }),
+            ],
+            heading: HeadingLevel.HEADING_1,
+            spacing: { before: 200, after: 200 },
+          }),
+
+          // 1. Authorization
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "1. THREE-LEVEL AUTHORIZATION",
+                bold: true,
+                size: 24,
+              }),
+            ],
+            spacing: { before: 100, after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "User: Access to own data and public features", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "Admin: User management, reports, moderation", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "Super Admin: Platform-wide access, all orgs, system settings, impersonation", size: 22 })],
+            bullet: { level: 0 },
+            spacing: { after: 200 },
+          }),
+
+          // 2. Demo Data & Test Accounts
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "2. SYNTHETIC DATA & TEST ACCOUNTS",
+                bold: true,
+                size: 24,
+              }),
+            ],
+            spacing: { before: 100, after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "10-50 realistic records per feature (no placeholder text)", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "Pre-seeded test accounts (no email verification needed):",
+                bold: true,
+                size: 22,
+              }),
+            ],
+            spacing: { before: 100, after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "testuser@demo.app / Demo123! (User)", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "testadmin@demo.app / Demo123! (Admin)", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "testsuperadmin@demo.app / Demo123! (Super Admin)", size: 22 })],
+            bullet: { level: 0 },
+            spacing: { after: 200 },
+          }),
+
+          // 3. No Blank Pages
+          new Paragraph({
+            children: [
+              new TextRun({
+                text: "3. NO BLANK PAGES",
+                bold: true,
+                size: 24,
+              }),
+            ],
+            spacing: { before: 100, after: 100 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: "Every button and link MUST be functional", size: 22 })],
+            bullet: { level: 0 },
+          }),
+          new Paragraph({
+            children: [new TextRun({ text: '"Coming soon" text is FORBIDDEN - implement or remove', size: 22 })],
+            bullet: { level: 0 },
+            spacing: { after: 400 },
+          }),
+
           // Separator before prompts
           new Paragraph({
             children: [new TextRun({ text: "─".repeat(60), color: "CCCCCC" })],

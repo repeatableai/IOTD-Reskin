@@ -3575,7 +3575,13 @@ A full SaaS with multiple user types, complex workflows, admin panels, integrati
 
 DO NOT default to any particular number. Truly analyze what this specific app requires.
 
-The phases should logically build on each other, with earlier phases setting up the foundation.`
+The phases should logically build on each other, with earlier phases setting up the foundation.
+
+=== MANDATORY REQUIREMENTS (always factor these into your phase planning) ===
+1. Phase 1 MUST include: three-level authorization system (user/admin/super_admin roles), pre-seeded test accounts
+2. Every phase MUST include creating realistic seed/demo data for any new features or entities
+3. Final phase MUST include: admin dashboard, super admin panel, and a completeness audit to verify no dead ends
+4. "No blank pages" rule: Every button and link must lead to functional content throughout all phases`
           }
         ],
       });
@@ -3602,11 +3608,11 @@ The phases should logically build on each other, with earlier phases setting up 
       return {
         promptCount: 5,
         phases: [
-          'Phase 1: Project Setup & Foundation',
-          'Phase 2: Core Data Models & Database',
-          'Phase 3: Main User Interface',
-          'Phase 4: Core Features & Logic',
-          'Phase 5: Final Polish & Deployment Prep'
+          'Phase 1: Project Setup, Authentication & Three-Level Authorization',
+          'Phase 2: Core Data Models & Database with Seed Data',
+          'Phase 3: Main User Interface & Role-Based Views',
+          'Phase 4: Core Features & Business Logic',
+          'Phase 5: Admin Dashboard, Super Admin Panel & Final Polish'
         ]
       };
     }
@@ -3667,14 +3673,51 @@ Phase Focus: ${phaseName}
 
 ${previousContextSummary}
 
+=== MANDATORY REQUIREMENTS FOR ALL PROMPTS ===
+
+1. THREE-LEVEL AUTHORIZATION SYSTEM:
+   - User role: Standard authenticated user, access to own data and public features
+   - Admin role: Organization admin, user management, reports, moderation
+   - Super Admin role: Platform-wide access, all orgs, system settings, impersonation
+   ${promptNumber === 1 ? `
+   FOR PHASE 1: Implement the full authorization foundation:
+   - Add 'role' field to users table (enum: 'user' | 'admin' | 'super_admin')
+   - Create middleware: requireAuth(), requireAdmin(), requireSuperAdmin()
+   - Pre-seed these test accounts (already verified, no email confirmation needed):
+     * testuser@demo.app / Demo123! (user role)
+     * testadmin@demo.app / Demo123! (admin role)
+     * testsuperadmin@demo.app / Demo123! (super_admin role)
+   ` : `
+   FOR THIS PHASE: Apply role-based access control to all new features. Ensure proper authorization checks.
+   `}
+
+2. SYNTHETIC/DEMO DATA:
+   - Create 10-50 realistic sample records for EVERY new entity introduced in this phase
+   - Use realistic names, dates, values (NOT "Test 1", "Lorem ipsum", or placeholder text)
+   - Include various statuses and edge cases to demonstrate the full feature set
+
+3. NO BLANK PAGES:
+   - Every button must perform a real action
+   - Every link must lead to a working page
+   - "Coming soon" text is FORBIDDEN - implement the feature or remove the UI element
+   - All navigation paths must lead to functional content
+
+${promptNumber === totalPrompts ? `
+=== FINAL PHASE REQUIREMENTS ===
+- Admin Dashboard: Implement user management, reports, content moderation tools
+- Super Admin Panel: Platform analytics, system settings, user impersonation capability
+- Completeness Audit: Test every route as each role (user/admin/super_admin), verify no dead ends
+- Ensure all three test accounts work: testuser@demo.app, testadmin@demo.app, testsuperadmin@demo.app
+` : ''}
+
 Generate the prompt content in JSON format:
 {
-  "taskDescription": "A 2-3 paragraph description starting with 'You are building [App Name]...' that sets context and describes this phase's goal. Should be detailed enough to stand alone when copy/pasted.",
+  "taskDescription": "A 2-3 paragraph description starting with 'You are building [App Name]...' that sets context and describes this phase's goal. MUST include auth instructions (role-based access) and seed data requirements. Should be detailed enough to stand alone when copy/pasted.",
   "previousContext": "Summary of what should have been built in previous prompts (empty string for prompt 1)",
   "technicalSpecs": "Specific tech stack, frameworks, database requirements for this phase",
-  "features": ["Array of 3-7 specific features to implement in this phase, with enough detail to be actionable"],
+  "features": ["Array of 3-7 specific features. Each feature MUST specify its authorization level (user/admin/super_admin) and include seed data creation"],
   "uiRequirements": ["Array of 3-5 specific UI/UX requirements for this phase"],
-  "completionChecklist": ["Array of 3-5 verifiable outcomes that confirm this phase is complete"]
+  "completionChecklist": ["Array of 4-6 verifiable outcomes. MUST include: auth verification per role, seed data check, no-blank-pages verification"]
 }
 
 IMPORTANT:
@@ -3682,8 +3725,10 @@ IMPORTANT:
 - Include specific component names, API endpoints, or database tables where relevant
 - Features should be concrete and implementable in one prompt session
 - The prompt should work for Lovable, Claude Code, or Replit (React/TypeScript/Tailwind stack preferred)
-- For prompt 1, include project setup and initial structure
-- For the final prompt, include deployment prep and polish
+- For prompt 1, include project setup, initial structure, AND the full three-level auth system with pre-seeded test accounts
+- For the final prompt, include admin dashboard, super admin panel, completeness audit, and deployment prep
+- EVERY feature must specify which roles can access it
+- EVERY entity must include realistic seed data (10-50 records)
 
 Return ONLY the JSON object, no additional text.`
         }
