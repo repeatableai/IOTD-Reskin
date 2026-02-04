@@ -18,7 +18,8 @@ import { spreadsheetParser } from './spreadsheetParser';
 import { spreadsheetMapper } from './spreadsheetMapper';
 import { slugService } from './slugService';
 import { imageProcessor } from './imageProcessor';
-import puppeteer from 'puppeteer';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
 import { eq, sql, desc, asc, inArray, and } from 'drizzle-orm';
@@ -2065,79 +2066,111 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         throw new Error(`Invalid URL format: ${url}`);
       }
       
-      console.log(`[Generate from URL] Fetching website with Puppeteer: ${url}`);
-      
+      console.log(`[Generate from URL] Fetching website: ${url}`);
+
       let htmlContent;
       let browser;
-      
+
+      // First, try simple HTTP fetch (faster, works everywhere)
       try {
-        // Launch headless browser to bypass bot protection
-        browser = await puppeteer.launch({
-          headless: true,
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--disable-gpu',
-          ],
+        console.log(`[Generate from URL] Trying simple HTTP fetch first...`);
+        const fetchResponse = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+          signal: AbortSignal.timeout(15000), // 15 second timeout
         });
-        
-        const page = await browser.newPage();
-        
-        // Set a realistic viewport and user agent
-        await page.setViewport({ width: 1920, height: 1080 });
-        await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
-        
-        // Navigate to the URL with timeout
-        console.log(`[Generate from URL] Navigating to ${url}...`);
-        await page.goto(url, {
-          waitUntil: 'networkidle2',
-          timeout: 30000, // 30 second timeout
-        });
-        
-        // Wait a bit for any dynamic content to load
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Get the full HTML content
-        htmlContent = await page.content();
-        console.log(`[Generate from URL] Fetched ${htmlContent.length} characters of HTML`);
-        
-        await browser.close();
-        
-        if (!htmlContent || htmlContent.length < 100) {
-          return res.status(400).json({ 
-            message: "Insufficient content",
-            error: `Website returned insufficient content (${htmlContent.length} characters). Please try downloading the HTML file and uploading it directly instead.`
-          });
-        }
-      } catch (puppeteerError: any) {
-        // Ensure browser is closed even on error
-        if (browser) {
-          try {
-            await browser.close();
-          } catch (closeError) {
-            console.error("Error closing browser:", closeError);
+
+        if (fetchResponse.ok) {
+          htmlContent = await fetchResponse.text();
+          console.log(`[Generate from URL] Simple fetch succeeded: ${htmlContent.length} characters`);
+
+          // If we got substantial content, use it
+          if (htmlContent && htmlContent.length > 500) {
+            console.log(`[Generate from URL] Using simple fetch result`);
+          } else {
+            console.log(`[Generate from URL] Simple fetch returned insufficient content, trying Puppeteer...`);
+            htmlContent = null; // Reset to try Puppeteer
           }
         }
-        
-        console.error("Puppeteer error details:", puppeteerError);
-        
-        // Handle specific Puppeteer errors
-        if (puppeteerError.name === 'TimeoutError') {
-          return res.status(408).json({ 
-            message: "Request timeout",
-            error: "The website took too long to load (30 seconds). Please try again or upload the HTML file directly."
+      } catch (fetchError) {
+        console.log(`[Generate from URL] Simple fetch failed, falling back to Puppeteer:`, fetchError);
+        htmlContent = null;
+      }
+
+      // If simple fetch didn't work, try Puppeteer with cloud-compatible Chromium
+      if (!htmlContent || htmlContent.length < 500) {
+        try {
+          console.log(`[Generate from URL] Launching Puppeteer with cloud Chromium...`);
+
+          // Configure chromium for cloud environment
+          const executablePath = await chromium.executablePath();
+          console.log(`[Generate from URL] Chromium path: ${executablePath}`);
+
+          browser = await puppeteer.launch({
+            args: chromium.args,
+            defaultViewport: chromium.defaultViewport,
+            executablePath,
+            headless: chromium.headless,
           });
-        }
-        if (puppeteerError.message && puppeteerError.message.includes('net::ERR')) {
-          return res.status(400).json({ 
-            message: "Network error",
-            error: `Unable to connect to ${url}. Please check the URL and your internet connection.`
+
+          const page = await browser.newPage();
+
+          // Set a realistic viewport and user agent
+          await page.setViewport({ width: 1920, height: 1080 });
+          await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36');
+
+          // Navigate to the URL with timeout
+          console.log(`[Generate from URL] Navigating to ${url}...`);
+          await page.goto(url, {
+            waitUntil: 'networkidle2',
+            timeout: 30000, // 30 second timeout
           });
+
+          // Wait a bit for any dynamic content to load
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Get the full HTML content
+          htmlContent = await page.content();
+          console.log(`[Generate from URL] Puppeteer fetched ${htmlContent.length} characters of HTML`);
+
+          await browser.close();
+
+          if (!htmlContent || htmlContent.length < 100) {
+            return res.status(400).json({
+              message: "Insufficient content",
+              error: `Website returned insufficient content (${htmlContent.length} characters). Please try downloading the HTML file and uploading it directly instead.`
+            });
+          }
+        } catch (puppeteerError: any) {
+          // Ensure browser is closed even on error
+          if (browser) {
+            try {
+              await browser.close();
+            } catch (closeError) {
+              console.error("Error closing browser:", closeError);
+            }
+          }
+
+          console.error("Puppeteer error details:", puppeteerError);
+
+          // Handle specific Puppeteer errors
+          if (puppeteerError.name === 'TimeoutError') {
+            return res.status(408).json({
+              message: "Request timeout",
+              error: "The website took too long to load (30 seconds). Please try again or upload the HTML file directly."
+            });
+          }
+          if (puppeteerError.message && puppeteerError.message.includes('net::ERR')) {
+            return res.status(400).json({
+              message: "Network error",
+              error: `Unable to connect to ${url}. Please check the URL and your internet connection.`
+            });
+          }
+          // Re-throw for generic error handling below
+          throw puppeteerError;
         }
-        // Re-throw for generic error handling below
-        throw puppeteerError;
       }
       
       // Generate idea from fetched HTML
