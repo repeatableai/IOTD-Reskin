@@ -1,12 +1,7 @@
 #!/usr/bin/env node
 /**
  * Fix Render database schema by adding missing columns
- * This ensures all required columns exist before seeding
- *
- * Robust version with:
- * - Retry logic for database connection
- * - Clear logging at each step
- * - Hard failure on errors (so they appear in Render logs)
+ * Uses a PostgreSQL DO block for atomic, idempotent column additions
  */
 import pg from 'pg';
 const { Pool } = pg;
@@ -19,23 +14,6 @@ if (!DATABASE_URL) {
   console.log('[Schema Fix] DATABASE_URL not set, skipping schema fix');
   process.exit(0);
 }
-
-// All columns that might be missing from older database schemas
-const columnsToAdd = [
-  { name: 'preview_url', type: 'VARCHAR' },
-  { name: 'offer_tiers', type: 'JSONB' },
-  { name: 'why_now_analysis', type: 'TEXT' },
-  { name: 'proof_signals', type: 'TEXT' },
-  { name: 'market_gap', type: 'TEXT' },
-  { name: 'execution_plan', type: 'TEXT' },
-  { name: 'framework_data', type: 'JSONB' },
-  { name: 'trend_analysis', type: 'TEXT' },
-  { name: 'storytelling_narrative', type: 'TEXT' },
-  { name: 'keyword_data', type: 'JSONB' },
-  { name: 'builder_prompts', type: 'JSONB' },
-  { name: 'community_signals', type: 'JSONB' },
-  { name: 'signal_badges', type: 'TEXT[]' },
-];
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -59,83 +37,162 @@ async function connectWithRetry(pool) {
   }
 }
 
-async function verifyIdeasTableExists(client) {
-  console.log('[Schema Fix] Verifying ideas table exists...');
-  const result = await client.query(`
-    SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public' AND table_name = 'ideas';
-  `);
+// SQL migration that adds all missing columns atomically
+const MIGRATION_SQL = `
+DO $$
+BEGIN
+    RAISE NOTICE '[Schema Fix] Starting column migration...';
 
-  if (result.rows.length === 0) {
-    throw new Error('ideas table does not exist - drizzle-kit push may not have completed');
-  }
-  console.log('[Schema Fix] ideas table verified');
-}
+    -- preview_url
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'preview_url') THEN
+        ALTER TABLE ideas ADD COLUMN preview_url VARCHAR;
+        RAISE NOTICE '[Schema Fix] Added column: preview_url';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: preview_url';
+    END IF;
 
-async function addColumnIfMissing(client, col) {
-  const checkQuery = `
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_name = 'ideas' AND column_name = $1;
-  `;
-  const result = await client.query(checkQuery, [col.name]);
+    -- offer_tiers
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'offer_tiers') THEN
+        ALTER TABLE ideas ADD COLUMN offer_tiers JSONB;
+        RAISE NOTICE '[Schema Fix] Added column: offer_tiers';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: offer_tiers';
+    END IF;
 
-  if (result.rows.length === 0) {
-    console.log(`[Schema Fix] Adding column: ${col.name} (${col.type})`);
-    await client.query(`ALTER TABLE ideas ADD COLUMN ${col.name} ${col.type};`);
-    console.log(`[Schema Fix] Added ${col.name}`);
-    return true;
-  } else {
-    console.log(`[Schema Fix] Column already exists: ${col.name}`);
-    return false;
-  }
-}
+    -- why_now_analysis
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'why_now_analysis') THEN
+        ALTER TABLE ideas ADD COLUMN why_now_analysis TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: why_now_analysis';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: why_now_analysis';
+    END IF;
+
+    -- proof_signals
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'proof_signals') THEN
+        ALTER TABLE ideas ADD COLUMN proof_signals TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: proof_signals';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: proof_signals';
+    END IF;
+
+    -- market_gap
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'market_gap') THEN
+        ALTER TABLE ideas ADD COLUMN market_gap TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: market_gap';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: market_gap';
+    END IF;
+
+    -- execution_plan
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'execution_plan') THEN
+        ALTER TABLE ideas ADD COLUMN execution_plan TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: execution_plan';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: execution_plan';
+    END IF;
+
+    -- framework_data
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'framework_data') THEN
+        ALTER TABLE ideas ADD COLUMN framework_data JSONB;
+        RAISE NOTICE '[Schema Fix] Added column: framework_data';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: framework_data';
+    END IF;
+
+    -- trend_analysis
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'trend_analysis') THEN
+        ALTER TABLE ideas ADD COLUMN trend_analysis TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: trend_analysis';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: trend_analysis';
+    END IF;
+
+    -- storytelling_narrative
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'storytelling_narrative') THEN
+        ALTER TABLE ideas ADD COLUMN storytelling_narrative TEXT;
+        RAISE NOTICE '[Schema Fix] Added column: storytelling_narrative';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: storytelling_narrative';
+    END IF;
+
+    -- keyword_data
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'keyword_data') THEN
+        ALTER TABLE ideas ADD COLUMN keyword_data JSONB;
+        RAISE NOTICE '[Schema Fix] Added column: keyword_data';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: keyword_data';
+    END IF;
+
+    -- builder_prompts
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'builder_prompts') THEN
+        ALTER TABLE ideas ADD COLUMN builder_prompts JSONB;
+        RAISE NOTICE '[Schema Fix] Added column: builder_prompts';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: builder_prompts';
+    END IF;
+
+    -- community_signals
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'community_signals') THEN
+        ALTER TABLE ideas ADD COLUMN community_signals JSONB;
+        RAISE NOTICE '[Schema Fix] Added column: community_signals';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: community_signals';
+    END IF;
+
+    -- signal_badges
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'ideas' AND column_name = 'signal_badges') THEN
+        ALTER TABLE ideas ADD COLUMN signal_badges TEXT[];
+        RAISE NOTICE '[Schema Fix] Added column: signal_badges';
+    ELSE
+        RAISE NOTICE '[Schema Fix] Column exists: signal_badges';
+    END IF;
+
+    RAISE NOTICE '[Schema Fix] Column migration complete';
+END $$;
+`;
 
 async function fixSchema() {
   console.log('[Schema Fix] Starting schema fix script...');
-  console.log(`[Schema Fix] Will add up to ${columnsToAdd.length} columns if missing`);
 
   const pool = new Pool({
     connectionString: DATABASE_URL,
     ssl: {
-      rejectUnauthorized: false // Required for Render PostgreSQL
+      rejectUnauthorized: false
     }
   });
 
   let client;
   try {
-    // Connect with retry logic
     client = await connectWithRetry(pool);
 
-    // Verify the ideas table exists
-    await verifyIdeasTableExists(client);
+    // First check if ideas table exists
+    console.log('[Schema Fix] Checking if ideas table exists...');
+    const tableCheck = await client.query(`
+      SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'public' AND table_name = 'ideas';
+    `);
 
-    // Add each missing column
-    let addedCount = 0;
-    let existingCount = 0;
-    const errors = [];
-
-    for (const col of columnsToAdd) {
-      try {
-        const wasAdded = await addColumnIfMissing(client, col);
-        if (wasAdded) {
-          addedCount++;
-        } else {
-          existingCount++;
-        }
-      } catch (error) {
-        console.error(`[Schema Fix] ERROR adding ${col.name}:`, error.message);
-        errors.push({ column: col.name, error: error.message });
-      }
+    if (tableCheck.rows.length === 0) {
+      console.log('[Schema Fix] ideas table does not exist yet - drizzle-kit push should create it');
+      console.log('[Schema Fix] Skipping column additions (table will be created with all columns)');
+      return;
     }
 
-    console.log(`[Schema Fix] Summary: Added ${addedCount} columns, ${existingCount} already existed`);
+    console.log('[Schema Fix] ideas table found, running migration...');
 
-    if (errors.length > 0) {
-      console.error(`[Schema Fix] ${errors.length} columns failed to add:`);
-      errors.forEach(e => console.error(`  - ${e.column}: ${e.error}`));
-      throw new Error(`Failed to add ${errors.length} columns`);
+    // Run the migration
+    await client.query(MIGRATION_SQL);
+
+    // Verify the storytelling_narrative column specifically
+    const verifyResult = await client.query(`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'ideas' AND column_name = 'storytelling_narrative';
+    `);
+
+    if (verifyResult.rows.length > 0) {
+      console.log('[Schema Fix] VERIFIED: storytelling_narrative column exists');
+    } else {
+      throw new Error('CRITICAL: storytelling_narrative column was NOT added');
     }
 
     console.log('[Schema Fix] Schema fix complete');
@@ -148,13 +205,11 @@ async function fixSchema() {
   }
 }
 
-// Run the script
 fixSchema().then(() => {
   console.log('[Schema Fix] Script finished successfully');
   process.exit(0);
 }).catch((err) => {
   console.error('[Schema Fix] FATAL ERROR:', err.message);
   console.error('[Schema Fix] Stack:', err.stack);
-  // Exit with error code so Render deployment shows failure
   process.exit(1);
 });
