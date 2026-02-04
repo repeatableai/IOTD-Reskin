@@ -1412,6 +1412,10 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         signalBadges: signalBadges.length > 0 ? signalBadges : (enrichedData.signalBadges || []),
       };
 
+      // Remove storytellingNarrative from initial insert - column may not exist on Render,
+      // and it's generated asynchronously anyway (see background generation below)
+      delete (mergedIdea as any).storytellingNarrative;
+
       const createdIdea = await storage.createIdea(mergedIdea);
 
       // Generate storytelling narrative in background (don't wait for response)
