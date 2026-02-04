@@ -296,7 +296,13 @@ export class DatabaseStorage implements IStorage {
   async createIdea(idea: InsertIdea): Promise<Idea> {
     try {
       console.log('[Storage] Creating idea:', { title: idea.title, slug: idea.slug });
-      const [newIdea] = await db.insert(ideas).values(idea).returning();
+
+      // Strip fields that may not exist in database (defensive coding)
+      // storytellingNarrative is generated async AFTER creation anyway
+      const safeIdea = { ...idea };
+      delete (safeIdea as any).storytellingNarrative;
+
+      const [newIdea] = await db.insert(ideas).values(safeIdea).returning();
       console.log('[Storage] ✅ Idea created successfully:', newIdea.id);
       return newIdea;
     } catch (error: any) {
