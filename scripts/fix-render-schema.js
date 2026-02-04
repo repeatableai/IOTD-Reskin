@@ -77,5 +77,12 @@ async function fixSchema() {
   }
 }
 
-fixSchema();
+// Wait for schema fix to complete before exiting
+fixSchema().then(() => {
+  console.log('[Schema Fix] Script finished');
+  process.exit(0);
+}).catch((err) => {
+  console.error('[Schema Fix] Script failed:', err);
+  process.exit(1);
+});
 
