@@ -30,6 +30,7 @@ const columnsToAdd = [
   { name: 'execution_plan', type: 'TEXT' },
   { name: 'framework_data', type: 'JSONB' },
   { name: 'trend_analysis', type: 'TEXT' },
+  { name: 'storytelling_narrative', type: 'TEXT' },
   { name: 'keyword_data', type: 'JSONB' },
   { name: 'builder_prompts', type: 'JSONB' },
   { name: 'community_signals', type: 'JSONB' },
