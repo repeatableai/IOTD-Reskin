@@ -22,7 +22,7 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
-import { eq, sql, desc, asc, inArray, and } from 'drizzle-orm';
+import { eq, sql, desc, asc, inArray, and, isNull } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
@@ -6383,6 +6383,80 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       });
     } catch (error: any) {
       console.error("[Update from sourceData] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update preview URLs",
+        error: error.message
+      });
+    }
+  });
+
+  // Update ALL ideas - copy sourceData URL to previewUrl where missing
+  app.post('/api/admin/update-all-preview-urls-from-sourcedata', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+
+      // Get ALL ideas that don't have a previewUrl
+      const allIdeas = await db.select()
+        .from(ideas)
+        .where(isNull(ideas.previewUrl));
+
+      let updatedCount = 0;
+      const updatedSlugs: string[] = [];
+      const skippedCount = { noSourceData: 0, notUrl: 0 };
+
+      for (const idea of allIdeas) {
+        if (!idea.sourceData) {
+          skippedCount.noSourceData++;
+          continue;
+        }
+
+        const sourceData = idea.sourceData.trim();
+        // Check if sourceData looks like a URL
+        const isUrl = sourceData.startsWith('http://') ||
+                     sourceData.startsWith('https://') ||
+                     /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i.test(sourceData);
+
+        if (!isUrl) {
+          skippedCount.notUrl++;
+          continue;
+        }
+
+        const previewUrl = sourceData.startsWith('http') ? sourceData : `https://${sourceData}`;
+        try {
+          await db.update(ideas)
+            .set({ previewUrl })
+            .where(eq(ideas.id, idea.id));
+          updatedCount++;
+          updatedSlugs.push(idea.slug);
+          console.log(`[Update All Preview URLs] Updated ${idea.slug} -> ${previewUrl.substring(0, 50)}...`);
+        } catch (error: any) {
+          console.error(`[Update All Preview URLs] Error updating ${idea.slug}:`, error.message);
+        }
+      }
+
+      console.log(`[Update All Preview URLs] Complete: ${updatedCount} updated, ${skippedCount.noSourceData} had no sourceData, ${skippedCount.notUrl} sourceData was not a URL`);
+
+      res.json({
+        success: true,
+        message: `Updated ${updatedCount} ideas with previewUrl from sourceData`,
+        updated: updatedCount,
+        skipped: skippedCount,
+        totalProcessed: allIdeas.length,
+        updatedSlugs: updatedSlugs.slice(0, 50) // Show first 50
+      });
+    } catch (error: any) {
+      console.error("[Update All Preview URLs] Error:", error);
       res.status(500).json({
         success: false,
         message: "Failed to update preview URLs",
