@@ -421,10 +421,12 @@ export default function CreateIdea() {
                 console.warn('Failed to update idea with image:', updateError);
               }
             }
+          },
+          onSettled: () => {
+            // Only stop the animation after mutation completes (success or error)
+            setIsAnalyzingHTML(false);
           }
         });
-        
-        setIsAnalyzingHTML(false);
         return;
       }
       
@@ -512,6 +514,10 @@ export default function CreateIdea() {
               console.warn('Failed to update idea with image:', updateError);
             }
           }
+        },
+        onSettled: () => {
+          // Only stop the animation after mutation completes (success or error)
+          setIsAnalyzingHTML(false);
         }
       });
     } catch (error) {
@@ -521,7 +527,7 @@ export default function CreateIdea() {
         description: "Failed to generate solution from HTML. Please try again.",
         variant: "destructive",
       });
-    } finally {
+      // Only reset here if error occurred before mutation was called
       setIsAnalyzingHTML(false);
     }
   };
