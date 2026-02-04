@@ -1346,6 +1346,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         market: ideaData.market,
         targetAudience: ideaData.targetAudience,
         imageUrl: ideaData.imageUrl,
+        previewUrl: ideaData.previewUrl, // Include previewUrl for Opportunity Analysis feature
         // Ensure required fields
         slug,
         createdBy: userId,
@@ -2197,6 +2198,8 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         const finalIdea = {
           ...enrichedData,
           ...generatedIdea, // Generated data overrides enriched defaults
+          // Include source URL as previewUrl for app preview functionality
+          previewUrl: url,
           // Ensure comprehensive fields use enriched if missing from generated
           offerTiers: generatedIdea.offerTiers || enrichedData.offerTiers,
           whyNowAnalysis: generatedIdea.whyNowAnalysis || enrichedData.whyNowAnalysis,
@@ -2209,13 +2212,13 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           trendAnalysis: generatedIdea.trendAnalysis || enrichedData.trendAnalysis,
           signalBadges: generatedIdea.signalBadges || enrichedData.signalBadges,
         };
-        
+
         console.log(`[Generate from URL] ✅ Comprehensive enrichment completed for: ${generatedIdea.title}`);
         res.json(finalIdea);
       } catch (enrichError) {
         console.error(`[Generate from URL] Enrichment failed, returning generated idea without enrichment:`, enrichError);
-        // Return generated idea even if enrichment fails
-      res.json(generatedIdea);
+        // Return generated idea even if enrichment fails, include previewUrl
+        res.json({ ...generatedIdea, previewUrl: url });
       }
     } catch (error) {
       console.error("Error generating idea from URL:", error);

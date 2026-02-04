@@ -13,7 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Upload, Lightbulb, FileText, Image, Sparkles, Code, FileSpreadsheet, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { Upload, Lightbulb, FileText, Image, Sparkles, Code, FileSpreadsheet, CheckCircle2, XCircle, Loader2, AlertCircle, ExternalLink } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -29,6 +29,7 @@ interface IdeaFormData {
   sourceType: 'user_import' | 'user_generated';
   sourceData: string;
   imageFile?: File;
+  previewUrl?: string;
   
   // AI-generated comprehensive fields
   mainCompetitor?: string;
@@ -91,6 +92,7 @@ export default function CreateIdea() {
   const [bulkImportFile, setBulkImportFile] = useState<File | null>(null);
   const [bulkImportJobId, setBulkImportJobId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [detectedPreviewUrl, setDetectedPreviewUrl] = useState<string | null>(null);
 
   // Redirect if not authenticated
   if (!isLoading && !isAuthenticated) {
@@ -382,8 +384,9 @@ export default function CreateIdea() {
           signalBadges: generatedIdea.signalBadges,
           sourceType: 'user_import',
           sourceData: trimmedContent,
+          previewUrl: detectedPreviewUrl || generatedIdea.previewUrl || normalizedUrl,
         };
-        
+
         // Create the idea immediately (non-blocking)
         createIdeaMutation.mutate(ideaData, {
           onSuccess: async (createdIdea) => {
@@ -476,8 +479,9 @@ export default function CreateIdea() {
         signalBadges: generatedIdea.signalBadges,
         sourceType: 'user_import',
         sourceData: uploadedHTMLContent || uploadedDocumentContent || '',
+        previewUrl: detectedPreviewUrl || generatedIdea.previewUrl || undefined,
       };
-      
+
       // Create the idea immediately (non-blocking)
       createIdeaMutation.mutate(ideaData, {
         onSuccess: async (createdIdea) => {
@@ -539,15 +543,30 @@ export default function CreateIdea() {
       // Simple HTML parsing
       const parser = new DOMParser();
       const doc = parser.parseFromString(content, 'text/html');
-      
+
       // Try to extract title
-      const title = doc.querySelector('title')?.textContent || 
+      const title = doc.querySelector('title')?.textContent ||
                    doc.querySelector('h1')?.textContent || '';
-      
+
       // Try to extract description from meta or content
       const metaDescription = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
       const firstParagraph = doc.querySelector('p')?.textContent || '';
-      
+
+      // Try to extract URL from HTML for preview
+      // Priority: canonical > og:url > base href
+      const canonicalUrl = doc.querySelector('link[rel="canonical"]')?.getAttribute('href');
+      const ogUrl = doc.querySelector('meta[property="og:url"]')?.getAttribute('content');
+      const baseHref = doc.querySelector('base')?.getAttribute('href');
+      const extractedUrl = canonicalUrl || ogUrl || baseHref;
+
+      if (extractedUrl) {
+        // Normalize URL if needed
+        const normalizedUrl = extractedUrl.startsWith('http://') || extractedUrl.startsWith('https://')
+          ? extractedUrl
+          : `https://${extractedUrl}`;
+        setDetectedPreviewUrl(normalizedUrl);
+      }
+
       parsedData = {
         ...parsedData,
         title: title.trim(),
@@ -895,19 +914,35 @@ export default function CreateIdea() {
                           const urlPattern = /^(https?:\/\/)?[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}(\/.*)?$/i;
                           const isURL = urlPattern.test(text) && !text.includes(' ');
                           if (isURL) {
+                            // Normalize URL and set as preview URL
+                            const normalizedUrl = text.startsWith('http://') || text.startsWith('https://')
+                              ? text
+                              : `https://${text}`;
+                            setDetectedPreviewUrl(normalizedUrl);
                             setUploadedHTMLContent(text);
                             setUploadedDocumentContent(text);
                           } else {
+                            setDetectedPreviewUrl(null);
                             setUploadedHTMLContent(text);
                             setUploadedDocumentContent(text);
                           }
                         } else {
+                          setDetectedPreviewUrl(null);
                           setUploadedHTMLContent(null);
                           setUploadedDocumentContent(null);
                         }
                       }}
                       className="min-h-24"
                     />
+                    {detectedPreviewUrl && (
+                      <div className="flex items-center gap-2 text-sm text-green-600 mt-2">
+                        <ExternalLink className="w-4 h-4" />
+                        <span>App Preview: </span>
+                        <a href={detectedPreviewUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline truncate max-w-md">
+                          {detectedPreviewUrl}
+                        </a>
+                      </div>
+                    )}
                     {importText && (
                       <Button 
                         onClick={() => {
