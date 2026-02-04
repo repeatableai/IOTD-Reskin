@@ -98,37 +98,37 @@ export function OpportunityAnalysisModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-6xl w-full h-[90vh] p-0 flex flex-col">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b flex-shrink-0">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex-1">
-              <DialogTitle>Opportunity Analysis - {ideaTitle}</DialogTitle>
-              <DialogDescription className="mt-1">
-                Interactive preview of {ideaTitle} application
-              </DialogDescription>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', minWidth: '200px' }}>
+        <DialogHeader className="px-3 py-2 border-b flex-shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <DialogTitle className="text-sm font-medium truncate max-w-[200px]" title={ideaTitle}>
+              {ideaTitle}
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Interactive preview
+            </DialogDescription>
+            <div className="flex items-center gap-2">
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
                 onClick={handleOpenInNewTab}
-                style={{ width: '100%' }}
+                className="h-7 px-2 text-xs"
               >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open in New Tab
+                <ExternalLink className="h-3 w-3 mr-1" />
+                New Tab
               </Button>
               <Button
                 variant="default"
                 size="sm"
                 onClick={handleGoToDetails}
-                style={{ width: '100%' }}
+                className="h-7 px-2 text-xs"
               >
-                Details & Build Plan
-                <ArrowRight className="h-4 w-4 ml-2" />
+                Details
+                <ArrowRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
           </div>
         </DialogHeader>
-        <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 120px)' }}>
+        <div className="flex-1 relative min-h-0" style={{ height: 'calc(90vh - 44px)' }}>
           {iframeError || cspBlocked ? (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <p className="text-muted-foreground mb-4">
