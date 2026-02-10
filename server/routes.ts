@@ -22,7 +22,7 @@ import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 import { db } from './db';
 import { ideas, tags, ideaTags, communitySignals, collaborationMessages, collaborationSessions, users } from '@shared/schema';
-import { eq, sql, desc, asc, inArray, and, isNull } from 'drizzle-orm';
+import { eq, sql, desc, asc, inArray, and, isNull, isNotNull } from 'drizzle-orm';
 import fs from 'fs';
 import path from 'path';
 import bcrypt from 'bcrypt';
@@ -6460,6 +6460,82 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       res.status(500).json({
         success: false,
         message: "Failed to update preview URLs",
+        error: error.message
+      });
+    }
+  });
+
+  // Strip time estimates from execution plans (e.g., "(Months 1-3)" -> "")
+  app.post('/api/admin/strip-execution-plan-times', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+
+      // Get all ideas that have an executionPlan
+      const allIdeas = await db.select()
+        .from(ideas)
+        .where(isNotNull(ideas.executionPlan));
+
+      let updatedCount = 0;
+      const updatedSlugs: string[] = [];
+      let skippedCount = 0;
+
+      // Pattern to match time ranges like "(Months 1-3)", "(Month 4-6)", "(Months 7-9)", etc.
+      const timePattern = /\s*\(Months?\s*\d+(?:-\d+)?\)\s*/gi;
+      // Pattern to fix double colons left behind
+      const doubleColonPattern = /:\s*:/g;
+
+      for (const idea of allIdeas) {
+        if (!idea.executionPlan) {
+          skippedCount++;
+          continue;
+        }
+
+        const originalPlan = idea.executionPlan;
+        let cleanedPlan = originalPlan.replace(timePattern, ' ');
+        cleanedPlan = cleanedPlan.replace(doubleColonPattern, ':');
+
+        // Only update if something changed
+        if (cleanedPlan !== originalPlan) {
+          try {
+            await db.update(ideas)
+              .set({ executionPlan: cleanedPlan })
+              .where(eq(ideas.id, idea.id));
+            updatedCount++;
+            updatedSlugs.push(idea.slug);
+            console.log(`[Strip Execution Times] Updated ${idea.slug}`);
+          } catch (error: any) {
+            console.error(`[Strip Execution Times] Error updating ${idea.slug}:`, error.message);
+          }
+        } else {
+          skippedCount++;
+        }
+      }
+
+      console.log(`[Strip Execution Times] Complete: ${updatedCount} updated, ${skippedCount} skipped (no time patterns found)`);
+
+      res.json({
+        success: true,
+        message: `Stripped time estimates from ${updatedCount} execution plans`,
+        updated: updatedCount,
+        skipped: skippedCount,
+        totalProcessed: allIdeas.length,
+        updatedSlugs: updatedSlugs.slice(0, 50) // Show first 50
+      });
+    } catch (error: any) {
+      console.error("[Strip Execution Times] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to strip time estimates",
         error: error.message
       });
     }

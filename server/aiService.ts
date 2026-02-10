@@ -531,7 +531,7 @@ Return as JSON with this EXACT structure:
   "whyNowAnalysis": "2-3 paragraph analysis of why this is the perfect time for this idea",
   "proofSignals": "Evidence and signals showing market demand with specific examples",
   "marketGap": "Detailed explanation of the gap in the market this fills",
-  "executionPlan": "Step-by-step execution roadmap with phases and milestones",
+  "executionPlan": "Step-by-step execution roadmap with phases and milestones. Do NOT include time estimates, durations, or month ranges - just list the phases and what each phase delivers.",
   "frameworkData": {
     "valueEquation": {
       "dreamOutcome": "What customers ultimately want",
@@ -1088,7 +1088,7 @@ Return as JSON with this EXACT structure:
   "whyNowAnalysis": "2-3 paragraph analysis of why this is the perfect time for this idea",
   "proofSignals": "Evidence and signals showing market demand with specific examples",
   "marketGap": "Detailed explanation of the gap in the market this fills",
-  "executionPlan": "Step-by-step execution roadmap with phases and milestones",
+  "executionPlan": "Step-by-step execution roadmap with phases and milestones. Do NOT include time estimates, durations, or month ranges - just list the phases and what each phase delivers.",
   "frameworkData": {
     "valueEquation": {
       "dreamOutcome": "What customers ultimately want",
@@ -1293,7 +1293,7 @@ IMPORTANT: In the "content" field, provide a comprehensive 4-5 paragraph descrip
    - whyNowAnalysis: 2-3 paragraphs on market timing, trends, catalysts
    - proofSignals: Evidence of market demand, early indicators, community signals
    - marketGap: What's missing in current market that this solves
-   - executionPlan: Step-by-step roadmap based on ALL features and functionality detected (include every feature you found - be comprehensive)
+   - executionPlan: Step-by-step roadmap based on ALL features and functionality detected (include every feature you found - be comprehensive). Do NOT include time estimates or month ranges - just list phases and deliverables.
 
 5. FRAMEWORK DATA:
    - valueEquation: dreamOutcome, perceivedLikelihood, timeDelay, effortSacrifice
@@ -1355,7 +1355,7 @@ Return as JSON with this EXACT structure:
   "whyNowAnalysis": "2-3 paragraph analysis",
   "proofSignals": "Evidence and signals",
   "marketGap": "Detailed explanation",
-  "executionPlan": "Step-by-step roadmap",
+  "executionPlan": "Step-by-step roadmap with phases. Do NOT include time estimates or month ranges.",
   "frameworkData": {
     "valueEquation": {
       "dreamOutcome": "What customers want",
@@ -1507,7 +1507,7 @@ Based on this document content, generate a complete startup solution entry with:
    - whyNowAnalysis: 2-3 paragraphs on market timing, trends, catalysts
    - proofSignals: Evidence of market demand, early indicators, community signals
    - marketGap: What's missing in current market that this solves
-   - executionPlan: Step-by-step roadmap
+   - executionPlan: Step-by-step roadmap with phases. Do NOT include time estimates or month ranges.
 
 5. FRAMEWORK DATA:
    - valueEquation: dreamOutcome, perceivedLikelihood, timeDelay, effortSacrifice
@@ -2507,7 +2507,7 @@ Return as JSON with this EXACT structure:
   "whyNowAnalysis": "2-3 paragraph analysis of why this is the perfect time for this idea with specific market trends and catalysts",
   "proofSignals": "Evidence and signals showing market demand with specific examples, data points, and real-world indicators",
   "marketGap": "Detailed explanation of the gap in the market this fills with competitive analysis",
-  "executionPlan": "Step-by-step execution roadmap with phases, milestones, and timelines",
+  "executionPlan": "Step-by-step execution roadmap with phases and milestones. Do NOT include time estimates, durations, or month ranges - just list the phases and what each phase delivers.",
   "frameworkData": {
     "valueEquation": {
       "dreamOutcome": "What customers ultimately want",
