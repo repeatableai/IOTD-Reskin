@@ -6493,6 +6493,8 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       const timePattern = /\s*\(Months?\s*\d+(?:-\d+)?\)\s*/gi;
       // Pattern to fix double colons left behind
       const doubleColonPattern = /:\s*:/g;
+      // Pattern to fix space before colon (e.g., "Phase 1 :" -> "Phase 1:")
+      const spaceBeforeColonPattern = /\s+:/g;
 
       for (const idea of allIdeas) {
         if (!idea.executionPlan) {
@@ -6503,6 +6505,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         const originalPlan = idea.executionPlan;
         let cleanedPlan = originalPlan.replace(timePattern, ' ');
         cleanedPlan = cleanedPlan.replace(doubleColonPattern, ':');
+        cleanedPlan = cleanedPlan.replace(spaceBeforeColonPattern, ':');
 
         // Only update if something changed
         if (cleanedPlan !== originalPlan) {
