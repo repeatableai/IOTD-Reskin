@@ -129,7 +129,7 @@ export default function TopIdeas() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold mb-4" data-testid="text-solution-title">
-            Application Arbitrage Platform
+            Intelligent Venture Engine
           </h1>
         </div>
 
