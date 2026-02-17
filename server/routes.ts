@@ -7806,7 +7806,28 @@ Be practical, encouraging, and focus on helping them make real progress.`;
 
         for (const idea of batch) {
           try {
-            const keyword = idea.keyword || idea.title;
+            // Extract a more relevant search keyword from the title
+            // Remove generic platform/product words that pollute search results
+            const genericWords = ['platform', 'system', 'app', 'application', 'tool', 'solution', 'software', 'hub', 'suite', 'engine', 'portal', 'dashboard', 'manager', 'assistant', 'ai', 'intelligent', 'smart', 'automated', 'digital', 'online', 'virtual', 'pro', 'plus', 'premium', 'enterprise'];
+
+            let keyword = idea.keyword;
+            if (!keyword || keyword === idea.title) {
+              // Extract core concept from title by removing generic words
+              keyword = idea.title
+                .split(/\s+/)
+                .filter(word => !genericWords.includes(word.toLowerCase()))
+                .slice(0, 3) // Take first 3 meaningful words
+                .join(' ')
+                .trim();
+
+              // If we stripped too much, fall back to first 2-3 words of title
+              if (keyword.length < 5) {
+                keyword = idea.title.split(/\s+/).slice(0, 3).join(' ');
+              }
+            }
+
+            console.log(`[Admin] Searching for "${keyword}" (from: "${idea.title}")`);
+
 
             // Fetch real Google Trends data and related queries
             const trendData = await getTrendData(keyword, undefined, '1y');
