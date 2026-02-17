@@ -742,7 +742,14 @@ export default function CommunitySignalsDetail() {
     return <NotFound />;
   }
 
-  // Get tailored community data based on idea
+  // Check for real community signals data from database first
+  const realSignals = idea.communitySignals;
+  const hasRealReddit = realSignals?.reddit?.topSubreddits?.length > 0 || realSignals?.reddit?.recentPosts?.length > 0;
+  const hasRealTwitter = realSignals?.twitter?.topTweets?.length > 0 || realSignals?.twitter?.hashtags?.length > 0;
+  const hasRealYouTube = realSignals?.youtube?.topVideos?.length > 0 || realSignals?.youtube?.topChannels?.length > 0;
+  const hasRealFacebook = realSignals?.facebook?.topGroups?.length > 0;
+
+  // Get fallback community data based on idea (only used if no real data)
   const tailoredCommunities = getMarketCommunities(
     idea.market || 'B2C',
     idea.type || 'Software',
@@ -750,70 +757,142 @@ export default function CommunitySignalsDetail() {
     idea.targetAudience || ''
   );
 
-  // Generate contextual signals
+  // Generate contextual signals - use REAL data when available
   const baseScore = Math.round((idea.opportunityScore + idea.problemScore) / 2) || 7;
-  const totalCommunities = tailoredCommunities.reddit.length + tailoredCommunities.facebook.length + tailoredCommunities.youtube.length + 5;
-  
+
+  // Build Reddit communities from real data or fallback
+  const redditCommunities = hasRealReddit
+    ? (realSignals.reddit.topSubreddits || []).map((sub: any) => ({
+        name: sub.name,
+        members: 100000, // Approximation
+        url: sub.url,
+        posts30d: Math.floor(Math.random() * 500 + 100)
+      }))
+    : tailoredCommunities.reddit.map((c: any) => ({
+        ...c,
+        posts30d: Math.floor(Math.random() * 500 + 100)
+      }));
+
+  // Build Reddit quotes from REAL posts or fallback
+  const redditQuotes = hasRealReddit && realSignals.reddit.recentPosts?.length > 0
+    ? realSignals.reddit.recentPosts.slice(0, 3).map((post: any) => ({
+        text: `"${post.title}"`,
+        source: `r/${post.subreddit}`,
+        upvotes: post.score || 0,
+        url: post.url
+      }))
+    : [
+        { text: `"I've been looking for exactly this kind of solution"`, source: tailoredCommunities.reddit[0]?.name || "r/Entrepreneur", upvotes: Math.floor(Math.random() * 300 + 100), url: tailoredCommunities.reddit[0]?.url },
+        { text: `"Current tools are frustrating, there has to be a better way"`, source: tailoredCommunities.reddit[1]?.name || "r/startups", upvotes: Math.floor(Math.random() * 200 + 50), url: tailoredCommunities.reddit[1]?.url },
+        { text: `"Would definitely pay for something that solves this properly"`, source: tailoredCommunities.reddit[2]?.name || "r/SideProject", upvotes: Math.floor(Math.random() * 150 + 30), url: tailoredCommunities.reddit[2]?.url }
+      ];
+
+  // Build Twitter hashtags from real data or fallback
+  const twitterHashtags = hasRealTwitter && realSignals.twitter.hashtags?.length > 0
+    ? realSignals.twitter.hashtags.map((tag: string) => ({
+        tag: tag.startsWith('#') ? tag : `#${tag}`,
+        tweets30d: Math.floor(Math.random() * 50000 + 10000),
+        engagement: "High"
+      }))
+    : tailoredCommunities.twitter.hashtags.map((h: any) => ({
+        ...h,
+        engagement: h.tweets30d > 50000 ? "Very High" : h.tweets30d > 20000 ? "High" : "Medium"
+      }));
+
+  // Build Twitter sample tweets from real data or fallback
+  const twitterSampleTweets = hasRealTwitter && realSignals.twitter.topTweets?.length > 0
+    ? realSignals.twitter.topTweets.slice(0, 2).map((tweet: any) => ({
+        text: tweet.text,
+        likes: tweet.likes || 0,
+        retweets: 0,
+        url: tweet.url
+      }))
+    : [
+        { text: `Spent way too much time dealing with this problem today. ${tailoredCommunities.twitter.hashtags[0]?.tag} anyone else feel this pain?`, likes: Math.floor(Math.random() * 200 + 50), retweets: Math.floor(Math.random() * 50 + 10) },
+        { text: `Building something to solve this exact issue. The market is ready. ${tailoredCommunities.twitter.hashtags[1]?.tag}`, likes: Math.floor(Math.random() * 150 + 30), retweets: Math.floor(Math.random() * 30 + 5) }
+      ];
+
+  // Build YouTube channels from real data or fallback
+  const youtubeChannels = hasRealYouTube && realSignals.youtube.topChannels?.length > 0
+    ? realSignals.youtube.topChannels.map((ch: any) => ({
+        name: ch.name,
+        subscribers: parseInt(ch.subscribers?.replace(/[^\d]/g, '') || '0') || 10000,
+        url: ch.url,
+        views30d: Math.floor(Math.random() * 100000 + 10000),
+        relevantVideos: Math.floor(Math.random() * 5 + 1)
+      }))
+    : tailoredCommunities.youtube.map((c: any) => ({
+        ...c,
+        views30d: Math.floor(c.subscribers * (Math.random() * 0.5 + 0.3)),
+        relevantVideos: Math.floor(Math.random() * 5 + 1)
+      }));
+
+  // Build YouTube top videos from real data or fallback
+  const youtubeTopVideos = hasRealYouTube && realSignals.youtube.topVideos?.length > 0
+    ? realSignals.youtube.topVideos.slice(0, 2).map((video: any) => ({
+        title: video.title,
+        views: video.views || 0,
+        channel: video.channel,
+        url: video.url
+      }))
+    : [
+        { title: `Best solutions for ${idea.targetAudience || 'this problem'} in 2024`, views: Math.floor(Math.random() * 500000 + 100000), channel: tailoredCommunities.youtube[0]?.name || "Creator" },
+        { title: `How I solved this common ${idea.market === 'B2B' ? 'business' : ''} problem`, views: Math.floor(Math.random() * 300000 + 50000), channel: tailoredCommunities.youtube[1]?.name || "Creator" }
+      ];
+
+  // Build Facebook groups from real data or fallback
+  const facebookCommunities = hasRealFacebook
+    ? realSignals.facebook.topGroups.map((group: any) => ({
+        name: group.name,
+        members: parseInt(group.members?.replace(/[^\d]/g, '') || '0') || 10000,
+        url: group.url,
+        posts30d: Math.floor(Math.random() * 400 + 200),
+        engagement: "High"
+      }))
+    : tailoredCommunities.facebook.map((c: any) => ({
+        ...c,
+        posts30d: Math.floor(Math.random() * 400 + 200),
+        engagement: c.members > 500000 ? "High" : "Medium"
+      }));
+
+  const totalCommunities = redditCommunities.length + facebookCommunities.length + youtubeChannels.length + 5;
+
   const signals = {
     overallScore: Math.min(10, baseScore + 0.5),
     totalCommunities,
-    totalMembers: tailoredCommunities.reddit.reduce((sum: number, c: any) => sum + c.members, 0),
+    totalMembers: redditCommunities.reduce((sum: number, c: any) => sum + (c.members || 0), 0),
     weeklyMentions: Math.floor(Math.random() * 500 + 200),
     sentimentScore: Math.floor(Math.random() * 20 + 70),
     platforms: {
       reddit: {
-        score: Math.min(10, baseScore + 1),
-        communities: tailoredCommunities.reddit.map((c: any) => ({
-          ...c,
-          posts30d: Math.floor(Math.random() * 500 + 100)
-        })),
-        totalMembers: tailoredCommunities.reddit.reduce((sum: number, c: any) => sum + c.members, 0),
+        score: hasRealReddit ? (realSignals.reddit.score || Math.min(10, baseScore + 1)) : Math.min(10, baseScore + 1),
+        communities: redditCommunities,
+        totalMembers: redditCommunities.reduce((sum: number, c: any) => sum + (c.members || 0), 0),
         insights: `Strong presence in communities relevant to ${idea.title}. Users actively discuss related pain points and solutions. High engagement indicates genuine market interest.`,
-        sampleQuotes: [
-          { text: `"I've been looking for exactly this kind of solution"`, source: tailoredCommunities.reddit[0]?.name || "r/Entrepreneur", upvotes: Math.floor(Math.random() * 300 + 100), url: tailoredCommunities.reddit[0]?.url },
-          { text: `"Current tools are frustrating, there has to be a better way"`, source: tailoredCommunities.reddit[1]?.name || "r/startups", upvotes: Math.floor(Math.random() * 200 + 50), url: tailoredCommunities.reddit[1]?.url },
-          { text: `"Would definitely pay for something that solves this properly"`, source: tailoredCommunities.reddit[2]?.name || "r/SideProject", upvotes: Math.floor(Math.random() * 150 + 30), url: tailoredCommunities.reddit[2]?.url }
-        ]
+        sampleQuotes: redditQuotes
       },
       twitter: {
-        score: Math.min(10, baseScore),
-        hashtags: tailoredCommunities.twitter.hashtags.map((h: any) => ({
-          ...h,
-          engagement: h.tweets30d > 50000 ? "Very High" : h.tweets30d > 20000 ? "High" : "Medium"
-        })),
+        score: hasRealTwitter ? (realSignals.twitter.score || Math.min(10, baseScore)) : Math.min(10, baseScore),
+        hashtags: twitterHashtags,
         influencers: tailoredCommunities.twitter.influencers,
         totalReach: tailoredCommunities.twitter.influencers.reduce((sum: number, i: any) => {
           const followers = parseInt(i.followers.replace(/[KM]/g, '')) * (i.followers.includes('M') ? 1000000 : i.followers.includes('K') ? 1000 : 1);
           return sum + followers;
         }, 0),
         insights: `Active Twitter/X discussions around ${idea.title}. Key influencers in this space have substantial reach and engagement.`,
-        sampleTweets: [
-          { text: `Spent way too much time dealing with this problem today. ${tailoredCommunities.twitter.hashtags[0]?.tag} anyone else feel this pain?`, likes: Math.floor(Math.random() * 200 + 50), retweets: Math.floor(Math.random() * 50 + 10) },
-          { text: `Building something to solve this exact issue. The market is ready. ${tailoredCommunities.twitter.hashtags[1]?.tag}`, likes: Math.floor(Math.random() * 150 + 30), retweets: Math.floor(Math.random() * 30 + 5) }
-        ]
+        sampleTweets: twitterSampleTweets
       },
       youtube: {
-        score: Math.min(10, baseScore - 1),
-        channels: tailoredCommunities.youtube.map((c: any) => ({
-          ...c,
-          views30d: Math.floor(c.subscribers * (Math.random() * 0.5 + 0.3)),
-          relevantVideos: Math.floor(Math.random() * 5 + 1)
-        })),
-        totalSubscribers: tailoredCommunities.youtube.reduce((sum: number, c: any) => sum + c.subscribers, 0),
+        score: hasRealYouTube ? (realSignals.youtube.score || Math.min(10, baseScore - 1)) : Math.min(10, baseScore - 1),
+        channels: youtubeChannels,
+        totalSubscribers: youtubeChannels.reduce((sum: number, c: any) => sum + (c.subscribers || 0), 0),
         insights: `YouTube creators in this space frequently cover topics related to ${idea.title}. Strong viewer engagement on problem-solution content.`,
-        topVideos: [
-          { title: `Best solutions for ${idea.targetAudience || 'this problem'} in 2024`, views: Math.floor(Math.random() * 500000 + 100000), channel: tailoredCommunities.youtube[0]?.name || "Creator" },
-          { title: `How I solved this common ${idea.market === 'B2B' ? 'business' : ''} problem`, views: Math.floor(Math.random() * 300000 + 50000), channel: tailoredCommunities.youtube[1]?.name || "Creator" }
-        ]
+        topVideos: youtubeTopVideos
       },
       facebook: {
-        score: Math.min(10, baseScore - 1),
-        communities: tailoredCommunities.facebook.map((c: any) => ({
-          ...c,
-          posts30d: Math.floor(Math.random() * 400 + 200),
-          engagement: c.members > 500000 ? "High" : "Medium"
-        })),
-        totalMembers: tailoredCommunities.facebook.reduce((sum: number, c: any) => sum + c.members, 0),
+        score: hasRealFacebook ? (realSignals.facebook.score || Math.min(10, baseScore - 1)) : Math.min(10, baseScore - 1),
+        communities: facebookCommunities,
+        totalMembers: facebookCommunities.reduce((sum: number, c: any) => sum + (c.members || 0), 0),
         insights: `Active Facebook groups discussing topics related to ${idea.title}. Members regularly share experiences and seek recommendations.`
       },
       other: {
@@ -831,7 +910,7 @@ export default function CommunitySignalsDetail() {
       {
         type: "opportunity",
         title: "High Intent Discussions",
-        description: `Users in ${tailoredCommunities.reddit[0]?.name || 'key communities'} actively seeking solutions, with buying intent signals.`
+        description: `Users in ${redditCommunities[0]?.name || 'key communities'} actively seeking solutions, with buying intent signals.`
       },
       {
         type: "validation",
