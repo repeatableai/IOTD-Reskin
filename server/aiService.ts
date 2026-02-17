@@ -603,7 +603,7 @@ ${prompt}`;
       // Use Sonnet 4 for rapid mode (faster than Opus), Opus for deep/comprehensive mode
       const model = params.constraints === 'rapid_mode' 
         ? "claude-sonnet-4-20250514"  // Fastest model - Sonnet 4 is faster than Opus
-        : "claude-opus-4-5-20251101";  // Slower but more comprehensive
+        : "claude-opus-4-6";  // Slower but more comprehensive
       
       // Reduce tokens for rapid mode but keep enough for all comprehensive fields
       const maxTokens = params.constraints === 'rapid_mode' 
@@ -718,7 +718,7 @@ ${prompt}`;
       
       try {
         const response = await getAnthropic().messages.create({
-          model: "claude-opus-4-5-20251101",
+          model: "claude-opus-4-6",
           max_tokens: 16000,
           system: "You are an expert business analyst specializing in analyzing business documents, proposals, and startup ideas. You analyze document content to understand the business concept, value proposition, and market opportunity, then generate comprehensive startup solution entries matching ideabrowser.com format. Always respond with valid JSON matching the exact structure specified.",
           messages: [
@@ -827,7 +827,7 @@ ${prompt}`;
 
     try {
       const response = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 16000, // Increased for comprehensive generation
         system: "You are an expert business analyst specializing in analyzing web applications and startup ideas. You analyze HTML content deeply to understand visual design, functionality, and purpose, then generate comprehensive startup solution entries matching ideabrowser.com format. Always respond with valid JSON matching the exact structure specified.",
         messages: [
@@ -1443,7 +1443,7 @@ Make the analysis realistic, data-driven, and actionable. Focus on practical ins
       console.log('Generating research report with Claude...');
       
       const response = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 4000,
         system: "You are a senior business analyst and market researcher with expertise in startup evaluation and market analysis. Provide comprehensive, realistic research reports with actionable insights. Always respond with valid JSON.",
         messages: [
@@ -2030,7 +2030,7 @@ Be thorough, data-driven, and provide specific, actionable insights. This is a p
       console.log('Starting deep research with Claude Opus 4.5...');
 
       const response = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 16000,
         thinking: {
           type: "enabled",
@@ -2231,7 +2231,7 @@ Focus on the unique mathematical or logical requirements. Format as a clear prom
     };
 
     const response = await getAnthropic().messages.create({
-      model: "claude-opus-4-5-20251101",
+      model: "claude-opus-4-6",
       max_tokens: 2000,
       messages: [
         {
@@ -2289,7 +2289,7 @@ Be concise but insightful. Focus on actionable information.`;
       console.log('Starting rapid research with Claude Opus 4.5...');
 
       const response = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 2000,
         messages: [
           {
@@ -2409,7 +2409,7 @@ Return as JSON:
       console.log(`Generating ${params.intensity} roast from ${params.perspective} perspective...`);
 
       const response = await getAnthropic().messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 2000,
         messages: [
           {
@@ -3645,7 +3645,7 @@ The phases should logically build on each other, with earlier phases setting up 
       : 'This is the first prompt - no previous phases.';
 
     const response = await anthropicClient.messages.create({
-      model: 'claude-opus-4-20250514',
+      model: 'claude-opus-4-6',
       max_tokens: 16000,
       thinking: {
         type: 'enabled',

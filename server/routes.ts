@@ -80,7 +80,7 @@ const upload = multer({
 });
 
 // Initialize Claude AI client for building prompts
-// Note: Using claude-opus-4-5-20251101 (latest model)
+// Note: Using claude-opus-4-6 (latest model)
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
@@ -1573,7 +1573,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           market: generatedIdea.market,
           targetAudience: generatedIdea.targetAudience,
           keyword: generatedIdea.keyword,
-        }, 'claude-opus-4-5-20251101'); // Use Opus for more detail in AI generation
+        }, 'claude-opus-4-6'); // Use Opus for more detail in AI generation
         
         // Validate that enrichment returned comprehensive data
         const hasComprehensiveData = enrichedData.offerTiers && 
@@ -3459,7 +3459,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
 
       // Use Claude to generate comprehensive market insights
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-5-20251101",
+        model: "claude-opus-4-6",
         max_tokens: 4000,
         messages: [{
           role: "user",
@@ -5471,7 +5471,7 @@ Provide:
 Be practical, encouraging, and focus on helping them make real progress.`;
 
       const response = await anthropic.messages.create({
-        model: "claude-opus-4-5-20251101", // Latest Claude model
+        model: "claude-opus-4-6", // Latest Claude model
         max_tokens: 4000,
         system: systemPrompt,
         messages: messages.map((msg: any) => ({
