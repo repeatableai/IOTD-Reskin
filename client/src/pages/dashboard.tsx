@@ -288,7 +288,7 @@ export default function Dashboard() {
                     iconColor: "text-purple-500",
                     bgColor: "bg-purple-50",
                     title: "My Generated Ideas",
-                    value: `${generatedIdeas}/100`
+                    value: `${generatedIdeas}`
                   },
                   {
                     icon: Search,
