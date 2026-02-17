@@ -1444,8 +1444,8 @@ Make the analysis realistic, data-driven, and actionable. Focus on practical ins
       
       const response = await getAnthropic().messages.create({
         model: "claude-opus-4-6",
-        max_tokens: 4000,
-        system: "You are a senior business analyst and market researcher with expertise in startup evaluation and market analysis. Provide comprehensive, realistic research reports with actionable insights. Always respond with valid JSON.",
+        max_tokens: 8000,
+        system: "You are a senior business analyst and market researcher with expertise in startup evaluation and market analysis. Provide comprehensive, realistic research reports with actionable insights. Always respond with valid JSON. Ensure the JSON is complete and properly closed.",
         messages: [
           {
             role: "user",
