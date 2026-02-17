@@ -7713,5 +7713,149 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Admin endpoint to refresh ideas with real SerpAPI data (trends, community signals)
+  app.post('/api/admin/refresh-real-data', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+
+      if (process.env.NODE_ENV === 'production') {
+        if (providedToken !== IMPORT_TOKEN) {
+          return res.status(401).json({ message: 'Unauthorized - valid import token required' });
+        }
+      }
+
+      const { batchSize = 10, limit = 50 } = req.body;
+
+      if (!process.env.SERP_API_KEY) {
+        return res.status(500).json({ message: 'SERP_API_KEY not configured' });
+      }
+
+      console.log('[Admin] Starting real data refresh with SerpAPI...');
+
+      // Get ideas to update (most recent first, with keywords)
+      const ideasToUpdate = await db
+        .select({
+          id: ideas.id,
+          title: ideas.title,
+          keyword: ideas.keyword,
+        })
+        .from(ideas)
+        .where(sql`${ideas.isPublished} = true`)
+        .orderBy(desc(ideas.createdAt))
+        .limit(limit);
+
+      if (ideasToUpdate.length === 0) {
+        return res.json({ success: true, message: 'No ideas to update', processed: 0 });
+      }
+
+      console.log(`[Admin] Found ${ideasToUpdate.length} ideas to refresh`);
+
+      const results: Array<{ id: string; title: string; success: boolean; error?: string }> = [];
+      const { realDataService } = await import('./realDataService');
+      const { getTrendData } = await import('./googleTrendsService');
+
+      // Process in batches
+      for (let i = 0; i < ideasToUpdate.length; i += batchSize) {
+        const batch = ideasToUpdate.slice(i, i + batchSize);
+        console.log(`[Admin] Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(ideasToUpdate.length/batchSize)}`);
+
+        for (const idea of batch) {
+          try {
+            const keyword = idea.keyword || idea.title;
+
+            // Fetch real Google Trends data
+            const trendData = await getTrendData(keyword, undefined, '1y');
+
+            // Fetch real community data from various platforms
+            const [twitterData, youtubeData] = await Promise.allSettled([
+              realDataService.searchTwitter(keyword),
+              realDataService.searchYouTube(keyword),
+            ]);
+
+            // Build updated community signals from real data
+            const communitySignals: any = {};
+
+            if (twitterData.status === 'fulfilled' && twitterData.value.tweets.length > 0) {
+              communitySignals.twitter = {
+                tweets: twitterData.value.tweets.length,
+                engagement: twitterData.value.totalEngagement,
+                score: Math.min(10, Math.round(twitterData.value.totalEngagement / 1000) + 3),
+                details: `${twitterData.value.tweets.length} recent tweets, ${twitterData.value.totalEngagement.toLocaleString()} total engagement`
+              };
+            }
+
+            if (youtubeData.status === 'fulfilled' && youtubeData.value.videos.length > 0) {
+              communitySignals.youtube = {
+                channels: youtubeData.value.channels.length,
+                views: youtubeData.value.totalViews.toLocaleString(),
+                score: Math.min(10, Math.round(youtubeData.value.totalViews / 100000) + 3),
+                details: `${youtubeData.value.videos.length} videos, ${youtubeData.value.totalViews.toLocaleString()} total views`
+              };
+            }
+
+            // Update keyword data with real trend info
+            const keywordData = {
+              primary: keyword,
+              volume: trendData.currentVolume,
+              growth: trendData.growthRate,
+              cpc: trendData.cpc,
+              competition: trendData.competition,
+              competitionScore: trendData.competitionScore,
+              peakValue: trendData.peakValue,
+              currentValue: trendData.currentValue,
+            };
+
+            // Update the idea in database
+            await db.update(ideas)
+              .set({
+                communitySignals: Object.keys(communitySignals).length > 0 ? communitySignals : undefined,
+                keywordData: keywordData,
+                keywordVolume: trendData.currentVolume,
+                keywordGrowth: trendData.growthRate,
+                updatedAt: new Date(),
+              })
+              .where(eq(ideas.id, idea.id));
+
+            results.push({ id: idea.id, title: idea.title, success: true });
+            console.log(`[Admin] ✓ Updated ${idea.title}`);
+
+            // Delay to avoid rate limiting
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (error: any) {
+            console.error(`[Admin] ✗ Failed to update ${idea.title}:`, error.message);
+            results.push({ id: idea.id, title: idea.title, success: false, error: error.message });
+          }
+        }
+
+        // Longer delay between batches
+        if (i + batchSize < ideasToUpdate.length) {
+          console.log('[Admin] Waiting 3s before next batch...');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      console.log(`[Admin] Real data refresh complete: ${successful} succeeded, ${failed} failed`);
+
+      res.json({
+        success: true,
+        message: `Refreshed ${successful} ideas with real SerpAPI data`,
+        processed: results.length,
+        successful,
+        failed,
+        results,
+      });
+    } catch (error: any) {
+      console.error('[Admin] Error refreshing real data:', error);
+      res.status(500).json({
+        message: 'Failed to refresh real data',
+        error: error.message,
+      });
+    }
+  });
+
   return { server: httpServer, sessionMiddleware };
 }
