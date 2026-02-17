@@ -7725,7 +7725,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         }
       }
 
-      const { batchSize = 10, limit = 50 } = req.body;
+      const { batchSize = 10, limit = 50, ideaId, slug } = req.body;
 
       if (!process.env.SERP_API_KEY) {
         return res.status(500).json({ message: 'SERP_API_KEY not configured' });
@@ -7733,17 +7733,35 @@ Be practical, encouraging, and focus on helping them make real progress.`;
 
       console.log('[Admin] Starting real data refresh with SerpAPI...');
 
-      // Get ideas to update (most recent first, with keywords)
-      const ideasToUpdate = await db
-        .select({
-          id: ideas.id,
-          title: ideas.title,
-          keyword: ideas.keyword,
-        })
-        .from(ideas)
-        .where(sql`${ideas.isPublished} = true`)
-        .orderBy(desc(ideas.createdAt))
-        .limit(limit);
+      // Get ideas to update - either specific idea or batch
+      let ideasToUpdate;
+      if (ideaId || slug) {
+        // Refresh a specific idea by ID or slug
+        const condition = ideaId
+          ? eq(ideas.id, ideaId)
+          : eq(ideas.slug, slug);
+        ideasToUpdate = await db
+          .select({
+            id: ideas.id,
+            title: ideas.title,
+            keyword: ideas.keyword,
+          })
+          .from(ideas)
+          .where(condition);
+        console.log(`[Admin] Refreshing specific idea: ${ideaId || slug}`);
+      } else {
+        // Get batch of ideas (most recent first, with keywords)
+        ideasToUpdate = await db
+          .select({
+            id: ideas.id,
+            title: ideas.title,
+            keyword: ideas.keyword,
+          })
+          .from(ideas)
+          .where(sql`${ideas.isPublished} = true`)
+          .orderBy(desc(ideas.createdAt))
+          .limit(limit);
+      }
 
       if (ideasToUpdate.length === 0) {
         return res.json({ success: true, message: 'No ideas to update', processed: 0 });
