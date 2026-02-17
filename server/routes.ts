@@ -7593,6 +7593,32 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Admin endpoint to delete a specific idea by ID
+  app.delete('/api/admin/ideas/:id', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'];
+
+      if (process.env.NODE_ENV === 'production' && providedToken !== IMPORT_TOKEN) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const { id } = req.params;
+      const idea = await db.select({ title: ideas.title }).from(ideas).where(eq(ideas.id, id)).limit(1);
+
+      if (idea.length === 0) {
+        return res.status(404).json({ message: 'Idea not found' });
+      }
+
+      await db.delete(ideas).where(eq(ideas.id, id));
+
+      res.json({ success: true, message: `Deleted idea: ${idea[0].title}` });
+    } catch (error) {
+      console.error('[Admin] Error deleting idea:', error);
+      res.status(500).json({ message: 'Failed to delete idea' });
+    }
+  });
+
   // Admin endpoint to check narrative generation status
   app.get('/api/admin/narrative-status', async (req: any, res) => {
     try {
