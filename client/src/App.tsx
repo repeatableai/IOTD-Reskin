@@ -10,7 +10,6 @@ import { CollaborationPortalWidget } from "@/components/CollaborationPortalWidge
 
 // Eagerly loaded pages (critical path)
 import NotFound from "@/pages/not-found";
-import TopIdeas from "@/pages/top-ideas";
 import Login from "@/pages/login";
 
 // Lazy loaded pages (code splitting)
@@ -35,7 +34,6 @@ const About = lazy(() => import("@/pages/about"));
 const FAQ = lazy(() => import("@/pages/faq"));
 const Contact = lazy(() => import("@/pages/contact"));
 const PlanDetails = lazy(() => import("@/pages/plan-details"));
-const IdeaOfTheDay = lazy(() => import("@/pages/idea-of-the-day"));
 const ValueEquation = lazy(() => import("@/pages/value-equation"));
 const BuildPrompt = lazy(() => import("@/pages/build-prompt"));
 const WhyNow = lazy(() => import("@/pages/why-now"));
@@ -80,7 +78,6 @@ function Router() {
         <Route path="/" component={Landing} />
         <Route path="/database" component={Database} />
         <Route path="/my-ideas" component={MyIdeas} />
-        <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
         <Route path="/idea-agent" component={IdeaAgent} />
         <Route path="/idea-generator" component={IdeaGenerator} />
         <Route path="/idea/:slug/value-equation" component={ValueEquation} />
@@ -106,7 +103,6 @@ function Router() {
         <Route path="/idea/:slug/founder-fit-analysis" component={ScoreAnalysis} />
         <Route path="/idea/:slug/:scoreType-analysis" component={ScoreAnalysis} />
         <Route path="/idea/:slug" component={IdeaDetail} />
-        <Route path="/top-ideas" component={TopIdeas} />
         <Route path="/trends" component={Trends} />
         <Route path="/trend/:id" component={TrendDetail} />
         <Route path="/market-insights" component={MarketInsights} />

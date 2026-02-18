@@ -27,11 +27,10 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { 
-  Search, 
-  Menu, 
-  ChevronDown, 
-  Calendar,
+import {
+  Search,
+  Menu,
+  ChevronDown,
   Database,
   Trophy,
   TrendingUp,
@@ -137,17 +136,6 @@ export default function Header() {
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Solution Discovery</h3>
                     <div className="space-y-4">
-                      <button
-                        onClick={() => setLocation('/')}
-                        className="flex items-start gap-3 text-left w-full hover:bg-muted/50 p-2 rounded-md transition-colors"
-                        data-testid="link-idea-of-day"
-                      >
-                        <Calendar className="w-5 h-5 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <div className="font-semibold">Featured Business Plan</div>
-                          <div className="text-sm text-muted-foreground">Get daily curated startup solutions tailored to current trends</div>
-                        </div>
-                      </button>
                       <button
                         onClick={() => setLocation('/database')}
                         className="flex items-start gap-3 text-left w-full hover:bg-muted/50 p-2 rounded-md transition-colors"
@@ -523,13 +511,6 @@ export default function Header() {
                     </AccordionTrigger>
                     <AccordionContent>
                       <div className="space-y-1 pl-2">
-                        <button
-                          onClick={() => navigateTo('/')}
-                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
-                        >
-                          <Calendar className="w-4 h-4 text-muted-foreground" />
-                            <span>Featured Business Plan</span>
-                        </button>
                         <button
                           onClick={() => navigateTo('/database')}
                           className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
