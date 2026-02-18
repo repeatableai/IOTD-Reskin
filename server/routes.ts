@@ -2294,7 +2294,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
   app.post('/api/ai/similar-solutions', async (req: any, res) => {
     try {
       const similarSchema = z.object({
-        ideaId: z.number().optional(),
+        ideaId: z.union([z.number(), z.string()]).optional(),
         ideaTitle: z.string().min(1),
         ideaDescription: z.string().optional(),
         market: z.string().optional(),

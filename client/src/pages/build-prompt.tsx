@@ -2476,9 +2476,6 @@ ${idea?.description || 'Description of your solution'}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-lg">Claude Code</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Build with Claude Code, Cursor, and Replit
-                    </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 </div>

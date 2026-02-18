@@ -783,11 +783,14 @@ export default function CommunitySignalsDetail() {
 
   // Build Twitter hashtags from real data or fallback
   const twitterHashtags = hasRealTwitter && realSignals.twitter.hashtags?.length > 0
-    ? realSignals.twitter.hashtags.map((tag: string) => ({
-        tag: tag.startsWith('#') ? tag : `#${tag}`,
-        tweets30d: Math.floor(Math.random() * 50000 + 10000),
-        engagement: "High"
-      }))
+    ? realSignals.twitter.hashtags.map((tag: any) => {
+        const tagStr = typeof tag === 'string' ? tag : (tag?.tag || tag?.name || String(tag));
+        return {
+          tag: tagStr.startsWith('#') ? tagStr : `#${tagStr}`,
+          tweets30d: Math.floor(Math.random() * 50000 + 10000),
+          engagement: "High"
+        };
+      })
     : tailoredCommunities.twitter.hashtags.map((h: any) => ({
         ...h,
         engagement: h.tweets30d > 50000 ? "Very High" : h.tweets30d > 20000 ? "High" : "Medium"
@@ -808,13 +811,16 @@ export default function CommunitySignalsDetail() {
 
   // Build YouTube channels from real data or fallback
   const youtubeChannels = hasRealYouTube && realSignals.youtube.topChannels?.length > 0
-    ? realSignals.youtube.topChannels.map((ch: any) => ({
-        name: ch.name,
-        subscribers: parseInt(ch.subscribers?.replace(/[^\d]/g, '') || '0') || 10000,
-        url: ch.url,
-        views30d: Math.floor(Math.random() * 100000 + 10000),
-        relevantVideos: Math.floor(Math.random() * 5 + 1)
-      }))
+    ? realSignals.youtube.topChannels.map((ch: any) => {
+        const subsStr = typeof ch.subscribers === 'string' ? ch.subscribers : String(ch.subscribers || '0');
+        return {
+          name: ch.name,
+          subscribers: parseInt(subsStr.replace(/[^\d]/g, '') || '0') || 10000,
+          url: ch.url,
+          views30d: Math.floor(Math.random() * 100000 + 10000),
+          relevantVideos: Math.floor(Math.random() * 5 + 1)
+        };
+      })
     : tailoredCommunities.youtube.map((c: any) => ({
         ...c,
         views30d: Math.floor(c.subscribers * (Math.random() * 0.5 + 0.3)),
@@ -836,13 +842,16 @@ export default function CommunitySignalsDetail() {
 
   // Build Facebook groups from real data or fallback
   const facebookCommunities = hasRealFacebook
-    ? realSignals.facebook.topGroups.map((group: any) => ({
-        name: group.name,
-        members: parseInt(group.members?.replace(/[^\d]/g, '') || '0') || 10000,
-        url: group.url,
-        posts30d: Math.floor(Math.random() * 400 + 200),
-        engagement: "High"
-      }))
+    ? realSignals.facebook.topGroups.map((group: any) => {
+        const membersStr = typeof group.members === 'string' ? group.members : String(group.members || '0');
+        return {
+          name: group.name,
+          members: parseInt(membersStr.replace(/[^\d]/g, '') || '0') || 10000,
+          url: group.url,
+          posts30d: Math.floor(Math.random() * 400 + 200),
+          engagement: "High"
+        };
+      })
     : tailoredCommunities.facebook.map((c: any) => ({
         ...c,
         posts30d: Math.floor(Math.random() * 400 + 200),
