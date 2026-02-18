@@ -2290,6 +2290,39 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
+  // Similar Solutions - Research similar apps/competitors
+  app.post('/api/ai/similar-solutions', async (req: any, res) => {
+    try {
+      const similarSchema = z.object({
+        ideaId: z.number().optional(),
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().optional(),
+        market: z.string().optional(),
+        targetAudience: z.string().optional(),
+        type: z.string().optional(),
+      });
+
+      const idea = similarSchema.parse(req.body);
+
+      // Use the existing researchSimilarApps function from aiService
+      const research = await aiService.researchSimilarApps({
+        title: idea.ideaTitle,
+        description: idea.ideaDescription || '',
+        market: idea.market || '',
+        targetAudience: idea.targetAudience || '',
+        type: idea.type || '',
+      });
+
+      res.json({ research });
+    } catch (error) {
+      console.error("Error researching similar solutions:", error);
+      res.status(500).json({
+        message: "Failed to research similar solutions",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Deep Research - Claude Sonnet 4.5 with Extended Thinking + Builder Prompts
   app.post('/api/ai/deep-research', isAuthenticated, async (req: any, res) => {
     console.log('[Deep Research] ===== ENDPOINT CALLED =====');
@@ -7544,6 +7577,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       // 1. "test" followed by optional space and a number (e.g., "test 3", "test5")
       // 2. Exact match "test" (e.g., "Test")
       // 3. Exact match "test app" (e.g., "Test App")
+      // 4. Titles starting with "test " (e.g., "Test Idea from API")
       const testIdeas = await db
         .select({
           id: ideas.id,
@@ -7552,7 +7586,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         })
         .from(ideas)
         .where(
-          sql`LOWER(${ideas.title}) ~ '^test\\s*\\d+$' OR LOWER(${ideas.title}) = 'test' OR LOWER(${ideas.title}) = 'test app'`
+          sql`LOWER(${ideas.title}) ~ '^test\\s*\\d+$' OR LOWER(${ideas.title}) = 'test' OR LOWER(${ideas.title}) = 'test app' OR LOWER(${ideas.title}) LIKE 'test %'`
         );
       
       console.log(`[Admin] Found ${testIdeas.length} ideas matching patterns`);

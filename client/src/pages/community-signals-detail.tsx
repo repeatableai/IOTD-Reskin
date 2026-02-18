@@ -697,25 +697,19 @@ export default function CommunitySignalsDetail() {
     queryKey: ['/api/ideas', slug],
   });
 
-  // Fetch real community data using AI
+  // Fetch real community data using SerpAPI
   const refreshMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/market/community', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: idea?.title,
-          market: idea?.market,
-          targetAudience: idea?.targetAudience
-        })
+      const res = await apiRequest('POST', '/api/admin/refresh-real-data', {
+        slug: idea?.slug,
+        batchSize: 1,
+        limit: 1,
       });
       return res.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Community data refreshed",
-        description: "Found real-time discussions across platforms",
-      });
+      // Refetch the idea data to get updated community signals
+      window.location.reload();
     },
     onError: () => {
       toast({

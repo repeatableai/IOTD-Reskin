@@ -43,14 +43,14 @@ export default function IdeaFilters({ filters, onFiltersChange }: IdeaFiltersPro
   };
 
   return (
-    <Card className="sticky top-24" data-testid="component-idea-filters">
-      <CardHeader>
+    <Card className="sticky top-24 max-h-[calc(100vh-8rem)] flex flex-col" data-testid="component-idea-filters">
+      <CardHeader className="flex-shrink-0">
         <CardTitle className="flex items-center">
           <Filter className="w-5 h-5 mr-2" />
           Filters
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 overflow-y-auto flex-1">
         {/* Premium Quick Filters */}
         {isAuthenticated && (
           <div className="space-y-3">

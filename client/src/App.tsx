@@ -56,6 +56,7 @@ const TrendDetail = lazy(() => import("@/pages/trend-detail"));
 const MyIdeas = lazy(() => import("@/pages/my-ideas"));
 const BulkImport = lazy(() => import("@/pages/bulk-import"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
+const Settings = lazy(() => import("@/pages/settings"));
 
 // Loading fallback component
 function PageLoader() {
@@ -128,6 +129,7 @@ function Router() {
         {isAuthenticated && (
           <>
             <Route path="/dashboard" component={Dashboard} />
+            <Route path="/settings" component={Settings} />
             <Route path="/home" component={Home} />
             <Route path="/create-idea" component={CreateIdea} />
             <Route path="/bulk-import" component={BulkImport} />

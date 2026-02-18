@@ -127,6 +127,9 @@ export default function IdeaDetail() {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [storytellingNarrative, setStorytellingNarrative] = useState<string | null>(null);
   const [isGeneratingNarrative, setIsGeneratingNarrative] = useState(false);
+  const [similarSolutions, setSimilarSolutions] = useState<string | null>(null);
+  const [isLoadingSimilar, setIsLoadingSimilar] = useState(false);
+  const [showSimilarDialog, setShowSimilarDialog] = useState(false);
 
   const generateNarrative = async (force = false) => {
     if (!idea) return;
@@ -375,8 +378,17 @@ export default function IdeaDetail() {
       return;
     }
 
+    if (!idea) {
+      toast({
+        title: "Error",
+        description: "Idea data not loaded yet. Please wait and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGeneratingReport(true);
-    
+
     try {
       const response = await apiRequest('POST', '/api/ai/research-report', {
         ideaTitle: idea.title,
@@ -398,6 +410,43 @@ export default function IdeaDetail() {
       });
     } finally {
       setIsGeneratingReport(false);
+    }
+  };
+
+  const fetchSimilarSolutions = async () => {
+    if (!idea) {
+      toast({
+        title: "Error",
+        description: "Idea data not loaded yet. Please wait and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoadingSimilar(true);
+    setShowSimilarDialog(true);
+
+    try {
+      const response = await apiRequest('POST', '/api/ai/similar-solutions', {
+        ideaId: idea.id,
+        ideaTitle: idea.title,
+        ideaDescription: idea.description,
+        market: idea.market,
+        targetAudience: idea.targetAudience,
+        type: idea.type,
+      });
+      const data = await response.json();
+      setSimilarSolutions(data.research);
+    } catch (error) {
+      console.error('Error fetching similar solutions:', error);
+      toast({
+        title: "Research Failed",
+        description: "Failed to find similar solutions. Please try again.",
+        variant: "destructive",
+      });
+      setShowSimilarDialog(false);
+    } finally {
+      setIsLoadingSimilar(false);
     }
   };
 
@@ -1843,9 +1892,24 @@ export default function IdeaDetail() {
                   <Users className="w-4 h-4 mr-2" />
                   Founder Fit Test
                 </Button>
-                <Button variant="outline" className="w-full" data-testid="button-similar-ideas">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Similar Solutions
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={fetchSimilarSolutions}
+                  disabled={isLoadingSimilar}
+                  data-testid="button-similar-ideas"
+                >
+                  {isLoadingSimilar ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Searching...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Similar Solutions
+                    </>
+                  )}
                 </Button>
               </CardContent>
             </Card>
@@ -1888,7 +1952,7 @@ export default function IdeaDetail() {
               </CardContent>
             </Card>
 
-            {/* CLI Option */}
+            {/* Claude Code Option */}
             <Card
               className="cursor-pointer hover:border-primary hover:shadow-md transition-all group"
               onClick={() => {
@@ -1902,9 +1966,9 @@ export default function IdeaDetail() {
                     <Code className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">CLI</h3>
+                    <h3 className="font-semibold text-lg">Claude Code</h3>
                     <p className="text-sm text-muted-foreground">
-                      Build with code using Cursor, Replit, and command-line tools
+                      Build with Claude Code, Cursor, and Replit
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
@@ -1943,6 +2007,39 @@ export default function IdeaDetail() {
           ideaTitle={idea.title}
         />
       )}
+
+      {/* Similar Solutions Dialog */}
+      <Dialog open={showSimilarDialog} onOpenChange={setShowSimilarDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Search className="w-6 h-6" />
+              Similar Solutions
+            </DialogTitle>
+            <DialogDescription>
+              AI-researched similar apps and market insights for {idea?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4">
+            {isLoadingSimilar ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                <p className="text-muted-foreground">Researching similar solutions...</p>
+              </div>
+            ) : similarSolutions ? (
+              <div className="prose prose-sm max-w-none dark:prose-invert">
+                <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                  {similarSolutions}
+                </div>
+              </div>
+            ) : (
+              <p className="text-muted-foreground text-center py-8">
+                No research data available.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Collaboration Portal */}
     </div>

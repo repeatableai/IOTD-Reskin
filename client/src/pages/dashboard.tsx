@@ -309,14 +309,14 @@ export default function Dashboard() {
                     iconColor: "text-blue-500",
                     bgColor: "bg-blue-50",
                     title: "My Chats",
-                    value: "0/100"
+                    value: "0"
                   },
                   {
                     icon: CheckCircle2,
                     iconColor: "text-green-500",
                     bgColor: "bg-green-50",
                     title: "My Assessments",
-                    value: "1/365"
+                    value: "1"
                   }
                 ].map((item, idx) => (
                   <Card 

@@ -155,7 +155,7 @@ export default function Header() {
                       >
                         <Database className="w-5 h-5 mt-0.5 flex-shrink-0" />
                         <div>
-                          <div className="font-semibold">Business Incubator</div>
+                          <div className="font-semibold">Venture Incubator</div>
                           <div className="text-sm text-muted-foreground">Explore 400+ validated business opportunities with research</div>
                         </div>
                       </button>
@@ -535,7 +535,7 @@ export default function Header() {
                           className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
                         >
                           <Database className="w-4 h-4 text-muted-foreground" />
-                          <span>Business Incubator</span>
+                          <span>Venture Incubator</span>
                         </button>
                         <button
                           onClick={() => navigateTo('/database?sort=popular')}

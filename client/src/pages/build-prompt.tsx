@@ -2461,8 +2461,8 @@ ${idea?.description || 'Description of your solution'}
               </CardContent>
             </Card>
 
-            {/* CLI Option */}
-            <Card 
+            {/* Claude Code Option */}
+            <Card
               className="cursor-pointer hover:border-primary hover:shadow-md transition-all group"
               onClick={() => {
                 setLocation(`/idea/${slug}/build/cursor`);
@@ -2475,9 +2475,9 @@ ${idea?.description || 'Description of your solution'}
                     <Code className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-lg">CLI</h3>
+                    <h3 className="font-semibold text-lg">Claude Code</h3>
                     <p className="text-sm text-muted-foreground">
-                      Build with Cursor IDE and command-line tools
+                      Build with Claude Code, Cursor, and Replit
                     </p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />

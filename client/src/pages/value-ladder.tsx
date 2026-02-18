@@ -36,72 +36,76 @@ export default function ValueLadder() {
     return <NotFound />;
   }
 
-  // Extract Value Ladder from offerTiers or frameworkData
-  const ladder = idea.offerTiers || idea.frameworkData?.valueLadder || {
-    tiers: [
-      {
-        name: "Lead Magnet",
-        price: "Free",
-        description: "High-value free offer to attract and qualify leads",
-        items: [
-          "Free templates or tools",
-          "Educational content guide",
-          "Industry report or checklist",
-          "Free trial or demo"
-        ],
-        strategy: "Build email list and establish expertise"
-      },
-      {
-        name: "Frontend Offer",
-        price: "$29-$99",
-        description: "Low-friction entry point to convert leads into paying customers",
-        items: [
-          "Starter plan or basic tier",
-          "Single module or course",
-          "Entry-level service package",
-          "Essential features only"
-        ],
-        strategy: "Prove value and build trust with minimal risk"
-      },
-      {
-        name: "Core Offer",
-        price: "$299-$999",
-        description: "Main product delivering comprehensive solution and maximum value",
-        items: [
-          "Full platform access",
-          "Complete feature set",
-          "Professional tier",
-          "Priority support included"
-        ],
-        strategy: "Primary revenue driver and customer success vehicle"
-      },
-      {
-        name: "Backend Offer",
-        price: "$2,999-$9,999",
-        description: "Premium offering for advanced needs and high-value customers",
-        items: [
-          "Enterprise features",
-          "Custom integrations",
-          "Dedicated account manager",
-          "White-label options"
-        ],
-        strategy: "Maximize revenue from committed customers"
-      },
-      {
-        name: "Continuity",
-        price: "Recurring",
-        description: "Ongoing relationship creating predictable revenue",
-        items: [
-          "Monthly/annual subscriptions",
-          "Maintenance and updates",
-          "Community access",
-          "Continued support"
-        ],
-        strategy: "Build sustainable, recurring revenue base"
-      }
-    ],
-    ltv: "$2,500-$8,000",
-    avgCac: "$150-$400"
+  // Default value ladder tiers
+  const defaultTiers = [
+    {
+      name: "Lead Magnet",
+      price: "Free",
+      description: "High-value free offer to attract and qualify leads",
+      items: [
+        "Free templates or tools",
+        "Educational content guide",
+        "Industry report or checklist",
+        "Free trial or demo"
+      ],
+      strategy: "Build email list and establish expertise"
+    },
+    {
+      name: "Frontend Offer",
+      price: "$29-$99",
+      description: "Low-friction entry point to convert leads into paying customers",
+      items: [
+        "Starter plan or basic tier",
+        "Single module or course",
+        "Entry-level service package",
+        "Essential features only"
+      ],
+      strategy: "Prove value and build trust with minimal risk"
+    },
+    {
+      name: "Core Offer",
+      price: "$299-$999",
+      description: "Main product delivering comprehensive solution and maximum value",
+      items: [
+        "Full platform access",
+        "Complete feature set",
+        "Professional tier",
+        "Priority support included"
+      ],
+      strategy: "Primary revenue driver and customer success vehicle"
+    },
+    {
+      name: "Backend Offer",
+      price: "$2,999-$9,999",
+      description: "Premium offering for advanced needs and high-value customers",
+      items: [
+        "Enterprise features",
+        "Custom integrations",
+        "Dedicated account manager",
+        "White-label options"
+      ],
+      strategy: "Maximize revenue from committed customers"
+    },
+    {
+      name: "Continuity",
+      price: "Recurring",
+      description: "Ongoing relationship creating predictable revenue",
+      items: [
+        "Monthly/annual subscriptions",
+        "Maintenance and updates",
+        "Community access",
+        "Continued support"
+      ],
+      strategy: "Build sustainable, recurring revenue base"
+    }
+  ];
+
+  // Extract Value Ladder from offerTiers or frameworkData, with defaults
+  const ideaTiers = idea.offerTiers?.tiers || idea.frameworkData?.valueLadder?.tiers;
+  const ladder = {
+    tiers: ideaTiers && ideaTiers.length >= 5 ? ideaTiers : defaultTiers,
+    ltv: idea.offerTiers?.ltv || idea.frameworkData?.valueLadder?.ltv || "$2,500-$8,000",
+    avgCac: idea.offerTiers?.avgCac || idea.frameworkData?.valueLadder?.avgCac || "$150-$400"
   };
 
   return (
