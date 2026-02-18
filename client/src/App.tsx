@@ -77,7 +77,7 @@ function Router() {
     <Suspense fallback={<PageLoader />}>
       <Switch>
         <Route path="/login" component={Login} />
-        <Route path="/" component={TopIdeas} />
+        <Route path="/" component={Landing} />
         <Route path="/database" component={Database} />
         <Route path="/my-ideas" component={MyIdeas} />
         <Route path="/idea-of-the-day" component={IdeaOfTheDay} />
