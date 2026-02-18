@@ -6612,7 +6612,6 @@ Be practical, encouraging, and focus on helping them make real progress.`;
       }
 
       const results: Array<{ slug: string; success: boolean; error?: string }> = [];
-      const { aiService } = await import('./aiService');
 
       for (const idea of ideasToUpdate) {
         try {
