@@ -7615,4 +7615,95 @@ SELECTED_APP_CONTEXT:
 OPTIONAL_SYSTEM_CONSTRAINTS (if any):
 {{OPTIONAL_SYSTEM_CONSTRAINTS}}`;
 
+  /**
+   * Generate execution plan in Repeatable.AI Build Process format
+   */
+  async generateExecutionPlan(idea: {
+    title: string;
+    description?: string;
+    problemStatement?: string;
+    targetAudience?: string;
+  }): Promise<string> {
+    const prompt = `Generate a comprehensive Repeatable.AI Build Process execution plan for this venture:
+
+Title: ${idea.title}
+Description: ${idea.description || 'N/A'}
+Problem: ${idea.problemStatement || 'N/A'}
+Target Audience: ${idea.targetAudience || 'N/A'}
+
+Generate the execution plan in this EXACT format with these sections:
+
+## OWVI Score Analysis
+Calculate a One-Week Viability Index score (0-100) based on:
+- Technical Complexity (how complex is the tech stack?)
+- Feature Count (how many features need building?)
+- Integration Requirements (external APIs, services?)
+- Data Model Complexity (database schema complexity?)
+- UI/UX Requirements (design complexity?)
+
+Provide:
+- OWVI Score: [NUMBER]/100
+- Feasibility Level: [one-day build (90-100) | strong candidate (80-89) | moderate complexity (70-79) | extended timeline (60-69) | significant scope (<60)]
+- GO/NO-GO: [GO or NO-GO for one-week build]
+
+## Phase 1: No-Code Builder Work
+List each step with the task (no time estimates):
+- Step 0: Intake & ROI Hypothesis - Define success metrics and expected outcomes
+- Step 1: Elaborate with AI - Expand requirements and user stories
+- Step 2: Generate UI Design - Create Fortune-500 quality interface mockups
+- Step 3: Refine via Vibe-Coding - Iterate on design with AI assistance
+- Step 4: Export to Claude Code - Prepare codebase structure
+- Step 5: No-Code Build - Build core functionality to 80-90%
+
+## Phase 2: Development Team Handoff
+- Front-End Polish: [specific tasks for this venture]
+- Back-End Implementation: [specific tasks for this venture]
+- Database Schema: [specific tables/models needed]
+- QA & Testing: [key test scenarios]
+
+## Day-by-Day Schedule
+D1: [specific deliverables]
+D2: [specific deliverables]
+D3: [specific deliverables]
+D4: [specific deliverables]
+D5: [specific deliverables]
+D6: [specific deliverables]
+D7: [specific deliverables]
+
+## Resource Allocation
+- No-Code Builder: [percentage]%
+- Front-End: [percentage]%
+- Back-End: [percentage]%
+- QA: [percentage]%
+
+## Key Technical Decisions
+List 3-5 critical technical choices for this build.
+
+Be specific to THIS venture. Reference actual features and requirements from the description.`;
+
+    try {
+      console.log(`[Execution Plan] Generating for: ${idea.title}`);
+
+      const response = await getAnthropic().messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        temperature: 0.7,
+        messages: [{ role: "user", content: prompt }]
+      });
+
+      const textContent = response.content[0]?.type === 'text' ? response.content[0].text : '';
+
+      if (!textContent || textContent.trim().length < 100) {
+        throw new Error('Empty or insufficient response from AI');
+      }
+
+      console.log(`[Execution Plan] Successfully generated for: ${idea.title}`);
+      return textContent;
+    } catch (error: any) {
+      console.error('[Execution Plan] Error:', error.message);
+      throw error;
+    }
+  }
+}
+
 export const aiService = new AIService();
