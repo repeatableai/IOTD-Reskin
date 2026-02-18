@@ -6592,7 +6592,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
         }
       }
 
-      const { limit = 10, ideaId, slug } = req.body;
+      const { limit = 10, offset = 0, ideaId, slug } = req.body;
 
       // Get ideas to regenerate
       let ideasToUpdate;
@@ -6604,6 +6604,7 @@ Be practical, encouraging, and focus on helping them make real progress.`;
           .from(ideas)
           .where(eq(ideas.isPublished, true))
           .orderBy(desc(ideas.createdAt))
+          .offset(offset)
           .limit(limit);
       }
 
