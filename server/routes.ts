@@ -6577,6 +6577,145 @@ Be practical, encouraging, and focus on helping them make real progress.`;
     }
   });
 
+  // Regenerate execution plans with new Repeatable.AI Build Process format
+  app.post('/api/admin/regenerate-execution-plans', async (req: any, res) => {
+    try {
+      const IMPORT_TOKEN = 'iotd-initial-sync-2024-12-17';
+      const providedToken = req.query?.importToken || req.headers['x-import-token'] || req.body?.importToken;
+
+      if (process.env.NODE_ENV === 'production') {
+        const hasValidToken = providedToken === IMPORT_TOKEN;
+        const hasAuth = !!req.user;
+
+        if (!hasValidToken && !hasAuth) {
+          return res.status(401).json({ message: "Authentication or token required" });
+        }
+      }
+
+      const { limit = 10, ideaId, slug } = req.body;
+
+      // Get ideas to regenerate
+      let ideasToUpdate;
+      if (ideaId || slug) {
+        const condition = ideaId ? eq(ideas.id, ideaId) : eq(ideas.slug, slug);
+        ideasToUpdate = await db.select().from(ideas).where(condition);
+      } else {
+        ideasToUpdate = await db.select()
+          .from(ideas)
+          .where(eq(ideas.isPublished, true))
+          .orderBy(desc(ideas.createdAt))
+          .limit(limit);
+      }
+
+      if (ideasToUpdate.length === 0) {
+        return res.json({ success: true, message: 'No ideas found', processed: 0 });
+      }
+
+      const results: Array<{ slug: string; success: boolean; error?: string }> = [];
+      const { aiService } = await import('./aiService');
+
+      for (const idea of ideasToUpdate) {
+        try {
+          const prompt = `Generate a comprehensive Repeatable.AI Build Process execution plan for this venture:
+
+Title: ${idea.title}
+Description: ${idea.description || 'N/A'}
+Problem: ${idea.problemStatement || 'N/A'}
+Target Audience: ${idea.targetAudience || 'N/A'}
+
+Generate the execution plan in this EXACT format with these sections:
+
+## OWVI Score Analysis
+Calculate a One-Week Viability Index score (0-100) based on:
+- Technical Complexity (how complex is the tech stack?)
+- Feature Count (how many features need building?)
+- Integration Requirements (external APIs, services?)
+- Data Model Complexity (database schema complexity?)
+- UI/UX Requirements (design complexity?)
+
+Provide:
+- OWVI Score: [NUMBER]/100
+- Feasibility Level: [one-day build (90-100) | strong candidate (80-89) | moderate complexity (70-79) | extended timeline (60-69) | significant scope (<60)]
+- GO/NO-GO: [GO or NO-GO for one-week build]
+
+## Phase 1: No-Code Builder Work
+List each step with the task (no time estimates):
+- Step 0: Intake & ROI Hypothesis - Define success metrics and expected outcomes
+- Step 1: Elaborate with AI - Expand requirements and user stories
+- Step 2: Generate UI Design - Create Fortune-500 quality interface mockups
+- Step 3: Refine via Vibe-Coding - Iterate on design with AI assistance
+- Step 4: Export to Claude Code - Prepare codebase structure
+- Step 5: No-Code Build - Build core functionality to 80-90%
+
+## Phase 2: Development Team Handoff
+- Front-End Polish: [specific tasks for this venture]
+- Back-End Implementation: [specific tasks for this venture]
+- Database Schema: [specific tables/models needed]
+- QA & Testing: [key test scenarios]
+
+## Day-by-Day Schedule
+D1: [specific deliverables]
+D2: [specific deliverables]
+D3: [specific deliverables]
+D4: [specific deliverables]
+D5: [specific deliverables]
+D6: [specific deliverables]
+D7: [specific deliverables]
+
+## Resource Allocation
+- No-Code Builder: [percentage]%
+- Front-End: [percentage]%
+- Back-End: [percentage]%
+- QA: [percentage]%
+
+## Key Technical Decisions
+List 3-5 critical technical choices for this build.
+
+Be specific to THIS venture. Reference actual features and requirements from the description.`;
+
+          const response = await aiService.chat([
+            { role: 'user', content: prompt }
+          ], { maxTokens: 2000 });
+
+          if (response && response.trim().length > 100) {
+            await db.update(ideas)
+              .set({ executionPlan: response })
+              .where(eq(ideas.id, idea.id));
+            results.push({ slug: idea.slug, success: true });
+            console.log(`[Regenerate Execution] Updated ${idea.slug}`);
+          } else {
+            results.push({ slug: idea.slug, success: false, error: 'Empty response from AI' });
+          }
+
+          // Rate limit - wait between requests
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+        } catch (error: any) {
+          console.error(`[Regenerate Execution] Error for ${idea.slug}:`, error.message);
+          results.push({ slug: idea.slug, success: false, error: error.message });
+        }
+      }
+
+      const successful = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success);
+
+      res.json({
+        success: true,
+        message: `Regenerated ${successful}/${results.length} execution plans`,
+        results,
+        failed: failed.length > 0 ? failed : undefined
+      });
+
+    } catch (error: any) {
+      console.error("[Regenerate Execution] Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to regenerate execution plans",
+        error: error.message
+      });
+    }
+  });
+
   // Remove genspark.ai previewUrls from first page (CSP blocked)
   app.post('/api/admin/remove-genspark-ai-preview-urls', async (req: any, res) => {
     try {
