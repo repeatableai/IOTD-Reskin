@@ -28,6 +28,20 @@ import {
 } from "lucide-react";
 import type { Idea } from "@shared/schema";
 
+// Strip markdown formatting from text
+const stripMarkdown = (text: string): string => {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')           // Remove ## headers
+    .replace(/\*\*([^*]+)\*\*/g, '$1')     // Remove **bold**
+    .replace(/\*([^*]+)\*/g, '$1')         // Remove *italic*
+    .replace(/^-\s*\*\*/gm, '')            // Remove -** at start of lines
+    .replace(/^\*\*\s*/gm, '')             // Remove ** at start of lines
+    .replace(/\*\*\s*$/gm, '')             // Remove ** at end of lines
+    .replace(/^[-*]\s+/gm, '• ')           // Convert - or * bullets to •
+    .replace(/`([^`]+)`/g, '$1')           // Remove inline code backticks
+    .trim();
+};
+
 // Calculate OWVI Score based on idea metrics
 const calculateOWVI = (idea: Idea) => {
   const baseScore = Math.round(
@@ -39,55 +53,55 @@ const calculateOWVI = (idea: Idea) => {
   return Math.min(100, Math.max(50, baseScore));
 };
 
-// Get OWVI label
+// Get OWVI label (Two-Week Viability Index)
 const getOWVILabel = (score: number) => {
-  if (score >= 90) return { label: "One-Day Build", color: "text-green-600", bg: "bg-green-100" };
-  if (score >= 80) return { label: "Strong Candidate", color: "text-blue-600", bg: "bg-blue-100" };
-  if (score >= 70) return { label: "Moderate Effort", color: "text-yellow-600", bg: "bg-yellow-100" };
+  if (score >= 90) return { label: "2-Day Build", color: "text-green-600", bg: "bg-green-100" };
+  if (score >= 80) return { label: "1-Week Build", color: "text-blue-600", bg: "bg-blue-100" };
+  if (score >= 70) return { label: "2-Week Build", color: "text-yellow-600", bg: "bg-yellow-100" };
   return { label: "Extended Timeline", color: "text-orange-600", bg: "bg-orange-100" };
 };
 
-// Phase 1 Steps
+// Phase 1 Steps (No-Code Builder @ $25/hr)
 const phase1Steps = [
   {
     step: 0,
     title: "Intake & ROI Hypothesis",
-    duration: "15-30 min",
+    duration: "1-2 hrs",
     description: "Define scope, success metrics, and expected ROI",
     icon: Target
   },
   {
     step: 1,
-    title: "Elaborate with ChatGPT-5 Pro",
-    duration: "30 min - 1 hr",
+    title: "Elaborate with AI",
+    duration: "2-4 hrs",
     description: "Expand requirements, user stories, and edge cases",
     icon: Sparkles
   },
   {
     step: 2,
     title: "Generate Fortune-500 UI",
-    duration: "30 min - 1 hr",
+    duration: "2-4 hrs",
     description: "Create polished, enterprise-grade design mockups",
     icon: Palette
   },
   {
     step: 3,
     title: "Refine via Vibe-Coding",
-    duration: "1-2 hrs",
+    duration: "4-8 hrs",
     description: "Iterate on design with AI-assisted refinements",
     icon: Zap
   },
   {
     step: 4,
     title: "Export to Claude Code",
-    duration: "30 min - 1 hr",
+    duration: "1-2 hrs",
     description: "Convert designs to functional code scaffolding",
     icon: Code
   },
   {
     step: 5,
     title: "No-Code Build to 80-90%",
-    duration: "1-6 hrs",
+    duration: "8-16 hrs",
     description: "Implement core functionality with no-code tools",
     icon: Rocket
   }
@@ -101,34 +115,31 @@ const phase2Teams = [
   { role: "QA & Debugging", rate: 30, icon: TestTube, tasks: ["Test coverage", "Bug fixes", "Edge cases"] }
 ];
 
-// Day-by-Day Schedule
+// Two-Week Schedule
 const generateDaySchedule = (owviScore: number) => {
-  const isQuickBuild = owviScore >= 85;
-  const isModerateBuild = owviScore >= 70;
+  const isQuickBuild = owviScore >= 90;  // 2-day build
+  const isWeekBuild = owviScore >= 80;   // 1-week build
 
   if (isQuickBuild) {
     return [
-      { day: "D1", title: "Foundation", tasks: ["Setup", "Core UI", "Basic backend"], status: "critical" },
-      { day: "D2", title: "Features", tasks: ["Core features", "Integrations", "Testing"], status: "important" },
-      { day: "D3", title: "Polish", tasks: ["UI refinement", "Bug fixes", "Documentation"], status: "normal" },
-      { day: "D4", title: "Launch Prep", tasks: ["Final QA", "Deployment", "Monitoring"], status: "normal" }
+      { day: "Day 1", title: "Build & Deploy", tasks: ["Setup", "Core features", "Basic UI", "Deploy MVP"], status: "critical", hours: "8 hrs" },
+      { day: "Day 2", title: "Polish & Launch", tasks: ["UI polish", "Testing", "Documentation", "Launch"], status: "important", hours: "8 hrs" }
     ];
-  } else if (isModerateBuild) {
+  } else if (isWeekBuild) {
     return [
-      { day: "D1", title: "Planning & Setup", tasks: ["Architecture", "Environment setup", "Dependencies"], status: "critical" },
-      { day: "D2", title: "Core Backend", tasks: ["API structure", "Database", "Auth"], status: "critical" },
-      { day: "D3", title: "Core Frontend", tasks: ["Component library", "Routing", "State"], status: "important" },
-      { day: "D4", title: "Features P1", tasks: ["Primary features", "Integrations"], status: "important" },
-      { day: "D5", title: "Features P2", tasks: ["Secondary features", "Edge cases"], status: "normal" },
-      { day: "D6", title: "Testing & QA", tasks: ["Unit tests", "Integration tests", "Manual QA"], status: "normal" },
-      { day: "D7", title: "Launch", tasks: ["Deployment", "Monitoring", "Documentation"], status: "normal" }
+      { day: "Day 1-2", title: "Foundation", tasks: ["Planning", "Architecture", "Environment setup"], status: "critical", hours: "16 hrs" },
+      { day: "Day 3-4", title: "Core Build", tasks: ["Backend API", "Database", "Core UI components"], status: "critical", hours: "16 hrs" },
+      { day: "Day 5", title: "Features & Integration", tasks: ["Feature completion", "Third-party integrations"], status: "important", hours: "8 hrs" }
     ];
   } else {
+    // 2-week build
     return [
-      { day: "D1-2", title: "Planning", tasks: ["Requirements", "Architecture", "Tech decisions"], status: "critical" },
-      { day: "D3-4", title: "Backend Core", tasks: ["API", "Database", "Services"], status: "critical" },
-      { day: "D5-6", title: "Frontend Core", tasks: ["Components", "Pages", "State management"], status: "important" },
-      { day: "D7", title: "Integration", tasks: ["Connect frontend/backend", "Third-party APIs"], status: "important" }
+      { day: "Week 1: Day 1-2", title: "Planning & Setup", tasks: ["Requirements", "Architecture", "Tech stack decisions"], status: "critical", hours: "16 hrs" },
+      { day: "Week 1: Day 3-4", title: "Backend Development", tasks: ["API endpoints", "Database schema", "Auth system"], status: "critical", hours: "16 hrs" },
+      { day: "Week 1: Day 5", title: "Backend Complete", tasks: ["Business logic", "Integrations", "API testing"], status: "important", hours: "8 hrs" },
+      { day: "Week 2: Day 6-7", title: "Frontend Development", tasks: ["UI components", "Pages", "State management"], status: "important", hours: "16 hrs" },
+      { day: "Week 2: Day 8-9", title: "Integration & Features", tasks: ["Connect frontend/backend", "Feature polish", "Edge cases"], status: "normal", hours: "16 hrs" },
+      { day: "Week 2: Day 10", title: "QA & Launch", tasks: ["Testing", "Bug fixes", "Deployment", "Documentation"], status: "normal", hours: "8 hrs" }
     ];
   }
 };
@@ -401,7 +412,7 @@ export default function ExecutionPlan() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid md:grid-cols-4 gap-4">
+            <div className="grid md:grid-cols-3 gap-4">
               {daySchedule.map((day) => (
                 <div
                   key={day.day}
@@ -411,7 +422,10 @@ export default function ExecutionPlan() {
                     'border-gray-200 bg-gray-50'
                   }`}
                 >
-                  <div className="font-bold text-lg mb-1">{day.day}</div>
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="font-bold text-lg">{day.day}</div>
+                    <Badge variant="outline" className="text-xs">{day.hours}</Badge>
+                  </div>
                   <div className="font-semibold mb-2">{day.title}</div>
                   <ul className="text-sm text-muted-foreground space-y-1">
                     {day.tasks.map((task) => (
@@ -468,7 +482,7 @@ export default function ExecutionPlan() {
             <CardContent>
               <div className="prose max-w-none">
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                  {idea.executionPlan}
+                  {stripMarkdown(idea.executionPlan)}
                 </p>
               </div>
             </CardContent>

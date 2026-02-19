@@ -3841,55 +3841,62 @@ Description: ${idea.description || 'N/A'}
 Problem: ${idea.problemStatement || 'N/A'}
 Target Audience: ${idea.targetAudience || 'N/A'}
 
-Generate the execution plan in this EXACT format with these sections:
+IMPORTANT FORMATTING RULES:
+- Do NOT use markdown formatting like ** or ## or - at the start of lines
+- Write in plain text with clear section headers
+- Include hour estimates for each task
+- Total build time should be 2 weeks (80 hours) or less
 
-## OWVI Score Analysis
-Calculate a One-Week Viability Index score (0-100) based on:
-- Technical Complexity (how complex is the tech stack?)
-- Feature Count (how many features need building?)
-- Integration Requirements (external APIs, services?)
-- Data Model Complexity (database schema complexity?)
-- UI/UX Requirements (design complexity?)
+Generate the execution plan with these sections:
 
-Provide:
-- OWVI Score: [NUMBER]/100
-- Feasibility Level: [one-day build (90-100) | strong candidate (80-89) | moderate complexity (70-79) | extended timeline (60-69) | significant scope (<60)]
-- GO/NO-GO: [GO or NO-GO for one-week build]
+OWVI Score Analysis
+Calculate a Two-Week Viability Index score (0-100) based on technical complexity, feature count, integration requirements, data model complexity, and UI/UX requirements.
 
-## Phase 1: No-Code Builder Work
-List each step with the task (no time estimates):
-- Step 0: Intake & ROI Hypothesis - Define success metrics and expected outcomes
-- Step 1: Elaborate with AI - Expand requirements and user stories
-- Step 2: Generate UI Design - Create Fortune-500 quality interface mockups
-- Step 3: Refine via Vibe-Coding - Iterate on design with AI assistance
-- Step 4: Export to Claude Code - Prepare codebase structure
-- Step 5: No-Code Build - Build core functionality to 80-90%
+OWVI Score: [NUMBER]/100
+Feasibility: [2-day build (90-100) | 1-week build (80-89) | 2-week build (70-79) | extended timeline (<70)]
+Decision: GO or NO-GO for two-week build
 
-## Phase 2: Development Team Handoff
-- Front-End Polish: [specific tasks for this venture]
-- Back-End Implementation: [specific tasks for this venture]
-- Database Schema: [specific tables/models needed]
-- QA & Testing: [key test scenarios]
+Phase 1: No-Code Builder Work ($25/hr)
+Step 0: Intake & ROI Hypothesis (1-2 hrs) - [specific tasks for this venture]
+Step 1: Elaborate with AI (2-4 hrs) - [specific tasks for this venture]
+Step 2: Generate UI Design (2-4 hrs) - [specific tasks for this venture]
+Step 3: Refine via Vibe-Coding (4-8 hrs) - [specific tasks for this venture]
+Step 4: Export to Claude Code (1-2 hrs) - [specific tasks for this venture]
+Step 5: No-Code Build to 80-90% (8-16 hrs) - [specific tasks for this venture]
+Phase 1 Subtotal: [X-Y hours]
 
-## Day-by-Day Schedule
-D1: [specific deliverables]
-D2: [specific deliverables]
-D3: [specific deliverables]
-D4: [specific deliverables]
-D5: [specific deliverables]
-D6: [specific deliverables]
-D7: [specific deliverables]
+Phase 2: Development Team Handoff
+Front-End Polish ($30/hr, X-Y hrs): [specific tasks]
+Back-End Implementation ($35/hr, X-Y hrs): [specific tasks]
+Database Schema ($35/hr, X-Y hrs): [specific tables/models]
+QA & Testing ($30/hr, X-Y hrs): [key test scenarios]
+Phase 2 Subtotal: [X-Y hours]
 
-## Resource Allocation
-- No-Code Builder: [percentage]%
-- Front-End: [percentage]%
-- Back-End: [percentage]%
-- QA: [percentage]%
+Two-Week Schedule
+Week 1:
+  Day 1-2: [deliverables]
+  Day 3-4: [deliverables]
+  Day 5: [deliverables]
+Week 2:
+  Day 6-7: [deliverables]
+  Day 8-9: [deliverables]
+  Day 10: [deliverables and launch prep]
 
-## Key Technical Decisions
-List 3-5 critical technical choices for this build.
+Total Hours: [X-Y hours]
+Estimated Cost: $[X,XXX - $X,XXX]
 
-Be specific to THIS venture. Reference actual features and requirements from the description.`;
+Resource Allocation
+No-Code Builder: [X]%
+Front-End: [X]%
+Back-End: [X]%
+QA: [X]%
+
+Key Technical Decisions
+1. [Decision 1]
+2. [Decision 2]
+3. [Decision 3]
+
+Be specific to THIS venture. Reference actual features from the description. Keep total time under 80 hours.`;
 
     try {
       console.log(`[Execution Plan] Generating for: ${idea.title}`);
