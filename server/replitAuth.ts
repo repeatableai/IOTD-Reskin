@@ -105,9 +105,9 @@ export async function setupAuth(app: Express): Promise<RequestHandler> {
     const demoUser = {
       id: 'demo-user-public',
       email: 'demo@iotd.app',
-      firstName: 'Demo',
-      lastName: 'User',
-      profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
+      firstName: 'User',
+      lastName: '',
+      profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
     };
 
     // Create or get nick user
@@ -221,9 +221,9 @@ export async function setupAuth(app: Express): Promise<RequestHandler> {
         const demoUser = {
           id: 'demo-user-public',
           email: 'demo@iotd.app',
-          firstName: 'Demo',
-          lastName: 'User',
-          profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Demo',
+          firstName: 'User',
+          lastName: '',
+          profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=User',
         };
         
         // Regenerate session to ensure old session is cleared
@@ -248,7 +248,7 @@ export async function setupAuth(app: Express): Promise<RequestHandler> {
               console.error('[Login] Error logging in demo user:', err);
               return res.status(500).json({ success: false, message: 'Failed to create session' });
             }
-            console.log(`[Login] ✅ Successfully logged in as Demo - ID: ${req.user.claims.sub}`);
+            console.log(`[Login] ✅ Successfully logged in as User - ID: ${req.user.claims.sub}`);
             res.json({ success: true, user: req.user });
           });
         });
