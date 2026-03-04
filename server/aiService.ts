@@ -3921,6 +3921,773 @@ Be specific to THIS venture. Reference actual features from the description. Kee
       throw error;
     }
   }
+
+  // ── IC Memo Generator ──────────────────────────────────────────────
+
+  /**
+   * Generate Investment Committee Memo
+   * Three-tier system based on data completeness:
+   * - Tier 1 (Thesis Assessment): <30% data, 6 sections, no web search
+   * - Tier 2 (Preliminary Memo): 30-64% data, 8 sections, web search enabled
+   * - Tier 3 (Full IC Memorandum): 65%+ data, 12 sections, Bessemer-grade
+   */
+  async generateICMemo(params: {
+    idea: any;
+    completeness: {
+      score: number;
+      tier: 1 | 2 | 3;
+      tierLabel: string;
+      populated: string[];
+      missing: string[];
+      researchQueries: string[];
+    };
+  }): Promise<{
+    sections: Array<{
+      id: string;
+      title: string;
+      content: string;
+      confidenceTags: { verified: number; estimated: number; unverified: number };
+    }>;
+    recommendation: {
+      verdict: 'INVEST' | 'CONDITIONAL' | 'MORE_DATA' | 'PASS';
+      confidence: number;
+      conditions?: string[];
+      summary: string;
+    };
+    expertPanel: Array<{
+      name: string;
+      credentials: string;
+      framework: string;
+      rating: 'STRONG_INVEST' | 'INVEST' | 'CONDITIONAL' | 'CAUTIOUS' | 'PASS';
+      analysis: string;
+    }>;
+    diligenceItems: Array<{
+      category: 'gating' | 'pre_close' | 'supplementary';
+      item: string;
+      priority: 'high' | 'medium' | 'low';
+    }>;
+    confidenceStats: {
+      verified: number;
+      estimated: number;
+      unverified: number;
+    };
+    tier: 1 | 2 | 3;
+    tierLabel: string;
+  }> {
+    const { idea, completeness } = params;
+    const { tier, tierLabel } = completeness;
+
+    // Build the business context
+    const businessContext = this.buildRawBusinessContext(idea);
+
+    // Tier-specific configuration
+    const tierConfig = {
+      1: {
+        maxTokens: 6000,
+        sections: [
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'investment_conditions',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          thesis_summary: 'Thesis Summary',
+          market_opportunity: 'Market Opportunity',
+          timing_analysis: 'Timing Analysis',
+          competitive_landscape: 'Competitive Landscape',
+          investment_conditions: 'Investment Conditions',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+      },
+      2: {
+        maxTokens: 10000,
+        sections: [
+          'executive_summary',
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'risk_factors',
+          'scenario_analysis',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          executive_summary: 'Executive Summary',
+          thesis_summary: 'Investment Thesis',
+          market_opportunity: 'Market Opportunity',
+          timing_analysis: 'Timing & Market Catalysts',
+          competitive_landscape: 'Competitive Landscape',
+          risk_factors: 'Risk Factors',
+          scenario_analysis: 'Scenario Analysis',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+      },
+      3: {
+        maxTokens: 32000, // Increased for proper depth - $50K consultant-grade output
+        sections: [
+          'executive_summary',
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'team_assessment',
+          'traction_metrics',
+          'wwhtbt', // What Would Have To Be True
+          'risk_factors',
+          'scenario_analysis',
+          'expert_panel',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          executive_summary: 'Executive Summary',
+          thesis_summary: 'Investment Thesis',
+          market_opportunity: 'Market Opportunity & TAM Analysis',
+          timing_analysis: 'Timing & Market Catalysts',
+          competitive_landscape: 'Competitive Dynamics',
+          team_assessment: 'Team Assessment',
+          traction_metrics: 'Traction & Proof Points',
+          wwhtbt: 'What Would Have To Be True',
+          risk_factors: 'Risk Factors & Mitigants',
+          scenario_analysis: 'Scenario Analysis',
+          expert_panel: 'Expert Panel Assessment',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+        // Section-specific word targets for proper IC memo proportionality
+        sectionWordTargets: {
+          executive_summary: '300-450 words (0.75 pages) — Ultra-concise, key metrics only',
+          thesis_summary: '500-700 words (1.25 pages) — Core investment rationale',
+          market_opportunity: '1200-1800 words (3-4 pages) — TAM/SAM/SOM, sizing methodology, trends',
+          timing_analysis: '600-900 words (1.5 pages) — Market catalysts, why now',
+          competitive_landscape: '1000-1500 words (2.5-3 pages) — Competitive matrix, moats, positioning',
+          team_assessment: '400-600 words (1 page) — Founder profiles, track record',
+          traction_metrics: '500-800 words (1.25 pages) — Proof points, growth metrics',
+          wwhtbt: '600-900 words (1.5 pages) — Key assumptions, belief requirements',
+          risk_factors: '500-700 words (1.25 pages) — Risks with mitigants',
+          scenario_analysis: '600-900 words (1.5 pages) — Bull/base/bear cases',
+          expert_panel: '1000-1500 words (2.5 pages) — 5 experts × 200-300 words each',
+          diligence_requirements: '400-600 words (1 page) — Prioritized diligence items',
+        },
+      },
+    };
+
+    const config = tierConfig[tier];
+
+    // Build section-specific depth guidance
+    const sectionDepthGuidance = tier === 3 && 'sectionWordTargets' in config
+      ? `\n\nSECTION-SPECIFIC DEPTH TARGETS (CRITICAL - sections must vary dramatically in length):\n${Object.entries((config as any).sectionWordTargets).map(([id, target]) => `- ${id}: ${target}`).join('\n')}`
+      : tier === 2
+      ? `\n\nSECTION-SPECIFIC DEPTH TARGETS (Tier 2 - 4,000-6,000 total words):
+- executive_summary: 250-350 words
+- thesis_summary: 400-550 words
+- market_opportunity: 800-1200 words (heavy depth)
+- timing_analysis: 400-600 words
+- competitive_landscape: 700-1000 words (heavy depth)
+- risk_factors: 350-500 words
+- scenario_analysis: 400-600 words
+- diligence_requirements: 300-450 words`
+      : `\n\nSECTION-SPECIFIC DEPTH TARGETS (Tier 1 - 1,500-2,500 total words):
+- thesis_summary: 350-500 words
+- market_opportunity: 400-600 words
+- timing_analysis: 250-400 words
+- competitive_landscape: 300-450 words
+- investment_conditions: 200-350 words
+- diligence_requirements: 200-350 words`;
+
+    const systemPrompt = `You are a senior partner at McKinsey & Company preparing an institutional-grade Investment Committee memorandum for a $10B+ venture capital firm (Sequoia, a16z, Bessemer caliber) considering a $20M+ investment. Partners reviewing this have commissioned thousands of such analyses and expect elite consultant-grade output.
+
+CRITICAL WRITING STYLE - ELITE IC MEMO STANDARD:
+1. **DENSE ANALYTICAL PROSE**: Write in dense, flowing narrative paragraphs. NO bullet lists for analysis sections. Every insight must be woven into connected prose that builds a cohesive investment argument. Bullet points are ONLY acceptable in the Outstanding Diligence section for actionable items.
+2. **DATA IN NARRATIVE**: Numbers belong IN sentences, not isolated. Write "The $4.2B market expanded to $7.8B by 2025, reflecting a 23% CAGR that materially outpaces enterprise software's 14% baseline [VERIFIED]" — NOT bullet points with figures.
+3. **STORYTELLING**: Each section tells a story with beginning (context), middle (analysis), and end (implication for investment). The reader should feel the opportunity unfolding through your prose.
+4. **TABLES SPARINGLY**: Use tables ONLY for direct numerical comparisons (TAM/SAM/SOM summary, scenario analysis outcomes). All other content in flowing prose.
+5. **EXPERT AUTHORITY**: Write with the conviction and sophistication of a senior consultant. Use frameworks naturally woven into analysis, not as labels.
+
+CRITICAL DATA RULES:
+1. **Expert Panel**: Use ONLY real, named experts who are published, peer-reviewed, or NYT bestseller-level recognizable. Never fabricate experts. Provide full credentials.
+2. **Never Fabricate Revenue**: Use industry benchmarks, comparable transactions, or clearly state "data not available" — never invent revenue figures.
+3. **Confidence Tagging**: Tag EVERY data claim inline with:
+   - [VERIFIED] — Directly from provided data, cited source, or established methodology
+   - [ESTIMATED] — Calculated from benchmarks or comparable data with clear methodology
+   - [UNVERIFIED] — Requires additional diligence to confirm
+4. **Expert Language**: Experts provide extended framework-based analysis ("Through the lens of Christensen's disruption theory, this market exhibits..."), NOT direct recommendations ("X says INVEST"). Each expert needs 200-300 words of NARRATIVE analysis.
+5. **Dissent Requirement**: At least one expert MUST express significant caution or dissent with analytical reasoning.
+6. **Outstanding Diligence**: Every [UNVERIFIED] item must appear in the Outstanding Diligence section. This is the ONE section where bullet points are acceptable.
+7. **Section Depth Variance**: CRITICAL - Section lengths must vary DRAMATICALLY based on content importance. Market Opportunity should be 3-4x longer than Executive Summary. Do NOT write uniform-length sections.
+
+TIER ${tier} MEMO (${tierLabel})
+- Generate ${config.sections.length} sections
+- Target ${tier === 3 ? '8,000-12,000' : tier === 2 ? '4,000-6,000' : '1,500-2,500'} total words
+${tier >= 2 ? '- Web search intelligence available: Use research queries for market sizing, competitor intelligence, and sector landscape' : '- No web search: Base analysis solely on provided venture data'}
+
+SECTIONS TO GENERATE:
+${config.sections.map((s, i) => `${i + 1}. ${(config.sectionNames as Record<string, string>)[s]}`).join('\n')}
+${sectionDepthGuidance}
+
+For each section, include a mix of confidence tags based on data availability. Be explicit about what is verified vs estimated vs requires diligence.
+
+DISCLAIMER REQUIREMENT:
+Include a "disclaimer" field in your JSON response. The disclaimer must:
+- State that findings have not undergone formal pre-mortem analysis
+- Clarify that data sources are cited where available
+- Note that [UNVERIFIED] items require additional diligence before investment decision
+- Be written in executive-level clarity (2-3 sentences max)
+
+Example disclaimer: "This memorandum presents preliminary findings that have not been subjected to formal pre-mortem review. Data sources are cited where available; items marked [UNVERIFIED] require additional diligence prior to investment committee decision. All projections represent management estimates and industry benchmarks, not audited financials."`;
+
+    const userPrompt = `Generate a ${tierLabel} (Tier ${tier}) Investment Committee Memorandum for the following venture:
+
+VENTURE DATA:
+${businessContext}
+
+DATA COMPLETENESS: ${completeness.score}%
+POPULATED FIELDS: ${completeness.populated.join(', ')}
+MISSING FIELDS: ${completeness.missing.join(', ')}
+${tier >= 2 ? `\nRESEARCH QUERIES (for web search context):\n${completeness.researchQueries.map((q, i) => `${i + 1}. ${q}`).join('\n')}` : ''}
+
+Return a JSON object with this exact structure:
+{
+  "disclaimer": "This memorandum presents preliminary findings that have not been subjected to formal pre-mortem review. Data sources are cited where available; items marked [UNVERIFIED] require additional diligence prior to investment committee decision. All projections represent management estimates and industry benchmarks, not audited financials.",
+  "sections": [
+    {
+      "id": "section_id",
+      "title": "Section Title",
+      "content": "DENSE ANALYTICAL PROSE with data woven into narrative sentences. NO bullet lists. Use ### subsections, **bold** key metrics, and inline [VERIFIED], [ESTIMATED], [UNVERIFIED] tags. Length varies dramatically by section importance. Each section tells a cohesive story.",
+      "confidenceTags": { "verified": 3, "estimated": 2, "unverified": 1 }
+    }
+  ],
+  "recommendation": {
+    "verdict": "INVEST" | "CONDITIONAL" | "MORE_DATA" | "PASS",
+    "confidence": 75,
+    "conditions": ["Condition 1 if verdict is CONDITIONAL", "Condition 2"],
+    "summary": "2-3 sentence recommendation summary"
+  },
+  "expertPanel": [
+    {
+      "name": "Real Expert Name",
+      "credentials": "Harvard Business School Professor, Author of 'Book Title'",
+      "framework": "Jobs-to-be-Done Framework",
+      "rating": "INVEST",
+      "analysis": "Through the lens of Jobs-to-be-Done theory, this venture exhibits characteristics that... [EXTENDED NARRATIVE ANALYSIS required - 200-300 words of dense analytical prose applying the expert's framework to this specific opportunity. NO bullet points. Build a cohesive argument.]"
+    }
+  ],
+  "diligenceItems": [
+    {
+      "category": "gating",
+      "item": "Verify market size claims through primary research",
+      "priority": "high"
+    }
+  ],
+  "confidenceStats": {
+    "verified": 12,
+    "estimated": 8,
+    "unverified": 5
+  }
+}
+
+IMPORTANT:
+- Generate exactly ${config.sections.length} sections in the order specified
+- CRITICAL: Section lengths MUST vary dramatically - Market Opportunity should be 3-4x longer than Executive Summary
+- Follow the section-specific word targets provided above - heavy sections (market_opportunity, competitive_landscape) need 1000+ words
+- Expert panel should have ${tier === 3 ? '5' : tier === 2 ? '3' : '2'} experts with real names, each providing 200-300 words of framework-based analysis
+- Diligence items should cover all [UNVERIFIED] claims
+- Sum confidenceStats should equal total tags across all sections
+- For Tier ${tier}, verdict should reflect appropriate data confidence level`;
+
+    try {
+      console.log(`[IC Memo] Generating Tier ${tier} memo for: ${idea.title}`);
+
+      const response = await getAnthropic().messages.create({
+        model: "claude-opus-4-6", // Using Opus for highest quality IC memos
+        max_tokens: config.maxTokens,
+        temperature: 0.7,
+        messages: [
+          { role: "user", content: systemPrompt + "\n\n" + userPrompt }
+        ]
+      });
+
+      const textContent = response.content[0]?.type === 'text' ? response.content[0].text : '';
+
+      if (!textContent) {
+        throw new Error('Empty response from AI');
+      }
+
+      // Parse JSON from response
+      const jsonMatch = textContent.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in IC Memo response');
+      }
+
+      const cleanedJson = jsonMatch[0]
+        .replace(/[\x00-\x1F\x7F]/g, ' ')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '')
+        .replace(/\t/g, ' ');
+
+      let result;
+      try {
+        result = JSON.parse(cleanedJson);
+      } catch {
+        // More aggressive cleaning
+        const aggressiveClean = cleanedJson
+          .replace(/\\n/g, ' ')
+          .replace(/\s+/g, ' ');
+        result = JSON.parse(aggressiveClean);
+      }
+
+      console.log(`[IC Memo] Successfully generated Tier ${tier} memo for: ${idea.title}`);
+
+      return {
+        ...result,
+        tier,
+        tierLabel,
+      };
+    } catch (error: any) {
+      console.error('[IC Memo] Error generating memo:', error);
+      throw new Error(`Failed to generate IC Memo: ${error?.message || 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Generate IC Memo with streaming support
+   * Yields chunks of text as they arrive from Claude
+   */
+  async *generateICMemoStream(params: {
+    idea: any;
+    completeness: {
+      score: number;
+      tier: 1 | 2 | 3;
+      tierLabel: string;
+      populated: string[];
+      missing: string[];
+      researchQueries: string[];
+    };
+  }): AsyncGenerator<{ type: 'chunk' | 'done' | 'error'; data: string }> {
+    const { idea, completeness } = params;
+    const { tier, tierLabel } = completeness;
+
+    // Build the business context
+    const businessContext = this.buildRawBusinessContext(idea);
+
+    // Tier-specific configuration
+    const tierConfig = {
+      1: {
+        maxTokens: 6000,
+        sections: [
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'investment_conditions',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          thesis_summary: 'Thesis Summary',
+          market_opportunity: 'Market Opportunity',
+          timing_analysis: 'Timing Analysis',
+          competitive_landscape: 'Competitive Landscape',
+          investment_conditions: 'Investment Conditions',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+      },
+      2: {
+        maxTokens: 10000,
+        sections: [
+          'executive_summary',
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'risk_factors',
+          'scenario_analysis',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          executive_summary: 'Executive Summary',
+          thesis_summary: 'Investment Thesis',
+          market_opportunity: 'Market Opportunity',
+          timing_analysis: 'Timing & Market Catalysts',
+          competitive_landscape: 'Competitive Landscape',
+          risk_factors: 'Risk Factors',
+          scenario_analysis: 'Scenario Analysis',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+      },
+      3: {
+        maxTokens: 32000, // Increased for proper depth - $50K consultant-grade output
+        sections: [
+          'executive_summary',
+          'thesis_summary',
+          'market_opportunity',
+          'timing_analysis',
+          'competitive_landscape',
+          'team_assessment',
+          'traction_metrics',
+          'wwhtbt',
+          'risk_factors',
+          'scenario_analysis',
+          'expert_panel',
+          'diligence_requirements',
+        ],
+        sectionNames: {
+          executive_summary: 'Executive Summary',
+          thesis_summary: 'Investment Thesis',
+          market_opportunity: 'Market Opportunity & TAM Analysis',
+          timing_analysis: 'Timing & Market Catalysts',
+          competitive_landscape: 'Competitive Dynamics',
+          team_assessment: 'Team Assessment',
+          traction_metrics: 'Traction & Proof Points',
+          wwhtbt: 'What Would Have To Be True',
+          risk_factors: 'Risk Factors & Mitigants',
+          scenario_analysis: 'Scenario Analysis',
+          expert_panel: 'Expert Panel Assessment',
+          diligence_requirements: 'Outstanding Diligence',
+        },
+        // Section-specific word targets for proper IC memo proportionality
+        sectionWordTargets: {
+          executive_summary: '300-450 words (0.75 pages) — Ultra-concise, key metrics only',
+          thesis_summary: '500-700 words (1.25 pages) — Core investment rationale',
+          market_opportunity: '1200-1800 words (3-4 pages) — TAM/SAM/SOM, sizing methodology, trends',
+          timing_analysis: '600-900 words (1.5 pages) — Market catalysts, why now',
+          competitive_landscape: '1000-1500 words (2.5-3 pages) — Competitive matrix, moats, positioning',
+          team_assessment: '400-600 words (1 page) — Founder profiles, track record',
+          traction_metrics: '500-800 words (1.25 pages) — Proof points, growth metrics',
+          wwhtbt: '600-900 words (1.5 pages) — Key assumptions, belief requirements',
+          risk_factors: '500-700 words (1.25 pages) — Risks with mitigants',
+          scenario_analysis: '600-900 words (1.5 pages) — Bull/base/bear cases',
+          expert_panel: '1000-1500 words (2.5 pages) — 5 experts × 200-300 words each',
+          diligence_requirements: '400-600 words (1 page) — Prioritized diligence items',
+        },
+      },
+    };
+
+    const config = tierConfig[tier];
+
+    // Build section-specific depth guidance for streaming method
+    const sectionDepthGuidance = tier === 3 && 'sectionWordTargets' in config
+      ? `\n\nSECTION-SPECIFIC DEPTH TARGETS (CRITICAL - sections must vary dramatically in length):\n${Object.entries((config as any).sectionWordTargets).map(([id, target]) => `- ${id}: ${target}`).join('\n')}`
+      : tier === 2
+      ? `\n\nSECTION-SPECIFIC DEPTH TARGETS (Tier 2 - 4,000-6,000 total words):
+- executive_summary: 250-350 words
+- thesis_summary: 400-550 words
+- market_opportunity: 800-1200 words (heavy depth)
+- timing_analysis: 400-600 words
+- competitive_landscape: 700-1000 words (heavy depth)
+- risk_factors: 350-500 words
+- scenario_analysis: 400-600 words
+- diligence_requirements: 300-450 words`
+      : `\n\nSECTION-SPECIFIC DEPTH TARGETS (Tier 1 - 1,500-2,500 total words):
+- thesis_summary: 350-500 words
+- market_opportunity: 400-600 words
+- timing_analysis: 250-400 words
+- competitive_landscape: 300-450 words
+- investment_conditions: 200-350 words
+- diligence_requirements: 200-350 words`;
+
+    const systemPrompt = `You are a senior partner at McKinsey & Company preparing an institutional-grade Investment Committee memorandum for a $10B+ venture capital firm (Sequoia, a16z, Bessemer caliber) considering a $20M+ investment. Partners reviewing this have commissioned thousands of such analyses and expect elite consultant-grade output.
+
+CRITICAL WRITING STYLE - ELITE IC MEMO STANDARD:
+1. **DENSE ANALYTICAL PROSE**: Write in dense, flowing narrative paragraphs. NO bullet lists for analysis sections. Every insight must be woven into connected prose that builds a cohesive investment argument. Bullet points are ONLY acceptable in the Outstanding Diligence section for actionable items.
+2. **DATA IN NARRATIVE**: Numbers belong IN sentences, not isolated. Write "The $4.2B market expanded to $7.8B by 2025, reflecting a 23% CAGR that materially outpaces enterprise software's 14% baseline [VERIFIED]" — NOT bullet points with figures.
+3. **STORYTELLING**: Each section tells a story with beginning (context), middle (analysis), and end (implication for investment). The reader should feel the opportunity unfolding through your prose.
+4. **TABLES SPARINGLY**: Use tables ONLY for direct numerical comparisons (TAM/SAM/SOM summary, scenario analysis outcomes). All other content in flowing prose.
+5. **EXPERT AUTHORITY**: Write with the conviction and sophistication of a senior consultant. Use frameworks naturally woven into analysis, not as labels.
+
+CRITICAL DATA RULES:
+1. **Expert Panel**: Use ONLY real, named experts who are published, peer-reviewed, or NYT bestseller-level recognizable. Never fabricate experts. Provide full credentials.
+2. **Never Fabricate Revenue**: Use industry benchmarks, comparable transactions, or clearly state "data not available" — never invent revenue figures.
+3. **Confidence Tagging**: Tag EVERY data claim inline with:
+   - [VERIFIED] — Directly from provided data, cited source, or established methodology
+   - [ESTIMATED] — Calculated from benchmarks or comparable data with clear methodology
+   - [UNVERIFIED] — Requires additional diligence to confirm
+4. **Expert Language**: Experts provide extended framework-based analysis ("Through the lens of Christensen's disruption theory, this market exhibits..."), NOT direct recommendations ("X says INVEST"). Each expert needs 200-300 words of NARRATIVE analysis.
+5. **Dissent Requirement**: At least one expert MUST express significant caution or dissent with analytical reasoning.
+6. **Outstanding Diligence**: Every [UNVERIFIED] item must appear in the Outstanding Diligence section. This is the ONE section where bullet points are acceptable.
+7. **Section Depth Variance**: CRITICAL - Section lengths must vary DRAMATICALLY based on content importance. Market Opportunity should be 3-4x longer than Executive Summary. Do NOT write uniform-length sections.
+
+TIER ${tier} MEMO (${tierLabel})
+- Generate ${config.sections.length} sections
+- Target ${tier === 3 ? '8,000-12,000' : tier === 2 ? '4,000-6,000' : '1,500-2,500'} total words
+${tier >= 2 ? '- Web search intelligence available' : '- No web search: Base analysis solely on provided venture data'}
+
+SECTIONS TO GENERATE:
+${config.sections.map((s, i) => `${i + 1}. ${(config.sectionNames as Record<string, string>)[s]}`).join('\n')}
+${sectionDepthGuidance}
+
+DISCLAIMER REQUIREMENT:
+Include a "disclaimer" field in your JSON response. The disclaimer must:
+- State that findings have not undergone formal pre-mortem analysis
+- Clarify that data sources are cited where available
+- Note that [UNVERIFIED] items require additional diligence before investment decision
+- Be written in executive-level clarity (2-3 sentences max)
+
+Example disclaimer: "This memorandum presents preliminary findings that have not been subjected to formal pre-mortem review. Data sources are cited where available; items marked [UNVERIFIED] require additional diligence prior to investment committee decision. All projections represent management estimates and industry benchmarks, not audited financials."`;
+
+    const userPrompt = `Generate a ${tierLabel} (Tier ${tier}) Investment Committee Memorandum for the following venture:
+
+VENTURE DATA:
+${businessContext}
+
+DATA COMPLETENESS: ${completeness.score}%
+POPULATED FIELDS: ${completeness.populated.join(', ')}
+MISSING FIELDS: ${completeness.missing.join(', ')}
+
+Return a JSON object with this exact structure:
+{
+  "disclaimer": "This memorandum presents preliminary findings that have not been subjected to formal pre-mortem review. Data sources are cited where available; items marked [UNVERIFIED] require additional diligence prior to investment committee decision. All projections represent management estimates and industry benchmarks, not audited financials.",
+  "sections": [
+    {
+      "id": "section_id",
+      "title": "Section Title",
+      "content": "DENSE ANALYTICAL PROSE with data woven into narrative sentences. NO bullet lists. Use ### subsections, **bold** key metrics, and inline [VERIFIED], [ESTIMATED], [UNVERIFIED] tags. Length varies dramatically by section importance. Each section tells a cohesive story.",
+      "confidenceTags": { "verified": 3, "estimated": 2, "unverified": 1 }
+    }
+  ],
+  "recommendation": {
+    "verdict": "INVEST" | "CONDITIONAL" | "MORE_DATA" | "PASS",
+    "confidence": 75,
+    "conditions": ["Condition 1 if verdict is CONDITIONAL"],
+    "summary": "2-3 sentence recommendation summary"
+  },
+  "expertPanel": [
+    {
+      "name": "Real Expert Name",
+      "credentials": "Harvard Business School Professor, Author of 'Book Title'",
+      "framework": "Jobs-to-be-Done Framework",
+      "rating": "INVEST",
+      "analysis": "Through the lens of Jobs-to-be-Done theory, this venture exhibits characteristics that... [EXTENDED NARRATIVE ANALYSIS required - 200-300 words of dense analytical prose applying the expert's framework to this specific opportunity. NO bullet points. Build a cohesive argument.]"
+    }
+  ],
+  "diligenceItems": [
+    {
+      "category": "gating",
+      "item": "Verify market size claims through primary research",
+      "priority": "high"
+    }
+  ],
+  "confidenceStats": {
+    "verified": 12,
+    "estimated": 8,
+    "unverified": 5
+  }
+}
+
+IMPORTANT:
+- Generate exactly ${config.sections.length} sections in the order specified
+- CRITICAL: Section lengths MUST vary dramatically - Market Opportunity should be 3-4x longer than Executive Summary
+- Follow the section-specific word targets provided above - heavy sections (market_opportunity, competitive_landscape) need 1000+ words
+- Expert panel should have ${tier === 3 ? '5' : tier === 2 ? '3' : '2'} experts with real names, each providing 200-300 words of framework-based analysis`;
+
+    try {
+      console.log(`[IC Memo Stream] Generating Tier ${tier} memo for: ${idea.title}`);
+
+      // Send initial metadata
+      yield {
+        type: 'chunk',
+        data: JSON.stringify({
+          event: 'start',
+          tier,
+          tierLabel,
+          completenessScore: completeness.score,
+        })
+      };
+
+      const stream = await getAnthropic().messages.stream({
+        model: "claude-sonnet-4-20250514", // Sonnet for speed + streaming for reliability
+        max_tokens: config.maxTokens,
+        temperature: 0.7,
+        messages: [
+          { role: "user", content: systemPrompt + "\n\n" + userPrompt }
+        ]
+      });
+
+      let fullText = '';
+
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          const chunk = event.delta.text;
+          fullText += chunk;
+          yield { type: 'chunk', data: chunk };
+        }
+      }
+
+      // Parse the complete response
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        yield { type: 'error', data: 'No JSON found in response' };
+        return;
+      }
+
+      const cleanedJson = jsonMatch[0]
+        .replace(/[\x00-\x1F\x7F]/g, ' ')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '')
+        .replace(/\t/g, ' ');
+
+      let result;
+      try {
+        result = JSON.parse(cleanedJson);
+      } catch {
+        const aggressiveClean = cleanedJson
+          .replace(/\\n/g, ' ')
+          .replace(/\s+/g, ' ');
+        result = JSON.parse(aggressiveClean);
+      }
+
+      console.log(`[IC Memo Stream] Successfully generated Tier ${tier} memo for: ${idea.title}`);
+
+      yield {
+        type: 'done',
+        data: JSON.stringify({
+          ...result,
+          tier,
+          tierLabel,
+          ideaId: idea.id,
+          ideaTitle: idea.title,
+          completenessScore: completeness.score,
+        })
+      };
+    } catch (error: any) {
+      console.error('[IC Memo Stream] Error:', error);
+      yield { type: 'error', data: error?.message || 'Unknown error' };
+    }
+  }
+
+  /**
+   * Generate Market Sizing Report V2 with streaming support
+   * Produces a 10-15 page markdown document with live web search
+   * Yields chunks of markdown text as they arrive from Claude
+   */
+  async *generateMarketSizingStream(params: {
+    idea: any;
+  }): AsyncGenerator<{ type: 'chunk' | 'done' | 'error'; data: string }> {
+    const { idea } = params;
+
+    // Build business context from idea
+    const businessContext = this.buildRawBusinessContext(idea);
+
+    const systemPrompt = `You are a senior partner at McKinsey & Company preparing institutional-grade market sizing analysis for a $10B+ venture capital firm considering a $20M+ investment. Your deliverable will be reviewed by partners at Sequoia, a16z, or Bessemer caliber firms who have commissioned thousands of such analyses.
+
+CRITICAL WRITING STYLE - ELITE IC MEMO STANDARD:
+1. **DENSE ANALYTICAL PROSE**: Write in dense, flowing narrative paragraphs. NO bullet lists for analysis sections. Every insight must be woven into connected prose that builds a cohesive argument.
+2. **DATA IN NARRATIVE**: Numbers belong IN sentences, not isolated lists. Write "The market expanded from $4.2B in 2022 to $7.8B in 2025, reflecting a 23% CAGR that outpaces the broader enterprise software sector's 14% growth rate (Gartner, 2025)" — NOT bullet points.
+3. **STORYTELLING**: Each section tells a story with beginning (context), middle (analysis), and end (implication). The reader should feel the market opportunity unfolding.
+4. **TABLES SPARINGLY**: Use tables ONLY for direct numerical comparisons (TAM/SAM/SOM summary, competitor feature matrix). All other content in prose.
+5. **EXPERT LANGUAGE**: Write with the authority and sophistication of a senior consultant. Use frameworks naturally. Avoid hedging language.
+
+DOCUMENT STRUCTURE - 10 Sections, Dense Narrative:
+
+## 1. Executive Summary (400-500 words)
+Open with the investment thesis in one compelling paragraph. Follow with market opportunity narrative weaving in TAM/SAM/SOM figures naturally. Conclude with critical success factors and key risks in prose form. This section should convince a partner to keep reading.
+
+## 2. Market Definition & Boundaries (500-600 words)
+Define the market through narrative explanation of what's included and excluded and why. Explain the taxonomy through prose, not lists. Discuss geographic scope and time horizon as part of the market story. End with the implications of these boundaries for sizing accuracy.
+
+## 3. Total Addressable Market Analysis (800-1000 words)
+Begin with the top-down approach, walking through the calculation methodology in narrative form with data sources cited inline. Transition to bottom-up analysis as a validation exercise. The reconciliation section should read as analytical detective work—explaining discrepancies and your confidence-weighted conclusion. Weave in 5-year historical context and forward projections as part of the growth narrative.
+
+## 4. Serviceable Addressable Market Analysis (600-800 words)
+Narrate the journey from TAM to SAM through geographic, segment, and channel constraints. Each constraint should be explained with reasoning and data. Discuss regulatory limitations as market-shaping forces, not just restrictions. Build toward the SAM figure as a logical conclusion of the narrative.
+
+## 5. Serviceable Obtainable Market Analysis (600-800 words)
+Present three scenarios (Conservative, Base, Aggressive) through narrative comparison, not tables. Explain the assumptions driving each scenario and why they differ. Discuss market share trajectory as a story of competitive positioning over Years 1-5. Conclude with key dependencies that determine which scenario materializes.
+
+## 6. Competitive Landscape (800-1000 words)
+Open with the competitive thesis—what defines success in this market. Analyze each major competitor (find actual count, do not force a number) through connected prose covering positioning, strengths, weaknesses, and strategic direction. Discuss funding/revenue where known. Conclude with white space analysis and barriers to entry. ONE summary comparison table permitted at end.
+
+## 7. Market Dynamics (600-800 words)
+Narrate the forces shaping this market. Growth drivers should be analyzed in order of impact with interconnections explained. Headwinds and risks deserve equal analytical depth—this is where you demonstrate rigor. Discuss regulatory trends and technology disruption as evolving narratives, not static lists.
+
+## 8. Expert Panel Perspectives (800-1000 words)
+Present 4-5 REAL, NAMED experts (published authors, recognized analysts, academic authorities). Each expert gets 150-200 words of NARRATIVE analysis using their known frameworks. Write "Through the lens of Clayton Christensen's disruption theory, this market exhibits classic low-end disruption characteristics..." NOT "Expert says invest." At least one expert MUST express significant caution or dissent. Include full credentials.
+
+## 9. Sensitivity Analysis (500-600 words)
+Analyze how key variables impact projections through narrative explanation. ONE table showing variable impacts permitted, but surround it with prose explaining the methodology, implications, and risk-adjusted view. Discuss break-even assumptions as part of the investment calculus.
+
+## 10. Methodology & Sources (400-500 words)
+Narrate your research approach—primary sources consulted, calculation methodologies employed, confidence levels by section. Discuss limitations honestly. Conclude with outstanding diligence items grouped by priority (Gating/Pre-Close/Supplementary). Full citations with dates.
+
+SOURCE ATTRIBUTION RULES:
+- Every quantitative claim needs (Source: [Name], [Year]) or (Estimate: [methodology])
+- Prioritize: Gartner, IDC, Statista, Grand View Research, CB Insights, Crunchbase, PitchBook
+- For estimates, explain derivation: "Based on average SaaS multiples of 8-12x ARR applied to the $340M combined revenue of top 5 players, we estimate total market revenue at $2.8B (Estimate: comparable company analysis)"
+
+TARGET: 18,000-25,000 characters of dense analytical prose. This should read like a $50,000 McKinsey deliverable, not a research report template.`;
+
+    const userPrompt = `Generate a comprehensive Market Sizing Analysis for the following venture opportunity:
+
+VENTURE DATA:
+${businessContext}
+
+RESEARCH REQUIREMENTS - Use web search to gather:
+• Market size data from research firms (Gartner, IDC, Statista, Grand View Research)
+• Competitor funding, revenue, and positioning (Crunchbase, TechCrunch, PitchBook)
+• Industry growth projections and analyst forecasts
+• Regulatory developments and policy trends
+• Recent M&A activity, valuations, and strategic moves
+• Expert opinions from named analysts and academics
+
+WRITING REQUIREMENTS - This is critical:
+• Write in DENSE ANALYTICAL PROSE throughout. No bullet lists in analysis sections.
+• Weave all data INTO narrative sentences, not as standalone figures.
+• Each section must tell a cohesive story, not just present facts.
+• Tables ONLY for TAM/SAM/SOM summary and competitor feature comparison.
+• This must read like a $50,000 McKinsey deliverable prepared for Sequoia partners.
+• Target 18,000-25,000 characters of connected, analytical prose.
+
+Generate the complete 10-section market sizing document now. Write with authority and narrative flow.`;
+
+    try {
+      console.log(`[Market Sizing Stream] Generating report for: ${idea.title}`);
+
+      // Send initial metadata
+      yield {
+        type: 'chunk',
+        data: JSON.stringify({
+          event: 'start',
+          ideaTitle: idea.title,
+        })
+      };
+
+      const stream = await getAnthropic().messages.stream({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 16000,
+        tools: [{
+          type: 'web_search_20250305' as const,
+          name: 'web_search',
+          max_uses: 15,
+        }],
+        system: systemPrompt,
+        messages: [{ role: "user", content: userPrompt }],
+      });
+
+      let fullText = '';
+
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          const chunk = event.delta.text;
+          fullText += chunk;
+          yield { type: 'chunk', data: chunk };
+        }
+      }
+
+      console.log(`[Market Sizing Stream] Successfully generated report for: ${idea.title} (${fullText.length} chars)`);
+
+      yield {
+        type: 'done',
+        data: JSON.stringify({
+          success: true,
+          ideaId: idea.id,
+          ideaTitle: idea.title,
+          charCount: fullText.length,
+        })
+      };
+    } catch (error: any) {
+      console.error('[Market Sizing Stream] Error:', error);
+      yield { type: 'error', data: error?.message || 'Unknown error' };
+    }
+  }
 }
 
 // ── Landing Page Prompt Template ──────────────────────────────────

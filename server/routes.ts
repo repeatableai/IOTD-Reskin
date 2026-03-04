@@ -8,6 +8,13 @@ import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { setupSocketServer } from "./socketServer";
 import { ObjectPermission } from "./objectAcl";
 import { aiService, type IdeaGenerationParams } from "./aiService";
+import { generateDisruptionScan } from "./disruptionScannerService";
+import { conductBellMasonResearch, conductBellMasonDiagnostic, conductBellMasonDiagnosticStreaming } from "./bellMasonService";
+import { calculateCompleteness, ENHANCED_TIER_CONFIG, buildEnhancedICMemoSystemPrompt } from "./icMemoResearch";
+import { futureCastService, type FutureCastResearchResult, type FutureCastHorizonsResult, type FutureCastScenariosResult, type FutureCastPanelResult } from "./futureCastService";
+import { assembleVentureContext, buildContextPromptBlock, calculateCompletenessScore } from "./ventureContextService";
+import { validateOutput, validateInDevMode, formatValidationResult } from "./validationService";
+import { getRequiredSectionsForTool, TOOL_DISPLAY_NAMES } from "./sectionRegistry";
 import { externalDataService } from "./externalDataService";
 import { getTrendData, getMultipleTrends, getRelatedQueries } from "./googleTrendsService";
 import Anthropic from '@anthropic-ai/sdk';
@@ -3474,6 +3481,930 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
         message: "Failed to generate roast",
         error: error instanceof Error ? error.message : 'Unknown error'
       });
+    }
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // FUTURE CAST - 5-Phase Strategic Intelligence Generator
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // Future Cast Phase 1: Strategic Research with OA framework Market Demand (§2)
+  app.post('/api/ai/future-cast/research', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const schema = z.object({
+        ideaId: z.string().min(1),
+      });
+
+      const { ideaId } = schema.parse(req.body);
+
+      console.log(`[FutureCast] User ${userId} starting Phase 1 Research for idea: ${ideaId}`);
+
+      // Fetch the full idea
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      // Fetch venture context for cross-tool enrichment
+      let ventureContext = null;
+      try {
+        ventureContext = await assembleVentureContext(ideaId);
+        console.log(`[FutureCast] Assembled venture context with prior analyses`);
+      } catch (contextError) {
+        console.warn('[FutureCast] Could not assemble venture context:', contextError);
+      }
+
+      const result = await futureCastService.generateResearch({
+        id: idea.id,
+        title: idea.title,
+        description: idea.description || '',
+        content: idea.content || undefined,
+        market: idea.market || undefined,
+        type: idea.type || undefined,
+        targetAudience: idea.targetAudience || undefined,
+        mainCompetitor: idea.mainCompetitor || undefined,
+        opportunityScore: idea.opportunityScore || undefined,
+        problemScore: idea.problemScore || undefined,
+        feasibilityScore: idea.feasibilityScore || undefined,
+        timingScore: idea.timingScore || undefined,
+        executionScore: idea.executionScore || undefined,
+        gtmScore: idea.gtmScore || undefined,
+        revenuePotential: idea.revenuePotential || undefined,
+      });
+
+      // Run dev-mode validation
+      if (process.env.NODE_ENV === 'development') {
+        const requiredSections = getRequiredSectionsForTool('future-cast');
+        const resultJson = JSON.stringify(result);
+        validateInDevMode(resultJson, 'Future Cast Research', requiredSections);
+      }
+
+      res.json({
+        ...result,
+        ventureContext: ventureContext ? {
+          completenessScore: ventureContext.completenessScore,
+          priorAnalysesAvailable: Object.keys(ventureContext.priorAnalyses).filter(
+            k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+          ),
+        } : null,
+      });
+    } catch (error) {
+      console.error("[FutureCast] Phase 1 Research error:", error);
+      res.status(500).json({
+        message: "Failed to generate research",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Future Cast Phase 2: Future Horizons
+  app.post('/api/ai/future-cast/horizons', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const schema = z.object({
+        ideaId: z.string().min(1),
+        research: z.any(), // FutureCastResearchResult
+      });
+
+      const { ideaId, research } = schema.parse(req.body);
+
+      console.log(`[FutureCast] User ${userId} starting Phase 2 Horizons for idea: ${ideaId}`);
+
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      const result = await futureCastService.generateHorizons(
+        {
+          id: idea.id,
+          title: idea.title,
+          description: idea.description || '',
+          content: idea.content || undefined,
+          market: idea.market || undefined,
+          type: idea.type || undefined,
+          targetAudience: idea.targetAudience || undefined,
+          mainCompetitor: idea.mainCompetitor || undefined,
+        },
+        research as FutureCastResearchResult
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("[FutureCast] Phase 2 Horizons error:", error);
+      res.status(500).json({
+        message: "Failed to generate horizons",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Future Cast Phase 3: Scenario Planning
+  app.post('/api/ai/future-cast/scenarios', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const schema = z.object({
+        ideaId: z.string().min(1),
+        research: z.any(),
+        horizons: z.any(),
+      });
+
+      const { ideaId, research, horizons } = schema.parse(req.body);
+
+      console.log(`[FutureCast] User ${userId} starting Phase 3 Scenarios for idea: ${ideaId}`);
+
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      const result = await futureCastService.generateScenarios(
+        {
+          id: idea.id,
+          title: idea.title,
+          description: idea.description || '',
+          content: idea.content || undefined,
+          market: idea.market || undefined,
+          type: idea.type || undefined,
+          targetAudience: idea.targetAudience || undefined,
+          mainCompetitor: idea.mainCompetitor || undefined,
+        },
+        research as FutureCastResearchResult,
+        horizons as FutureCastHorizonsResult
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("[FutureCast] Phase 3 Scenarios error:", error);
+      res.status(500).json({
+        message: "Failed to generate scenarios",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Future Cast Phase 4: Expert Panel
+  app.post('/api/ai/future-cast/panel', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const schema = z.object({
+        ideaId: z.string().min(1),
+        research: z.any(),
+        horizons: z.any(),
+        scenarios: z.any(),
+      });
+
+      const { ideaId, research, horizons, scenarios } = schema.parse(req.body);
+
+      console.log(`[FutureCast] User ${userId} starting Phase 4 Panel for idea: ${ideaId}`);
+
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      const result = await futureCastService.generatePanel(
+        {
+          id: idea.id,
+          title: idea.title,
+          description: idea.description || '',
+          content: idea.content || undefined,
+          market: idea.market || undefined,
+          type: idea.type || undefined,
+          targetAudience: idea.targetAudience || undefined,
+          mainCompetitor: idea.mainCompetitor || undefined,
+        },
+        research as FutureCastResearchResult,
+        horizons as FutureCastHorizonsResult,
+        scenarios as FutureCastScenariosResult
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("[FutureCast] Phase 4 Panel error:", error);
+      res.status(500).json({
+        message: "Failed to generate panel",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Future Cast Phase 5: Final Synthesis
+  app.post('/api/ai/future-cast/synthesis', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const schema = z.object({
+        ideaId: z.string().min(1),
+        research: z.any(),
+        horizons: z.any(),
+        scenarios: z.any(),
+        panel: z.any(),
+      });
+
+      const { ideaId, research, horizons, scenarios, panel } = schema.parse(req.body);
+
+      console.log(`[FutureCast] User ${userId} starting Phase 5 Synthesis for idea: ${ideaId}`);
+
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      const result = await futureCastService.generateSynthesis(
+        {
+          id: idea.id,
+          title: idea.title,
+          description: idea.description || '',
+          content: idea.content || undefined,
+          market: idea.market || undefined,
+          type: idea.type || undefined,
+          targetAudience: idea.targetAudience || undefined,
+          mainCompetitor: idea.mainCompetitor || undefined,
+        },
+        research as FutureCastResearchResult,
+        horizons as FutureCastHorizonsResult,
+        scenarios as FutureCastScenariosResult,
+        panel as FutureCastPanelResult
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("[FutureCast] Phase 5 Synthesis error:", error);
+      res.status(500).json({
+        message: "Failed to generate synthesis",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // IC Memo Generator - Investment Committee Memorandum with OA framework tier-based analysis
+  app.post('/api/ai/ic-memo', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const icMemoSchema = z.object({
+        ideaId: z.string().min(1),
+      });
+
+      const { ideaId } = icMemoSchema.parse(req.body);
+
+      console.log(`[IC Memo] User ${userId} generating IC memo for idea: ${ideaId}`);
+
+      // Fetch the full idea
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      // Calculate data completeness and tier
+      const completeness = calculateCompleteness(idea);
+
+      // Fetch venture context for cross-tool enrichment
+      let ventureContext = null;
+      try {
+        ventureContext = await assembleVentureContext(ideaId);
+        console.log(`[IC Memo] Assembled venture context with prior analyses: ${JSON.stringify(Object.keys(ventureContext.priorAnalyses).filter(k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined))}`);
+      } catch (contextError) {
+        console.warn('[IC Memo] Could not assemble venture context:', contextError);
+      }
+
+      console.log(`[IC Memo] Idea "${idea.title}" - Completeness: ${completeness.score}%, Tier: ${completeness.tier} (${completeness.tierLabel})`);
+
+      // Generate the IC memo
+      const result = await aiService.generateICMemo({
+        idea,
+        completeness,
+      });
+
+      // Run dev-mode validation
+      if (process.env.NODE_ENV === 'development') {
+        const requiredSections = getRequiredSectionsForTool('ic-memo');
+        const resultJson = JSON.stringify(result);
+        validateInDevMode(resultJson, 'IC Memo', requiredSections);
+      }
+
+      // Return the memo with additional metadata
+      res.json({
+        ...result,
+        ideaId,
+        ideaTitle: idea.title,
+        completenessScore: completeness.score,
+        populatedFields: completeness.populated,
+        missingFields: completeness.missing,
+        researchQueries: completeness.researchQueries,
+        ventureContext: ventureContext ? {
+          completenessScore: ventureContext.completenessScore,
+          priorAnalysesAvailable: Object.keys(ventureContext.priorAnalyses).filter(
+            k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+          ),
+        } : null,
+        oaFramework: {
+          version: '1.0',
+          tierConfig: ENHANCED_TIER_CONFIG[completeness.tier],
+        },
+      });
+    } catch (error) {
+      console.error("[IC Memo] Error generating memo:", error);
+      logErrorToFile(error, 'IC Memo Generation');
+      res.status(500).json({
+        message: "Failed to generate IC memo",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // IC Memo Generator with Streaming - SSE endpoint for real-time updates
+  app.post('/api/ai/ic-memo/stream', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const icMemoSchema = z.object({
+        ideaId: z.string().min(1),
+      });
+
+      const { ideaId } = icMemoSchema.parse(req.body);
+
+      console.log(`[IC Memo Stream] User ${userId} generating IC memo for idea: ${ideaId}`);
+
+      // Fetch the full idea
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      // Calculate data completeness and tier
+      const completeness = calculateCompleteness(idea);
+
+      console.log(`[IC Memo Stream] Idea "${idea.title}" - Completeness: ${completeness.score}%, Tier: ${completeness.tier} (${completeness.tierLabel})`);
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+      res.flushHeaders();
+
+      // Send initial connection event
+      res.write(`data: ${JSON.stringify({ event: 'connected', ideaId, ideaTitle: idea.title })}\n\n`);
+
+      // Stream the IC memo generation
+      const generator = aiService.generateICMemoStream({
+        idea,
+        completeness,
+      });
+
+      for await (const event of generator) {
+        if (event.type === 'chunk') {
+          res.write(`data: ${JSON.stringify({ event: 'chunk', content: event.data })}\n\n`);
+        } else if (event.type === 'done') {
+          res.write(`data: ${JSON.stringify({ event: 'complete', result: JSON.parse(event.data) })}\n\n`);
+        } else if (event.type === 'error') {
+          res.write(`data: ${JSON.stringify({ event: 'error', message: event.data })}\n\n`);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ event: 'end' })}\n\n`);
+      res.end();
+    } catch (error) {
+      console.error("[IC Memo Stream] Error:", error);
+      logErrorToFile(error, 'IC Memo Stream');
+
+      // If headers already sent, write error as SSE event
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ event: 'error', message: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({
+          message: "Failed to generate IC memo stream",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+  });
+
+  // IC Memo Export - DOCX format
+  app.post('/api/ai/ic-memo/export/docx', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body - expect full memoResult
+      const exportSchema = z.object({
+        memoResult: z.object({
+          disclaimer: z.string().optional(),
+          sections: z.array(z.object({
+            id: z.string(),
+            title: z.string(),
+            content: z.string(),
+            confidenceTags: z.object({
+              verified: z.number(),
+              estimated: z.number(),
+              unverified: z.number(),
+            }),
+          })),
+          recommendation: z.object({
+            verdict: z.enum(['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS']),
+            confidence: z.number(),
+            conditions: z.array(z.string()).optional(),
+            summary: z.string(),
+          }),
+          expertPanel: z.array(z.object({
+            name: z.string(),
+            credentials: z.string(),
+            framework: z.string(),
+            rating: z.enum(['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS']),
+            analysis: z.string(),
+          })),
+          diligenceItems: z.array(z.object({
+            category: z.enum(['gating', 'pre_close', 'supplementary']),
+            item: z.string(),
+            priority: z.enum(['high', 'medium', 'low']),
+          })),
+          confidenceStats: z.object({
+            verified: z.number(),
+            estimated: z.number(),
+            unverified: z.number(),
+          }),
+          tier: z.number().min(1).max(3),
+          tierLabel: z.string(),
+          ideaId: z.string(),
+          ideaTitle: z.string(),
+          completenessScore: z.number(),
+          populatedFields: z.array(z.string()),
+          missingFields: z.array(z.string()),
+        }),
+      });
+
+      const { memoResult } = exportSchema.parse(req.body);
+
+      console.log(`[IC Memo Export DOCX] User ${userId} exporting memo for: ${memoResult.ideaTitle}`);
+
+      // Import the exporter
+      const { generateICMemoDocx } = await import('./icMemoExporter');
+
+      // Generate DOCX
+      const buffer = await generateICMemoDocx(memoResult as any);
+
+      // Set response headers for file download
+      const filename = `IC-Memo-${memoResult.ideaTitle.replace(/[^a-z0-9]/gi, '-').substring(0, 50)}-${new Date().toISOString().split('T')[0]}.docx`;
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', buffer.length);
+
+      res.send(buffer);
+    } catch (error) {
+      console.error("[IC Memo Export DOCX] Error:", error);
+      logErrorToFile(error, 'IC Memo Export DOCX');
+      res.status(500).json({
+        message: "Failed to export IC memo as DOCX",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // IC Memo Export - PDF format
+  app.post('/api/ai/ic-memo/export/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body - expect full memoResult
+      const exportSchema = z.object({
+        memoResult: z.object({
+          disclaimer: z.string().optional(),
+          sections: z.array(z.object({
+            id: z.string(),
+            title: z.string(),
+            content: z.string(),
+            confidenceTags: z.object({
+              verified: z.number(),
+              estimated: z.number(),
+              unverified: z.number(),
+            }),
+          })),
+          recommendation: z.object({
+            verdict: z.enum(['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS']),
+            confidence: z.number(),
+            conditions: z.array(z.string()).optional(),
+            summary: z.string(),
+          }),
+          expertPanel: z.array(z.object({
+            name: z.string(),
+            credentials: z.string(),
+            framework: z.string(),
+            rating: z.enum(['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS']),
+            analysis: z.string(),
+          })),
+          diligenceItems: z.array(z.object({
+            category: z.enum(['gating', 'pre_close', 'supplementary']),
+            item: z.string(),
+            priority: z.enum(['high', 'medium', 'low']),
+          })),
+          confidenceStats: z.object({
+            verified: z.number(),
+            estimated: z.number(),
+            unverified: z.number(),
+          }),
+          tier: z.number().min(1).max(3),
+          tierLabel: z.string(),
+          ideaId: z.string(),
+          ideaTitle: z.string(),
+          completenessScore: z.number(),
+          populatedFields: z.array(z.string()),
+          missingFields: z.array(z.string()),
+        }),
+      });
+
+      const { memoResult } = exportSchema.parse(req.body);
+
+      console.log(`[IC Memo Export PDF] User ${userId} exporting memo for: ${memoResult.ideaTitle}`);
+
+      // Import the exporter
+      const { generateICMemoPdf } = await import('./icMemoExporter');
+
+      // Generate PDF
+      const pdfDoc = generateICMemoPdf(memoResult as any);
+
+      // Set response headers for file download
+      const filename = `IC-Memo-${memoResult.ideaTitle.replace(/[^a-z0-9]/gi, '-').substring(0, 50)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+      // Pipe the PDF document to the response
+      pdfDoc.pipe(res);
+      pdfDoc.end();
+    } catch (error) {
+      console.error("[IC Memo Export PDF] Error:", error);
+      logErrorToFile(error, 'IC Memo Export PDF');
+      res.status(500).json({
+        message: "Failed to export IC memo as PDF",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Market Sizing V2 with Streaming - SSE endpoint with OA framework (§2, §10, §13)
+  app.post('/api/ai/market-sizing/stream', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const marketSizingSchema = z.object({
+        ideaId: z.string().min(1),
+      });
+
+      const { ideaId } = marketSizingSchema.parse(req.body);
+
+      console.log(`[Market Sizing Stream] User ${userId} generating report for idea: ${ideaId}`);
+
+      // Fetch the full idea
+      const idea = await storage.getIdeaById(ideaId);
+      if (!idea) {
+        res.status(404).json({ message: "Idea not found" });
+        return;
+      }
+
+      // Fetch venture context for cross-tool enrichment
+      let ventureContext = null;
+      try {
+        ventureContext = await assembleVentureContext(ideaId);
+        console.log(`[Market Sizing Stream] Assembled venture context with prior analyses`);
+      } catch (contextError) {
+        console.warn('[Market Sizing Stream] Could not assemble venture context:', contextError);
+      }
+
+      console.log(`[Market Sizing Stream] Generating report for: "${idea.title}"`);
+
+      // Set up SSE headers
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+      res.flushHeaders();
+
+      // Send venture context metadata in initial event
+      if (ventureContext) {
+        res.write(`data: ${JSON.stringify({
+          event: 'context',
+          ventureContext: {
+            completenessScore: ventureContext.completenessScore,
+            priorAnalysesAvailable: Object.keys(ventureContext.priorAnalyses).filter(
+              k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+            ),
+          }
+        })}\n\n`);
+      }
+
+      // Send initial connection event
+      res.write(`data: ${JSON.stringify({ event: 'connected', ideaId, ideaTitle: idea.title })}\n\n`);
+
+      // Stream the market sizing generation
+      const generator = aiService.generateMarketSizingStream({
+        idea,
+      });
+
+      for await (const event of generator) {
+        if (event.type === 'chunk') {
+          res.write(`data: ${JSON.stringify({ event: 'chunk', content: event.data })}\n\n`);
+        } else if (event.type === 'done') {
+          res.write(`data: ${JSON.stringify({ event: 'complete', result: JSON.parse(event.data) })}\n\n`);
+        } else if (event.type === 'error') {
+          res.write(`data: ${JSON.stringify({ event: 'error', message: event.data })}\n\n`);
+        }
+      }
+
+      res.write(`data: ${JSON.stringify({ event: 'end' })}\n\n`);
+      res.end();
+    } catch (error) {
+      console.error("[Market Sizing Stream] Error:", error);
+      logErrorToFile(error, 'Market Sizing Stream');
+
+      // If headers already sent, write error as SSE event
+      if (res.headersSent) {
+        res.write(`data: ${JSON.stringify({ event: 'error', message: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
+        res.end();
+      } else {
+        res.status(500).json({
+          message: "Failed to generate market sizing report",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+  });
+
+  // AI Disruption Scanner - Institutional-grade AI disruption risk assessment with OA framework
+  app.post('/api/ai/disruption-scan', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const disruptionScanSchema = z.object({
+        companyName: z.string().min(1),
+        sector: z.string().min(1),
+        description: z.string().optional(),
+        ideaId: z.string().optional(),
+        market: z.string().optional(),
+        type: z.string().optional(),
+        targetAudience: z.string().optional(),
+      });
+
+      const params = disruptionScanSchema.parse(req.body);
+
+      console.log(`[DisruptionScan] User ${userId} scanning: ${params.companyName} in ${params.sector}`);
+
+      // Fetch venture context if ideaId is provided (for cross-tool enrichment)
+      let ventureContext = null;
+      if (params.ideaId) {
+        try {
+          ventureContext = await assembleVentureContext(params.ideaId);
+          console.log(`[DisruptionScan] Assembled venture context with ${ventureContext.completenessScore}% completeness`);
+        } catch (contextError) {
+          console.warn('[DisruptionScan] Could not assemble venture context:', contextError);
+          // Continue without context - it's optional enrichment
+        }
+      }
+
+      // Generate disruption scan using the service
+      const result = await generateDisruptionScan({
+        companyName: params.companyName,
+        sector: params.sector,
+        description: params.description,
+        ideaId: params.ideaId,
+        market: params.market,
+        type: params.type,
+        targetAudience: params.targetAudience,
+      });
+
+      // Run dev-mode validation
+      if (process.env.NODE_ENV === 'development') {
+        const requiredSections = getRequiredSectionsForTool('disruption-scanner');
+        const resultJson = JSON.stringify(result);
+        validateInDevMode(resultJson, 'Disruption Scanner', requiredSections);
+      }
+
+      // Include venture context summary in response for client-side awareness
+      res.json({
+        ...result,
+        ventureContext: ventureContext ? {
+          completenessScore: ventureContext.completenessScore,
+          priorAnalysesAvailable: Object.keys(ventureContext.priorAnalyses).filter(
+            k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+          ),
+        } : null,
+      });
+    } catch (error) {
+      console.error("Error generating disruption scan:", error);
+      res.status(500).json({
+        message: "Failed to generate disruption scan",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Bell-Mason Research - Phase 1: Deep web research for venture assessment
+  app.post('/api/ai/bell-mason-research', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const researchSchema = z.object({
+        ventureName: z.string().min(1),
+        sector: z.string().min(1),
+        description: z.string().optional(),
+      });
+
+      const params = researchSchema.parse(req.body);
+
+      console.log(`[BellMason Research] User ${userId} researching: ${params.ventureName}`);
+
+      // Conduct research using the service
+      const result = await conductBellMasonResearch({
+        ventureName: params.ventureName,
+        sector: params.sector,
+        description: params.description,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("[BellMason Research] Error:", error);
+      logErrorToFile(error, 'Bell-Mason Research');
+      res.status(500).json({
+        message: "Failed to conduct Bell-Mason research",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Bell-Mason Diagnostic - Phase 2: 12-dimension diagnostic with extended thinking
+  app.post('/api/ai/bell-mason-diagnostic', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body
+      const diagnosticSchema = z.object({
+        ventureName: z.string().min(1),
+        sector: z.string().min(1),
+        stage: z.enum(['Concept', 'Seed', 'Product Development', 'Market Development', 'Steady State']),
+        description: z.string().optional(),
+        teamSize: z.number().optional(),
+        funding: z.string().optional(),
+        revenue: z.string().optional(),
+        existingScores: z.object({
+          problemScore: z.number().optional(),
+          solutionScore: z.number().optional(),
+          marketScore: z.number().optional(),
+          teamScore: z.number().optional(),
+        }).optional(),
+        research: z.object({
+          sources: z.array(z.object({
+            id: z.string(),
+            title: z.string(),
+            url: z.string().nullable(),
+            type: z.enum(['funding', 'team', 'product', 'ip', 'market', 'traction', 'news', 'financials']),
+            confidence: z.enum(['HIGH', 'MEDIUM', 'LOW', 'N/A']),
+            findings: z.string(),
+          })),
+          summary: z.object({
+            funding: z.string(),
+            team: z.string(),
+            product: z.string(),
+            ip: z.string(),
+            market: z.string(),
+            traction: z.string(),
+            news: z.string(),
+            financials: z.string(),
+          }),
+          dataGapAreas: z.array(z.string()),
+          researchTimestamp: z.string(),
+        }),
+      });
+
+      const params = diagnosticSchema.parse(req.body);
+
+      console.log(`[BellMason Diagnostic] User ${userId} diagnosing: ${params.ventureName} at stage ${params.stage}`);
+
+      // Conduct diagnostic using the service
+      const result = await conductBellMasonDiagnostic({
+        ventureName: params.ventureName,
+        sector: params.sector,
+        stage: params.stage,
+        description: params.description,
+        teamSize: params.teamSize,
+        funding: params.funding,
+        revenue: params.revenue,
+        existingScores: params.existingScores,
+        research: params.research,
+      });
+
+      // Run dev-mode validation
+      if (process.env.NODE_ENV === 'development') {
+        const requiredSections = getRequiredSectionsForTool('bell-mason');
+        const resultJson = JSON.stringify(result);
+        validateInDevMode(resultJson, 'Bell-Mason Diagnostic', requiredSections);
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("[BellMason Diagnostic] Error:", error);
+      logErrorToFile(error, 'Bell-Mason Diagnostic');
+      res.status(500).json({
+        message: "Failed to conduct Bell-Mason diagnostic",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Bell-Mason Diagnostic - STREAMING VERSION (SSE)
+  // This endpoint streams progress to keep the connection alive during long operations
+  app.post('/api/ai/bell-mason-diagnostic-stream', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Validate request body (same schema as non-streaming version)
+      const diagnosticSchema = z.object({
+        ventureName: z.string().min(1),
+        sector: z.string().min(1),
+        stage: z.enum(['Concept', 'Seed', 'Product Development', 'Market Development', 'Steady State']),
+        description: z.string().optional(),
+        teamSize: z.number().optional(),
+        funding: z.string().optional(),
+        revenue: z.string().optional(),
+        existingScores: z.object({
+          problemScore: z.number().optional(),
+          solutionScore: z.number().optional(),
+          marketScore: z.number().optional(),
+          teamScore: z.number().optional(),
+        }).optional(),
+        research: z.object({
+          sources: z.array(z.object({
+            id: z.string(),
+            title: z.string(),
+            url: z.string().nullable(),
+            type: z.enum(['funding', 'team', 'product', 'ip', 'market', 'traction', 'news', 'financials']),
+            confidence: z.enum(['HIGH', 'MEDIUM', 'LOW', 'N/A']),
+            findings: z.string(),
+          })),
+          summary: z.object({
+            funding: z.string(),
+            team: z.string(),
+            product: z.string(),
+            ip: z.string(),
+            market: z.string(),
+            traction: z.string(),
+            news: z.string(),
+            financials: z.string(),
+          }),
+          dataGapAreas: z.array(z.string()),
+          researchTimestamp: z.string(),
+        }),
+      });
+
+      const params = diagnosticSchema.parse(req.body);
+
+      console.log(`[BellMason Diagnostic SSE] User ${userId} starting streaming diagnostic: ${params.ventureName}`);
+
+      // Use the streaming version - it handles its own response
+      await conductBellMasonDiagnosticStreaming({
+        ventureName: params.ventureName,
+        sector: params.sector,
+        stage: params.stage,
+        description: params.description,
+        teamSize: params.teamSize,
+        funding: params.funding,
+        revenue: params.revenue,
+        existingScores: params.existingScores,
+        research: params.research,
+      }, res);
+
+    } catch (error) {
+      console.error("[BellMason Diagnostic SSE] Error:", error);
+      logErrorToFile(error, 'Bell-Mason Diagnostic SSE');
+
+      // If headers haven't been sent yet, send error as JSON
+      if (!res.headersSent) {
+        res.status(500).json({
+          message: "Failed to conduct Bell-Mason diagnostic",
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      } else {
+        // Headers already sent (SSE mode), send error event
+        res.write(`event: error\n`);
+        res.write(`data: ${JSON.stringify({ message: error instanceof Error ? error.message : 'Unknown error' })}\n\n`);
+        res.end();
+      }
     }
   });
 

@@ -27,6 +27,41 @@ import { seedFromExport } from "../scripts/seed-from-export.js";
 
 const app = express();
 
+// Extended timeout for IC Memo endpoint (120 seconds for Tier 3 with web search)
+app.use("/api/ai/ic-memo", (req, res, next) => {
+  req.setTimeout(120000);
+  res.setTimeout(120000);
+  next();
+});
+
+// Extended timeout for Bell-Mason Research (300 seconds for deep web search with Opus)
+app.use("/api/ai/bell-mason-research", (req, res, next) => {
+  req.setTimeout(300000);  // 5 minutes
+  res.setTimeout(300000);
+  next();
+});
+
+// Extended timeout for Bell-Mason Diagnostic (300 seconds for extended thinking with Opus)
+app.use("/api/ai/bell-mason-diagnostic", (req, res, next) => {
+  req.setTimeout(300000);  // 5 minutes
+  res.setTimeout(300000);
+  next();
+});
+
+// Extended timeout for Bell-Mason Diagnostic STREAMING (15 minutes - SSE keeps connection alive)
+app.use("/api/ai/bell-mason-diagnostic-stream", (req, res, next) => {
+  req.setTimeout(900000);  // 15 minutes
+  res.setTimeout(900000);
+  next();
+});
+
+// Extended timeout for Market Sizing V2 (180 seconds for web search + document generation)
+app.use("/api/ai/market-sizing", (req, res, next) => {
+  req.setTimeout(180000);  // 3 minutes
+  res.setTimeout(180000);
+  next();
+});
+
 // CRITICAL FIX: Conditionally apply body parsers to skip multipart/form-data
 // express.json() and express.urlencoded() will fail on multipart requests
 // Multer needs to handle multipart data, so we skip body parsing for those requests

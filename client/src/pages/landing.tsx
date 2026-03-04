@@ -1,441 +1,369 @@
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import Header from "@/components/Header";
-import IdeaCard from "@/components/IdeaCard";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Brain,
-  TrendingUp,
-  Target,
-  Rocket,
-  Users,
-  Search,
-  BarChart3,
-  Zap,
-  ArrowRight,
-  CheckCircle2,
-  Sparkles,
-  Database,
-  LineChart,
-  Calendar
-} from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
+import { LogIn } from "lucide-react";
+
+// Color configurations for module cards with light pastel backgrounds
+const colorClasses = {
+  rose: {
+    border: 'before:bg-gradient-to-r before:from-[#E11D48] before:to-[rgba(225,29,72,0.2)]',
+    iconBg: 'bg-[rgba(225,29,72,0.08)]',
+    iconColor: 'text-[#E11D48]',
+    cardBg: 'rgba(255,241,242,0.85)', // Light pink pastel
+  },
+  purple: {
+    border: 'before:bg-gradient-to-r before:from-[#6D5AE6] before:to-[rgba(109,90,230,0.2)]',
+    iconBg: 'bg-[rgba(109,90,230,0.1)]',
+    iconColor: 'text-[#6D5AE6]',
+    cardBg: 'rgba(245,243,255,0.85)', // Light lavender pastel
+  },
+  gold: {
+    border: 'before:bg-gradient-to-r before:from-[#B8860B] before:to-[rgba(184,134,11,0.2)]',
+    iconBg: 'bg-[rgba(184,134,11,0.1)]',
+    iconColor: 'text-[#B8860B]',
+    cardBg: 'rgba(255,251,235,0.85)', // Light cream pastel
+  },
+  green: {
+    border: 'before:bg-gradient-to-r before:from-[#059669] before:to-[rgba(5,150,105,0.2)]',
+    iconBg: 'bg-[rgba(5,150,105,0.08)]',
+    iconColor: 'text-[#059669]',
+    cardBg: 'rgba(236,253,245,0.85)', // Light mint pastel
+  },
+  amber: {
+    border: 'before:bg-gradient-to-r before:from-[#D97706] before:to-[rgba(217,119,6,0.2)]',
+    iconBg: 'bg-[rgba(217,119,6,0.08)]',
+    iconColor: 'text-[#D97706]',
+    cardBg: 'rgba(255,251,235,0.85)', // Light amber pastel
+  },
+  blue: {
+    border: 'before:bg-gradient-to-r before:from-[#3B82F6] before:to-[rgba(59,130,246,0.2)]',
+    iconBg: 'bg-[rgba(59,130,246,0.08)]',
+    iconColor: 'text-[#3B82F6]',
+    cardBg: 'rgba(239,246,255,0.85)', // Light sky blue pastel
+  },
+  teal: {
+    border: 'before:bg-gradient-to-r before:from-[#0D9488] before:to-[rgba(13,148,136,0.2)]',
+    iconBg: 'bg-[rgba(13,148,136,0.08)]',
+    iconColor: 'text-[#0D9488]',
+    cardBg: 'rgba(240,253,250,0.85)', // Light aqua pastel
+  },
+  pink: {
+    border: 'before:bg-gradient-to-r before:from-[#DB2777] before:to-[rgba(219,39,119,0.2)]',
+    iconBg: 'bg-[rgba(219,39,119,0.08)]',
+    iconColor: 'text-[#DB2777]',
+    cardBg: 'rgba(253,242,248,0.85)', // Light pink pastel
+  },
+  cyan: {
+    border: 'before:bg-gradient-to-r before:from-[#0891B2] before:to-[rgba(8,145,178,0.2)]',
+    iconBg: 'bg-[rgba(8,145,178,0.08)]',
+    iconColor: 'text-[#0891B2]',
+    cardBg: 'rgba(236,254,255,0.85)', // Light cyan pastel
+  },
+  indigo: {
+    border: 'before:bg-gradient-to-r before:from-[#4F46E5] before:to-[rgba(79,70,229,0.2)]',
+    iconBg: 'bg-[rgba(79,70,229,0.08)]',
+    iconColor: 'text-[#4F46E5]',
+    cardBg: 'rgba(238,242,255,0.85)', // Light periwinkle pastel
+  },
+};
+
+// Module Card Component
+interface ModuleCardProps {
+  icon: string;
+  title: string;
+  description: string;
+  metric: string;
+  metricLabel?: string;
+  color: keyof typeof colorClasses;
+  status: 'Live' | 'Building';
+}
+
+function ModuleCard({ icon, title, description, metric, metricLabel, color, status }: ModuleCardProps) {
+  const colors = colorClasses[color];
+  return (
+    <div
+      className={cn(
+        "relative overflow-hidden rounded-[14px] p-[22px]",
+        "backdrop-blur-lg",
+        "border border-[rgba(0,0,0,0.06)]",
+        "before:absolute before:top-0 before:left-0 before:right-0 before:h-[2px] before:opacity-80",
+        colors.border
+      )}
+      style={{
+        background: colors.cardBg,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04)',
+      }}
+    >
+      <div className="flex justify-between items-start mb-3">
+        <div className={cn("w-9 h-9 rounded-[10px] flex items-center justify-center text-base", colors.iconBg, colors.iconColor)}>
+          {icon}
+        </div>
+        <span
+          className="text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-[5px]"
+          style={{
+            background: status === 'Live' ? 'rgba(5,150,105,0.06)' : 'rgba(217,119,6,0.06)',
+            color: status === 'Live' ? '#059669' : '#D97706',
+          }}
+        >
+          {status}
+        </span>
+      </div>
+      <h3 className="text-[15px] font-bold text-[#18181B] mb-1.5 tracking-tight">{title}</h3>
+      <p className="text-[13px] text-[#71717A] leading-relaxed">{description}</p>
+      <div className="mt-3.5 pt-3 border-t border-[rgba(0,0,0,0.06)] flex justify-between items-center">
+        <span className="font-mono text-xs font-medium text-[#A1A1AA]">
+          <strong className="text-[#18181B]">{metric}</strong>
+          {metricLabel && ` ${metricLabel}`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// Section Header Component
+function SectionHeader({ number, title, count, color, bgColor }: { number: string; title: string; count: string; color: string; bgColor: string }) {
+  return (
+    <div className="flex items-center gap-2.5 mb-3.5 mt-9">
+      <div className="font-mono text-[11px] font-semibold w-6 h-6 flex items-center justify-center rounded-md" style={{ background: bgColor, color }}>
+        {number}
+      </div>
+      <div className="text-[15px] font-bold text-[#18181B] tracking-tight">{title}</div>
+      <div className="ml-auto text-[11px] font-semibold text-[#A1A1AA] bg-[rgba(0,0,0,0.03)] px-2 py-0.5 rounded">{count}</div>
+    </div>
+  );
+}
+
+// Sub Label Component
+function SubLabel({ label, count, color }: { label: string; count: string; color: string }) {
+  return (
+    <div className="text-[11px] font-bold tracking-wide uppercase py-1.5 pb-2 flex items-center gap-2" style={{ color }}>
+      {label} <span className="text-[#A1A1AA] font-medium text-[10px] normal-case">{count}</span>
+      <div className="flex-1 h-px bg-[rgba(0,0,0,0.06)]" />
+    </div>
+  );
+}
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
-  const { data: response, isLoading: ideasLoading } = useQuery<{ ideas: any[]; total: number }>({
-    queryKey: ["/api/ideas", { limit: 6, sortBy: "opportunity" }],
+  // Redirect authenticated users to database
+  // useEffect(() => {
+  //   if (!authLoading && isAuthenticated) {
+  //     setLocation("/database");
+  //   }
+  // }, [isAuthenticated, authLoading, setLocation]);
+
+  const { data: ideasData } = useQuery<{ ideas: any[]; total: number }>({
+    queryKey: ["/api/ideas", { limit: 1 }],
   });
 
-  const topIdeas = response?.ideas || [];
-  const totalVentures = response?.total || 400;
+  const totalVentures = 819; // Fixed display value for landing page
 
   return (
-    <div className="min-h-screen bg-background" data-testid="landing-page">
-      <Header />
+    <div className="min-h-screen" style={{ background: '#FAFAFA' }}>
+      {/* Atmospheric gradients */}
+      <div className="fixed pointer-events-none z-0" style={{ top: '-30%', right: '-20%', width: '800px', height: '800px', background: 'radial-gradient(circle, rgba(109,90,230,0.04) 0%, transparent 60%)' }} />
+      <div className="fixed pointer-events-none z-0" style={{ bottom: '-20%', left: '10%', width: '600px', height: '600px', background: 'radial-gradient(circle, rgba(5,150,105,0.03) 0%, transparent 60%)' }} />
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden py-20 lg:py-28">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            <Badge className="mb-6 px-4 py-1.5 text-sm" variant="secondary">
-              <Sparkles className="w-4 h-4 mr-2" />
-              Intelligent Venture Engine
-            </Badge>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              Discover Your Next
-              <span className="block mt-2 bg-gradient-to-r from-primary via-purple-500 to-secondary bg-clip-text text-transparent">
-                Venture in Minutes
-              </span>
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              AI-powered research, market validation, and one-week build frameworks
-              for {totalVentures}+ validated business opportunities.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                className="text-lg px-8 h-14"
-                onClick={() => setLocation("/database")}
-              >
-                <Database className="w-5 h-5 mr-2" />
-                Explore Venture Incubator
-                <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                className="text-lg px-8 h-14"
-                onClick={() => setLocation("/idea-generator")}
-              >
-                <Sparkles className="w-5 h-5 mr-2" />
-                Generate Custom Ideas
-              </Button>
-            </div>
-          </div>
+      {/* Topbar */}
+      <div className="h-14 flex items-center justify-between px-10 sticky top-0 z-50" style={{ background: 'rgba(250,250,250,0.85)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-extrabold text-sm" style={{ background: 'linear-gradient(135deg, #6D5AE6, #8B5CF6)' }}>IVE</div>
+          <div className="text-[15px] font-bold text-[#18181B] tracking-tight">Venture Engine <span className="text-[#A1A1AA] font-normal text-[13px] ml-1">by Repeatable.ai</span></div>
         </div>
-      </section>
-
-      {/* Stats Bar */}
-      <section className="border-y bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">{totalVentures}+</div>
-              <div className="text-sm text-muted-foreground">Validated Ventures</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">AI-Powered</div>
-              <div className="text-sm text-muted-foreground">Research & Analysis</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">1 Week</div>
-              <div className="text-sm text-muted-foreground">Build Framework</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-primary">Real-Time</div>
-              <div className="text-sm text-muted-foreground">Community Signals</div>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#059669] bg-[rgba(5,150,105,0.06)] px-2.5 py-1 rounded-md">
+            <span className="w-[5px] h-[5px] bg-[#059669] rounded-full animate-pulse" />
+            Live Platform
           </div>
+          <button onClick={() => setLocation("/database")} className="flex items-center gap-1.5 bg-[#18181B] text-white text-[13px] font-semibold px-4 py-2 rounded-lg hover:opacity-85 transition-opacity">
+            <LogIn className="w-3.5 h-3.5" />
+            Sign In
+          </button>
         </div>
-      </section>
+      </div>
 
-      {/* How It Works */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              From discovery to deployment in three simple steps
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="relative">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-                  <Search className="w-8 h-8 text-primary" />
-                </div>
-                <div className="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block" style={{ transform: 'translateX(50%)' }} />
-                <h3 className="text-xl font-semibold mb-3">1. Discover</h3>
-                <p className="text-muted-foreground">
-                  Browse {totalVentures}+ pre-validated ventures filtered by market, opportunity score, and your skills.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-secondary/10 flex items-center justify-center mb-6">
-                  <BarChart3 className="w-8 h-8 text-secondary" />
-                </div>
-                <div className="absolute top-8 left-1/2 w-full h-0.5 bg-border hidden md:block" style={{ transform: 'translateX(50%)' }} />
-                <h3 className="text-xl font-semibold mb-3">2. Research</h3>
-                <p className="text-muted-foreground">
-                  Deep dive with AI research reports, community signals, market gaps, and competitor analysis.
-                </p>
-              </div>
-            </div>
-
-            <div className="relative">
-              <div className="flex flex-col items-center text-center">
-                <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
-                  <Rocket className="w-8 h-8 text-green-500" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3">3. Build</h3>
-                <p className="text-muted-foreground">
-                  Follow the one-week build framework with Claude Code prompts and execution plans.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Ventures */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-12">
-            <div>
-              <h2 className="text-3xl font-bold mb-2">Top-Rated Ventures</h2>
-              <p className="text-muted-foreground">Highest opportunity scores in the incubator</p>
-            </div>
-            <Button variant="outline" onClick={() => setLocation("/database")}>
-              View All
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-
-          {ideasLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <Card key={i}>
-                  <div className="animate-pulse">
-                    <div className="h-48 bg-muted" />
-                    <CardContent className="p-6">
-                      <div className="h-4 bg-muted rounded mb-2" />
-                      <div className="h-6 bg-muted rounded mb-2" />
-                      <div className="h-16 bg-muted rounded mb-4" />
-                      <div className="h-8 bg-muted rounded" />
-                    </CardContent>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : topIdeas.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {topIdeas.slice(0, 6).map((idea) => (
-                <IdeaCard key={idea.id} idea={idea} />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground">
-              Loading ventures...
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Platform Features */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Everything You Need to Validate & Build</h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Comprehensive tools for every stage of your venture journey
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <Brain className="w-6 h-6 text-primary" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">AI Research Reports</h3>
-              <p className="text-muted-foreground text-sm">
-                One-click deep research on market size, competitors, and growth potential.
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center mb-4">
-                <Users className="w-6 h-6 text-blue-500" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Community Signals</h3>
-              <p className="text-muted-foreground text-sm">
-                Real-time sentiment from Reddit, YouTube, Twitter, and Facebook groups.
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center mb-4">
-                <TrendingUp className="w-6 h-6 text-green-500" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Market Gap Analysis</h3>
-              <p className="text-muted-foreground text-sm">
-                Identify underserved niches and competitive advantages.
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center mb-4">
-                <Target className="w-6 h-6 text-purple-500" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Founder Fit Assessment</h3>
-              <p className="text-muted-foreground text-sm">
-                Match ventures to your skills, budget, and time commitment.
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center mb-4">
-                <Calendar className="w-6 h-6 text-orange-500" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">One-Week Build Plans</h3>
-              <p className="text-muted-foreground text-sm">
-                Day-by-day execution roadmaps with OWVI feasibility scores.
-              </p>
-            </Card>
-
-            <Card className="p-6 hover:shadow-lg transition-shadow">
-              <div className="w-12 h-12 rounded-lg bg-pink-500/10 flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6 text-pink-500" />
-              </div>
-              <h3 className="font-semibold text-lg mb-2">Claude Code Prompts</h3>
-              <p className="text-muted-foreground text-sm">
-                Ready-to-use prompts to build with AI-assisted development.
-              </p>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Value Props */}
-      <section className="py-20 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl font-bold mb-6">
-                Stop Guessing. Start Building.
-              </h2>
-              <p className="text-lg text-muted-foreground mb-8">
-                Every venture in our incubator comes with comprehensive research,
-                validated market signals, and actionable build plans.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  "Pre-validated with community signals and trend data",
-                  "Scored on opportunity, feasibility, and timing",
-                  "Complete with execution plans and cost breakdowns",
-                  "Exportable research for your pitch decks"
-                ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-3">
-                    <CheckCircle2 className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Card className="p-6 text-center">
-                <LineChart className="w-8 h-8 text-primary mx-auto mb-3" />
-                <div className="text-2xl font-bold">87%</div>
-                <div className="text-sm text-muted-foreground">Avg. Opportunity Score</div>
-              </Card>
-              <Card className="p-6 text-center">
-                <TrendingUp className="w-8 h-8 text-green-500 mx-auto mb-3" />
-                <div className="text-2xl font-bold">$2.4M</div>
-                <div className="text-sm text-muted-foreground">Avg. Market Size</div>
-              </Card>
-              <Card className="p-6 text-center">
-                <Users className="w-8 h-8 text-blue-500 mx-auto mb-3" />
-                <div className="text-2xl font-bold">150+</div>
-                <div className="text-sm text-muted-foreground">Communities Tracked</div>
-              </Card>
-              <Card className="p-6 text-center">
-                <Rocket className="w-8 h-8 text-purple-500 mx-auto mb-3" />
-                <div className="text-2xl font-bold">7 Days</div>
-                <div className="text-sm text-muted-foreground">Avg. Build Time</div>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Find Your Next Venture?</h2>
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Browse {totalVentures}+ validated opportunities and start building today.
+      {/* Content */}
+      <div className="max-w-[1080px] mx-auto px-8 py-8 pb-16 relative z-[1]">
+        {/* Hero */}
+        <div className="mb-9">
+          <div className="text-xs font-semibold tracking-wide uppercase text-[#6D5AE6] mb-2.5">Intelligent Venture Engine</div>
+          <h1 className="text-[54px] font-extrabold text-[#18181B] tracking-tight leading-[1.1]">
+            AI-native intelligence<br />for <em className="not-italic bg-gradient-to-r from-[#6D5AE6] to-[#8B5CF6] bg-clip-text text-transparent">venture capital</em>
+          </h1>
+          <p className="text-base text-[#71717A] mt-3 max-w-[640px] leading-relaxed">
+            Multi-framework deal evaluation, portfolio defense, and institutional-grade analysis — powered by the methodology that produced {totalVentures} validated ventures.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="text-lg px-8 h-14"
-              onClick={() => setLocation("/database")}
-            >
-              <Database className="w-5 h-5 mr-2" />
-              Enter the Incubator
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
+        </div>
+
+        {/* Stats Row */}
+        <div className="flex gap-px bg-[rgba(0,0,0,0.06)] rounded-xl overflow-hidden mb-8">
+          <div className="flex-1 bg-[rgba(255,255,255,0.88)] py-[18px] px-5 text-center">
+            <div className="font-mono text-2xl font-semibold text-[#18181B]">{totalVentures}</div>
+            <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Ventures analyzed and growing</div>
+          </div>
+          <div className="flex-1 bg-[rgba(255,255,255,0.88)] py-[18px] px-5 text-center">
+            <div className="font-mono text-2xl font-semibold text-[#18181B]">30%-70%</div>
+            <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Viability Revaluation</div>
+            <div className="text-[11px] text-[#A1A1AA] font-medium">Competitive AI Adoption</div>
+            <div className="text-[11px] text-[#A1A1AA] font-medium">Portfolio Risk Analysis</div>
+          </div>
+          <div className="flex-1 bg-[rgba(255,255,255,0.88)] py-[18px] px-5 text-center">
+            <div className="font-mono text-2xl font-semibold text-[#18181B]">10x-50x</div>
+            <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Speed to Valuation</div>
+          </div>
+          <div className="flex-1 bg-[rgba(255,255,255,0.88)] py-[18px] px-5 text-center">
+            <div className="font-mono text-2xl font-semibold text-[#18181B]">$750k-2.5<span className="text-sm text-[#18181B] font-normal">M</span></div>
+            <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Annual tool spend displaced</div>
           </div>
         </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="bg-card border-t py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <div className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-                  Repeatable
-                </div>
-                <span className="text-xl font-bold text-foreground">.AI</span>
-              </div>
-              <p className="text-muted-foreground text-sm">
-                The Intelligent Venture Engine for discovering and building validated business opportunities.
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Platform</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <button onClick={() => setLocation("/database")} className="hover:text-foreground transition-colors">
-                    Venture Incubator
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/idea-generator")} className="hover:text-foreground transition-colors">
-                    Idea Generator
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/market-insights")} className="hover:text-foreground transition-colors">
-                    Market Insights
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/trends")} className="hover:text-foreground transition-colors">
-                    Trend Analysis
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <button onClick={() => setLocation("/founder-fit")} className="hover:text-foreground transition-colors">
-                    Founder Fit Test
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/tools")} className="hover:text-foreground transition-colors">
-                    Tools Library
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/faq")} className="hover:text-foreground transition-colors">
-                    FAQ
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/about")} className="hover:text-foreground transition-colors">
-                    About
-                  </button>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>
-                  <button onClick={() => setLocation("/contact")} className="hover:text-foreground transition-colors">
-                    Contact
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => setLocation("/pricing")} className="hover:text-foreground transition-colors">
-                    Pricing
-                  </button>
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} Repeatable.AI. All rights reserved.</p>
-          </div>
+        {/* Primary Module Grid (from IVE Visual Reference v2) */}
+        <div className="grid grid-cols-3 gap-3 mb-8">
+          <ModuleCard icon="🛡" title="AI Disruption Scanner" description="Score any portfolio company against 5 AI disruption vectors. Helfert moat framework." metric="73" metricLabel="avg. vulnerability" color="rose" status="Live" />
+          <ModuleCard icon="⊕" title="Expert Premortem Destruction" description="Premortem destruction test. 5 expert perspectives at escalating severity. Kill shots and survival paths." metric="5" metricLabel="expert panels" color="purple" status="Live" />
+          <ModuleCard icon="📄" title="IC Memo Generator" description="Bessemer-quality investment memoranda. 10 sections. Bull/base/bear scenarios." metric="~3,000" metricLabel="words / memo" color="gold" status="Live" />
+          <ModuleCard icon="◈" title="Bell-Mason Diagnostic" description="5-phase venture assessment at AI scale. Framework Fusion: Bell-Mason + Bessemer + Sequoia." metric="5" metricLabel="dimensions" color="green" status="Live" />
+          <ModuleCard icon="↗" title="Market Sizing Engine" description="TAM/SAM/SOM with Sequoia Market Curve. Bottom-up validation." metric="Sequoia framework" color="amber" status="Building" />
+          <ModuleCard icon="✦" title="Future-Cast" description="Model how AI evolution affects value over 6–24 months. Adoption S-curve." metric="24-month horizon" color="blue" status="Building" />
         </div>
-      </footer>
+
+        {/* ============================================ */}
+        {/* ADDITIONAL MODULES FROM CAPABILITY AUDIT */}
+        {/* ============================================ */}
+
+        {/* Module 1: Opportunity Scoring Engine */}
+        <SectionHeader number="1" title="Opportunity Scoring Engine" count="6 scores · per-idea analysis" color="#E11D48" bgColor="rgba(225,29,72,0.05)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="◎" title="Multi-Vector Scoring" description="6-dimensional scoring per venture: Opportunity, Problem, Feasibility, Timing, Execution, GTM." metric="6 vectors" color="rose" status="Live" />
+          <ModuleCard icon="↗" title="Score Detail Dialogs" description="Clickable score boxes with full breakdowns: contributing factors, methodology, improvement tips." metric="Interactive" color="rose" status="Live" />
+          <ModuleCard icon="$" title="Revenue Potential Ranking" description="Numerical revenue scoring with sortable ranking across entire database." metric="Sortable" color="rose" status="Live" />
+        </div>
+
+        {/* Module 2: Strategic Analysis Frameworks */}
+        <SectionHeader number="2" title="Strategic Analysis Frameworks" count="7 frameworks · deep-dive per idea" color="#6D5AE6" bgColor="rgba(109,90,230,0.08)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="△" title="A.C.P. Framework" description="Awareness → Consideration → Purchase journey with channels and conversion optimization." metric="3 phases" color="purple" status="Live" />
+          <ModuleCard icon="◈" title="Value Matrix" description="4-quadrant strategic positioning: Dream Come True, Expensive But Worth It, Status Quo, Major Hassle." metric="4 quadrants" color="purple" status="Live" />
+          <ModuleCard icon="▥" title="Value Ladder" description="5-tier pricing architecture: Lead Magnet → Frontend → Core → Backend → Continuity." metric="5 tiers" color="purple" status="Live" />
+          <ModuleCard icon="⊕" title="Value Equation" description="Quantified value: Dream Outcome × Perceived Likelihood / Time Delay × Effort. Hormozi framework." metric="4 variables" color="purple" status="Live" />
+          <ModuleCard icon="⏱" title="Why Now Analysis" description="Market timing assessment and convergent factors making it actionable in this window." metric="Timing" color="purple" status="Live" />
+          <ModuleCard icon="⊞" title="Market Gap Analysis" description="Whitespace identification and competitive positioning." metric="Gap + positioning" color="purple" status="Live" />
+          <ModuleCard icon="✓" title="Proof & Signals" description="Community signal data, search trends, early traction indicators." metric="Multi-source" color="purple" status="Live" />
+        </div>
+
+        {/* Module 3: AI Research Engine */}
+        <SectionHeader number="3" title="AI Research Engine" count="5 research modes" color="#B8860B" bgColor="rgba(184,134,11,0.08)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="🔬" title="40-Step AI Research Agent" description="Comprehensive startup analysis: Market, Competitors, Community, Strategy, Financials, Recommendations." metric="40 steps" color="gold" status="Live" />
+          <ModuleCard icon="🌊" title="Deep Research" description="Extended multi-source research report with downloadable output." metric="Full report" color="gold" status="Live" />
+          <ModuleCard icon="⚡" title="Rapid Research" description="Quick-cycle research for time-constrained evaluation." metric="Speed mode" color="gold" status="Live" />
+          <ModuleCard icon="📊" title="Market Deep Research" description="Market size, growth trajectories, competitive landscape, regulatory environment." metric="Market-focused" color="gold" status="Live" />
+          <ModuleCard icon="📁" title="Research Library" description="Persistent storage of all research reports per user." metric="Save · retrieve" color="gold" status="Live" />
+        </div>
+
+        {/* Module 4: Idea Factory */}
+        <SectionHeader number="4" title="Idea Factory" count="4 generation pathways" color="#0891B2" bgColor="rgba(8,145,178,0.06)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="✦" title="AI Idea Generator" description="Personalized venture generation from user profile: skills, budget, time commitment." metric="3 ideas/run" color="cyan" status="Live" />
+          <ModuleCard icon="🔗" title="Generate from URL" description="Input any URL → AI extracts opportunity, generates structured idea with full scoring." metric="URL → idea" color="cyan" status="Live" />
+          <ModuleCard icon="📄" title="Generate from Document" description="Upload PDF, DOCX, or spreadsheet → AI creates scored venture entry." metric="PDF · DOCX" color="cyan" status="Live" />
+          <ModuleCard icon="🧬" title="Founder-Idea Fit" description="0–100% founder match score with 5 skill requirement analyses." metric="5 dimensions" color="cyan" status="Live" />
+        </div>
+
+        {/* Module 5: Market Intelligence */}
+        <SectionHeader number="5" title="Market Intelligence" count="6 data sources · real-time" color="#059669" bgColor="rgba(5,150,105,0.06)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="📈" title="Google Trends Integration" description="Real-time keyword trends, batch analysis, related queries." metric="Live trends" color="green" status="Live" />
+          <ModuleCard icon="🔑" title="SEO Keyword Engine" description="Primary keywords, long-tail opportunities, competitor gaps." metric="Full suite" color="green" status="Live" />
+          <ModuleCard icon="💬" title="Community Signals" description="Reddit, Facebook, YouTube signal data with sentiment scores." metric="3 platforms" color="green" status="Live" />
+          <ModuleCard icon="🔍" title="Market Validation" description="News APIs, academic journals, industry forum signals." metric="Multi-source" color="green" status="Live" />
+          <ModuleCard icon="🏷" title="Signal Badges" description='Auto-generated badges: "Perfect Timing", "Unfair Advantage", etc.' metric="Dynamic" color="green" status="Live" />
+          <ModuleCard icon="📰" title="Market Insights Platform" description="Academic research citations with DOI links. Browsable library." metric="Academic" color="green" status="Live" />
+        </div>
+
+        {/* Module 6: Venture Launch Kit */}
+        <SectionHeader number="6" title="Venture Launch Kit — AI Prompt Factory" count="19 generators across 4 categories" color="#D97706" bgColor="rgba(217,119,6,0.06)" />
+        <SubLabel label="🚀 GTM Asset Builder" count="12 generators" color="#D97706" />
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          <ModuleCard icon="🚀" title="GTM Strategy" description="Go-to-market strategy and launch plan." metric="Full GTM" color="amber" status="Live" />
+          <ModuleCard icon="📆" title="GTM Launch Calendar" description="90-day launch timeline with team coordination." metric="90-day" color="amber" status="Live" />
+          <ModuleCard icon="🎨" title="Ad Creatives" description="High-converting ad copy and creative concepts." metric="Multi-platform" color="amber" status="Live" />
+        </div>
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          <ModuleCard icon="✦" title="Brand Package" description="Complete brand identity with logo, colors, and voice." metric="Full identity" color="amber" status="Live" />
+          <ModuleCard icon="🖥" title="New Venture Website" description="Industry standard multi-page enterprise grade company website." metric="Build-ready" color="amber" status="Live" />
+          <ModuleCard icon="📅" title="Content Calendar" description="90-day content marketing plan." metric="90-day plan" color="amber" status="Live" />
+        </div>
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          <ModuleCard icon="⚡" title="Email Funnel System" description="Complete email marketing funnel with sequences, triggers." metric="Automation" color="amber" status="Live" />
+          <ModuleCard icon="🧲" title="Lead Magnet" description="Fully articulated conversion optimized go-to-market landing pages." metric="Conversion" color="amber" status="Live" />
+          <ModuleCard icon="🎯" title="Sales Funnel" description="Customer journey optimization strategy." metric="Full funnel" color="amber" status="Live" />
+        </div>
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          <ModuleCard icon="🔍" title="SEO Content" description="Search-optimized content strategy." metric="SEO-ready" color="amber" status="Live" />
+          <ModuleCard icon="🐦" title="Tweet-Sized Landing Page" description="Ultra-minimal 280-character landing page." metric="Micro-copy" color="amber" status="Live" />
+          <ModuleCard icon="👤" title="User Personas" description="Detailed customer persona cards with motivations." metric="3 personas" color="amber" status="Live" />
+        </div>
+        <SubLabel label="🔍 Research" count="2 generators" color="#DB2777" />
+        <div className="grid grid-cols-2 gap-2.5 mb-2">
+          <ModuleCard icon="🎯" title="Market Acceptance Framework" description="ICP Identification → Initial target contact list generation → custom generated pricing acceptance scripts." metric="Framework" color="pink" status="Building" />
+          <ModuleCard icon="🎤" title="Customer Interview Guide" description="Structured interviews for validation and insights." metric="Interview kit" color="pink" status="Live" />
+        </div>
+        <SubLabel label="💼 Business" count="2 generators" color="#D97706" />
+        <div className="grid grid-cols-2 gap-2.5 mb-2">
+          <ModuleCard icon="📈" title="KPI Dashboard" description="Pre-built metrics tracker with formulas." metric="Stage-gated" color="amber" status="Live" />
+          <ModuleCard icon="💰" title="Pricing Strategy" description="Strategic pricing framework and psychology." metric="Framework" color="amber" status="Live" />
+        </div>
+        <SubLabel label="🔧 Product" count="3 generators" color="#0D9488" />
+        <div className="grid grid-cols-3 gap-2.5 mb-2">
+          <ModuleCard icon="📋" title="Feature Specs" description="Detailed feature specifications and user stories." metric="Dev-ready" color="teal" status="Live" />
+          <ModuleCard icon="🗺" title="MVP Roadmap" description="90-day development plan with feature prioritization." metric="90-day dev" color="teal" status="Live" />
+          <ModuleCard icon="📄" title="Product Requirements Doc" description="Complete PRD with technical specifications." metric="Full PRD" color="teal" status="Live" />
+        </div>
+
+        {/* Module 7: Product Builder Engine */}
+        <SectionHeader number="7" title="Product Builder Engine" count="6 build outputs + .docx export" color="#3B82F6" bgColor="rgba(59,130,246,0.06)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="⚙" title="PRD Generator" description="AI generates 6 build prompt variants: Full-Stack, Backend, Frontend, Logic, Landing, Admin." metric="6 variants" color="blue" status="Live" />
+          <ModuleCard icon="📦" title="App Builder Prompts" description="One-click downloadable Word document containing all build prompts." metric=".docx export" color="blue" status="Live" />
+          <ModuleCard icon="🔧" title="Full Stack / No-Code / Code Instructions" description="Timeline driven build plans and code instructions for no-code builder staff and senior developers." metric="3 paths" color="blue" status="Live" />
+        </div>
+
+        {/* Module 8: Synchronous/Asynchronous AI-Powered Collaboration Tools & Portfolio Management */}
+        <SectionHeader number="8" title="Synchronous/Asynchronous AI-Powered Collaboration Tools & Portfolio Management" count="6 features" color="#4F46E5" bgColor="rgba(79,70,229,0.06)" />
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="💬" title="AI Chat" description="Context-aware startup advisor with full context injection — scores, market, analysis." metric="Context-aware" color="indigo" status="Live" />
+          <ModuleCard icon="📖" title={`"Wired for Story" Narrative Generator`} description={`"Business Speak" into dopamine cranking story telling.`} metric="Per-idea" color="indigo" status="Live" />
+          <ModuleCard icon="👥" title="Collaboration Portal" description="Multi-user collaboration per idea with real-time messaging. Vote · Save · Rate function." metric="Real-time" color="indigo" status="Live" />
+        </div>
+        <div className="grid grid-cols-3 gap-2.5 mb-3">
+          <ModuleCard icon="🎯" title="Claim & Track" description="Claim ventures, track 0–100% progress, log milestones." metric="Progress" color="indigo" status="Live" />
+          <ModuleCard icon="📥" title="Bulk Import Engine" description="Upload XLSX/CSV/HTML → AI generates scored ventures en masse." metric="Mass create" color="indigo" status="Live" />
+          <ModuleCard icon="🏷" title="Tagging & Filtering" description="Color-coded tags. Filter by market, scores, revenue." metric="Filterable" color="indigo" status="Live" />
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="mt-12 rounded-2xl p-8 px-10 flex justify-between items-center relative overflow-hidden" style={{ background: 'rgba(255,255,255,0.88)', border: '1px solid rgba(0,0,0,0.06)' }}>
+          <div className="absolute left-0 top-0 bottom-0 w-1" style={{ background: 'linear-gradient(180deg, #6D5AE6, #059669)' }} />
+          <div>
+            <div className="text-xl font-extrabold text-[#18181B] tracking-tight">Ready to build your next venture?</div>
+            <div className="text-sm text-[#71717A] mt-1">{totalVentures} validated ideas and growing. 8 modules. Every asset you need to launch.</div>
+          </div>
+          <button onClick={() => setLocation("/database")} className="flex items-center gap-2 bg-[#6D5AE6] text-white text-[15px] font-bold px-7 py-3 rounded-xl hover:opacity-90 transition-all hover:-translate-y-px shadow-[0_4px_14px_rgba(109,90,230,0.25)]">
+            <LogIn className="w-4 h-4" />
+            Sign In
+          </button>
+        </div>
+
+        {/* Powered by */}
+        <div className="text-center py-6 text-xs text-[#A1A1AA]">
+          Built on <strong className="text-[#71717A]">37 years</strong> of C-level methodology · <strong className="text-[#71717A]">{totalVentures} ventures and growing</strong>
+        </div>
+      </div>
     </div>
   );
 }

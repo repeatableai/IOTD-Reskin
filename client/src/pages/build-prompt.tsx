@@ -8,6 +8,11 @@ import IdeaActionButtons from "@/components/IdeaActionButtons";
 import ClaimButton from "@/components/ClaimButton";
 import ExportDialog from "@/components/ExportDialog";
 import RoastDialog from "@/components/RoastDialog";
+import ICMemoDialog from "@/components/ICMemoDialog";
+import BellMasonDiagnosticDialog from "@/components/BellMasonDiagnosticDialog";
+import DisruptionScannerDialog from "@/components/DisruptionScannerDialog";
+import FutureCastDialog from "@/components/FutureCastDialog";
+import MarketSizingDialog from "@/components/MarketSizingDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -17,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users, Loader2, FileText, Shield, Activity, TrendingUp } from "lucide-react";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
 import { useCollaborationPortal } from "@/contexts/CollaborationPortalContext";
 
@@ -250,6 +255,11 @@ export default function BuildPrompt() {
   const [selectedTemplate, setSelectedTemplate] = useState<string>("ad-creatives");
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [showRoastDialog, setShowRoastDialog] = useState(false);
+  const [showICMemoDialog, setShowICMemoDialog] = useState(false);
+  const [showBellMasonDialog, setShowBellMasonDialog] = useState(false);
+  const [showDisruptionScanner, setShowDisruptionScanner] = useState(false);
+  const [showFutureCastDialog, setShowFutureCastDialog] = useState(false);
+  const [showMarketSizingDialog, setShowMarketSizingDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { openPortal } = useCollaborationPortal();
   const [selectedBuildPrompt, setSelectedBuildPrompt] = useState<string | null>(null);
@@ -1513,6 +1523,65 @@ ${idea?.description || 'Description of your solution'}
                 </a>
               </div>
 
+              {/* VC Tools - Premium Analysis Tools */}
+              <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-primary" />
+                    VC Tools
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="grid grid-cols-1 gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisruptionScanner(true)}
+                      className="w-full justify-start text-xs h-8 border-[#1B2A4A]/30 text-[#1B2A4A] hover:bg-[#1B2A4A]/5"
+                    >
+                      <Shield className="w-3 h-3 mr-2" />
+                      AI Disruption Scanner
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowFutureCastDialog(true)}
+                      className="w-full justify-start text-xs h-8 border-indigo-300/50 text-indigo-600 hover:bg-indigo-50"
+                    >
+                      <Sparkles className="w-3 h-3 mr-2" />
+                      Future Cast
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowICMemoDialog(true)}
+                      className="w-full justify-start text-xs h-8 border-blue-300/50 text-blue-600 hover:bg-blue-50"
+                    >
+                      <FileText className="w-3 h-3 mr-2" />
+                      IC Memo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowMarketSizingDialog(true)}
+                      className="w-full justify-start text-xs h-8 border-emerald-300/50 text-emerald-600 hover:bg-emerald-50"
+                    >
+                      <TrendingUp className="w-3 h-3 mr-2" />
+                      Market Sizing V2
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowBellMasonDialog(true)}
+                      className="w-full justify-start text-xs h-8 border-amber-300/50 text-amber-600 hover:bg-amber-50"
+                    >
+                      <Activity className="w-3 h-3 mr-2" />
+                      Bell-Mason Diagnostic
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Template Categories - Each in its own Card */}
               <Accordion type="multiple" defaultValue={["Popular"]} className="w-full space-y-3">
                 {Object.entries(TEMPLATES_BY_CATEGORY).map(([category, templates]) => {
@@ -1612,7 +1681,7 @@ ${idea?.description || 'Description of your solution'}
                     Build This Solution
                   </Button>
 
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => setShowRoastDialog(true)}
                     className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
@@ -1621,9 +1690,9 @@ ${idea?.description || 'Description of your solution'}
                     <Flame className="w-4 h-4 mr-2" />
                     Torpedo
                   </Button>
-                  
-                  <Button 
-                    variant="outline" 
+
+                  <Button
+                    variant="outline"
                     onClick={() => setShowExportDialog(true)}
                     data-testid="button-export-data"
                   >
@@ -2422,6 +2491,128 @@ ${idea?.description || 'Description of your solution'}
             market: idea.market,
             type: idea.type,
             targetAudience: idea.targetAudience,
+          }}
+        />
+      )}
+
+      {/* AI Disruption Scanner Dialog */}
+      {idea && (
+        <DisruptionScannerDialog
+          open={showDisruptionScanner}
+          onOpenChange={setShowDisruptionScanner}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+          }}
+        />
+      )}
+
+      {/* Future Cast Dialog */}
+      {idea && (
+        <FutureCastDialog
+          open={showFutureCastDialog}
+          onOpenChange={setShowFutureCastDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description || '',
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            revenuePotential: idea.revenuePotential,
+          }}
+        />
+      )}
+
+      {/* IC Memo Dialog */}
+      {idea && (
+        <ICMemoDialog
+          open={showICMemoDialog}
+          onOpenChange={setShowICMemoDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description || '',
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            proofSignals: idea.proofSignals,
+            marketGap: idea.marketGap,
+            revenuePotential: idea.revenuePotential,
+            frameworkData: idea.frameworkData,
+            communitySignals: idea.communitySignals,
+          }}
+        />
+      )}
+
+      {/* Market Sizing V2 Dialog */}
+      {idea && (
+        <MarketSizingDialog
+          open={showMarketSizingDialog}
+          onOpenChange={setShowMarketSizingDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description || '',
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            proofSignals: idea.proofSignals,
+            marketGap: idea.marketGap,
+            revenuePotential: idea.revenuePotential,
+            frameworkData: idea.frameworkData,
+            communitySignals: idea.communitySignals,
+          }}
+        />
+      )}
+
+      {/* Bell-Mason Diagnostic Dialog */}
+      {idea && (
+        <BellMasonDiagnosticDialog
+          open={showBellMasonDialog}
+          onOpenChange={setShowBellMasonDialog}
+          venture={{
+            id: idea.id,
+            name: idea.title,
+            sector: idea.market || 'Technology',
+            description: idea.description,
+            stage: idea.type,
+            scores: {
+              problemScore: idea.problemScore,
+              solutionScore: idea.feasibilityScore,
+              marketScore: idea.opportunityScore,
+              teamScore: idea.executionScore,
+            },
           }}
         />
       )}

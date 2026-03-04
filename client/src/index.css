@@ -25,29 +25,84 @@
   --border: hsl(214, 32%, 91%);
   --input: hsl(214, 32%, 91%);
   --ring: hsl(262, 83%, 58%);
-  
+
   /* Chart colors using logo gradient colors */
   --chart-1: hsl(346, 87%, 70%);
   --chart-2: hsl(262, 83%, 58%);
   --chart-3: hsl(142, 76%, 36%);
   --chart-4: hsl(199, 89%, 48%);
   --chart-5: hsl(43, 74%, 66%);
-  
-  /* Sidebar colors */
+
+  /* IVE Design System */
+  --ive-bg: #FAFAFA;
+  --ive-surface: rgba(255, 255, 255, 0.72);
+  --ive-surface-elevated: rgba(255, 255, 255, 0.88);
+  --ive-glass: rgba(255, 255, 255, 0.5);
+  --ive-glass-border: rgba(0, 0, 0, 0.04);
+
+  /* Sidebar */
+  --sidebar-bg: #111113;
+  --sidebar-surface: rgba(255, 255, 255, 0.04);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-text: #FAFAFA;
+  --sidebar-muted: rgba(255, 255, 255, 0.5);
+  --sidebar-hover: rgba(255, 255, 255, 0.04);
+  --sidebar-active: rgba(109, 90, 230, 0.15);
+
+  /* Legacy sidebar variables (for compatibility) */
   --sidebar: hsl(0, 0%, 100%);
   --sidebar-foreground: hsl(222, 84%, 5%);
   --sidebar-primary: hsl(262, 83%, 58%);
   --sidebar-primary-foreground: hsl(210, 40%, 98%);
   --sidebar-accent: hsl(210, 40%, 96%);
   --sidebar-accent-foreground: hsl(262, 83%, 58%);
-  --sidebar-border: hsl(214, 32%, 91%);
   --sidebar-ring: hsl(262, 83%, 58%);
-  
+
+  /* Text colors */
+  --text-primary: #18181B;
+  --text-secondary: #71717A;
+  --text-tertiary: #A1A1AA;
+
+  /* Borders */
+  --ive-border: rgba(0, 0, 0, 0.06);
+  --ive-border-strong: rgba(0, 0, 0, 0.1);
+
+  /* IVE Accent Colors */
+  --ive-accent: #6D5AE6;
+  --ive-accent-soft: rgba(109, 90, 230, 0.08);
+  --ive-accent-glow: rgba(109, 90, 230, 0.15);
+  --ive-emerald: #059669;
+  --ive-emerald-soft: rgba(5, 150, 105, 0.06);
+  --ive-rose: #E11D48;
+  --ive-rose-soft: rgba(225, 29, 72, 0.05);
+  --ive-amber: #D97706;
+  --ive-amber-soft: rgba(217, 119, 6, 0.06);
+  --ive-gold: #B8860B;
+  --ive-blue: #3B82F6;
+  --ive-blue-soft: rgba(59, 130, 246, 0.06);
+
+  /* Content Area */
+  --content-bg: #FAFAFA;
+  --content-surface: #FFFFFF;
+
+  /* Module Colors (legacy) */
+  --module-purple: #6D5AE6;
+  --module-blue: #3B82F6;
+  --module-green: #059669;
+  --module-orange: #D97706;
+  --module-red: #E11D48;
+  --module-cyan: #06B6D4;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(0, 0, 0, 0.04);
+  --glass-blur: 8px;
+
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
   --font-serif: Georgia, serif;
   --font-mono: Menlo, monospace;
   --radius: 0.75rem;
-  
+
   /* Shadow variables */
   --shadow-2xs: 0px 2px 0px 0px hsl(262, 83%, 58%, 0.00);
   --shadow-xs: 0px 2px 0px 0px hsl(262, 83%, 58%, 0.00);
@@ -290,4 +345,94 @@
     -webkit-text-fill-color: initial;
     color: black;
   }
+}
+
+/* IBM Plex Mono for data/numbers */
+.font-mono-data {
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* Pulse animation for AI Connected badge */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Glassmorphism utilities */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+}
+
+/* Module color gradients for top borders */
+.module-border-purple {
+  border-top: 4px solid var(--module-purple);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.08) 0%, transparent 100%);
+}
+
+.module-border-blue {
+  border-top: 4px solid var(--module-blue);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%);
+}
+
+.module-border-green {
+  border-top: 4px solid var(--module-green);
+  background: linear-gradient(180deg, rgba(34, 197, 94, 0.08) 0%, transparent 100%);
+}
+
+.module-border-orange {
+  border-top: 4px solid var(--module-orange);
+  background: linear-gradient(180deg, rgba(245, 158, 11, 0.08) 0%, transparent 100%);
+}
+
+.module-border-red {
+  border-top: 4px solid var(--module-red);
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08) 0%, transparent 100%);
+}
+
+.module-border-cyan {
+  border-top: 4px solid var(--module-cyan);
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.08) 0%, transparent 100%);
+}
+
+/* App Layout sidebar width */
+.app-sidebar {
+  width: 280px;
+  min-width: 280px;
+}
+
+/* Sidebar dark theme */
+.sidebar-dark {
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text);
+}
+
+.sidebar-dark .nav-item {
+  color: var(--sidebar-muted);
+  transition: all 0.2s ease;
+}
+
+.sidebar-dark .nav-item:hover {
+  background-color: var(--sidebar-hover);
+  color: var(--sidebar-text);
+}
+
+.sidebar-dark .nav-item.active {
+  background-color: var(--sidebar-active);
+  color: var(--sidebar-text);
+}
+
+/* Content area background */
+.content-area {
+  background-color: var(--content-bg);
 }

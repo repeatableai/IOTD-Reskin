@@ -53,6 +53,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import RoastDialog from "@/components/RoastDialog";
+import ICMemoDialog from "@/components/ICMemoDialog";
+import BellMasonDiagnosticDialog from "@/components/BellMasonDiagnosticDialog";
+import FutureCastDialog from "@/components/FutureCastDialog";
+import MarketSizingDialog from "@/components/MarketSizingDialog";
 import { PreviewModal } from "@/components/PreviewModal";
 import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
@@ -96,6 +100,10 @@ export default function IdeaDetail() {
   const queryClient = useQueryClient();
   const [showBuilderDialog, setShowBuilderDialog] = useState(false);
   const [showRoastDialog, setShowRoastDialog] = useState(false);
+  const [showICMemoDialog, setShowICMemoDialog] = useState(false);
+  const [showBellMasonDialog, setShowBellMasonDialog] = useState(false);
+  const [showFutureCastDialog, setShowFutureCastDialog] = useState(false);
+  const [showMarketSizingDialog, setShowMarketSizingDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { openPortal } = useCollaborationPortal();
 
@@ -689,7 +697,7 @@ export default function IdeaDetail() {
               {buildIdeaMutation.isPending ? 'Creating...' : 'Build This Solution'}
             </Button>
 
-            <Button 
+            <Button
               variant="outline"
               onClick={() => setShowRoastDialog(true)}
               className="border-orange-300 text-orange-600 hover:bg-orange-50 hover:text-orange-700 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
@@ -698,9 +706,9 @@ export default function IdeaDetail() {
               <Flame className="w-4 h-4 mr-2" />
               Torpedo
             </Button>
-            
-            <Button 
-              variant="outline" 
+
+            <Button
+              variant="outline"
               onClick={() => setShowExportDialog(true)}
               data-testid="button-export-data"
             >
@@ -1990,6 +1998,112 @@ export default function IdeaDetail() {
             targetAudience: idea.targetAudience,
             opportunityScore: idea.opportunityScore,
             problemScore: idea.problemScore,
+          }}
+        />
+      )}
+
+      {/* IC Memo Dialog */}
+      {idea && (
+        <ICMemoDialog
+          open={showICMemoDialog}
+          onOpenChange={setShowICMemoDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description,
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            proofSignals: idea.proofSignals,
+            marketGap: idea.marketGap,
+            revenuePotential: idea.revenuePotential,
+            frameworkData: idea.frameworkData,
+            communitySignals: idea.communitySignals,
+          }}
+        />
+      )}
+
+      {/* Market Sizing V2 Dialog */}
+      {idea && (
+        <MarketSizingDialog
+          open={showMarketSizingDialog}
+          onOpenChange={setShowMarketSizingDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description,
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            proofSignals: idea.proofSignals,
+            marketGap: idea.marketGap,
+            revenuePotential: idea.revenuePotential,
+            frameworkData: idea.frameworkData,
+            communitySignals: idea.communitySignals,
+          }}
+        />
+      )}
+
+      {/* Bell-Mason Diagnostic Dialog */}
+      {idea && (
+        <BellMasonDiagnosticDialog
+          open={showBellMasonDialog}
+          onOpenChange={setShowBellMasonDialog}
+          venture={{
+            id: idea.id,
+            name: idea.title,
+            sector: idea.market || 'Technology',
+            description: idea.description,
+            stage: idea.type,
+            scores: {
+              problemScore: idea.problemScore,
+              solutionScore: idea.feasibilityScore,
+              marketScore: idea.opportunityScore,
+              teamScore: idea.executionScore,
+            },
+          }}
+        />
+      )}
+
+      {/* Future Cast Dialog */}
+      {idea && (
+        <FutureCastDialog
+          open={showFutureCastDialog}
+          onOpenChange={setShowFutureCastDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            description: idea.description,
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            opportunityScore: idea.opportunityScore,
+            problemScore: idea.problemScore,
+            feasibilityScore: idea.feasibilityScore,
+            timingScore: idea.timingScore,
+            executionScore: idea.executionScore,
+            gtmScore: idea.gtmScore,
+            revenuePotential: idea.revenuePotential,
           }}
         />
       )}
