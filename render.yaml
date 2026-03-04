@@ -29,11 +29,4 @@ services:
         sync: false  # OPTIONAL: Add manually for Google Images search and trends (from your .env file)
       - key: UNSPLASH_ACCESS_KEY
         sync: false  # OPTIONAL: Add manually for Unsplash image search (from your .env file)
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: ALLOWALL
-      - path: /*
-        name: Content-Security-Policy
-        value: "frame-ancestors *"
 
