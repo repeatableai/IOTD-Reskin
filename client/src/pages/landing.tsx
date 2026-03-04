@@ -216,7 +216,7 @@ export default function Landing() {
             <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Speed to Valuation</div>
           </div>
           <div className="flex-1 bg-[rgba(255,255,255,0.88)] py-[18px] px-5 text-center">
-            <div className="font-mono text-2xl font-semibold text-[#18181B]">$750k-2.5<span className="text-sm text-[#18181B] font-normal">M</span></div>
+            <div className="font-mono text-2xl font-semibold text-[#18181B]">$750k-2.5M</div>
             <div className="text-[11px] text-[#A1A1AA] mt-1 font-medium">Annual tool spend displaced</div>
           </div>
         </div>
