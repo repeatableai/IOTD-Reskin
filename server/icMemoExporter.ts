@@ -49,6 +49,17 @@ interface DiligenceItem {
   priority: 'high' | 'medium' | 'low';
 }
 
+interface SourceCitation {
+  id: string;
+  source: string;
+  type: 'market_research' | 'government_data' | 'academic_study' | 'industry_report' | 'company_filing' | 'news_article' | 'expert_interview';
+  publisher: string;
+  date: string;
+  url?: string | null;
+  claimsSupported: string[];
+  confidence: 'high' | 'medium' | 'low';
+}
+
 export interface ICMemoExportData {
   disclaimer?: string;
   sections: ICMemoSection[];
@@ -65,6 +76,7 @@ export interface ICMemoExportData {
     estimated: number;
     unverified: number;
   };
+  sourcesAppendix?: SourceCitation[];
   tier: 1 | 2 | 3;
   tierLabel: string;
   ideaId: string;
@@ -650,6 +662,126 @@ export async function generateICMemoDocx(data: ICMemoExportData): Promise<Buffer
     }
   }
 
+  // Sources Appendix
+  if (data.sourcesAppendix && data.sourcesAppendix.length > 0) {
+    children.push(
+      new Paragraph({ children: [new PageBreak()] }),
+      new Paragraph({
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 200 },
+        children: [
+          new TextRun({
+            text: 'APPENDIX: SOURCES & CITATIONS',
+            bold: true,
+            color: '1B2A4A',
+            size: 28,
+          }),
+        ],
+      }),
+      new Paragraph({
+        spacing: { after: 200 },
+        children: [
+          new TextRun({
+            text: 'The following sources were used to verify market data, statistics, and claims in this memorandum.',
+            size: 22,
+            color: '666666',
+            italics: true,
+          }),
+        ],
+      }),
+    );
+
+    for (const source of data.sourcesAppendix) {
+      const confidenceColor = source.confidence === 'high' ? '16a34a' : source.confidence === 'medium' ? 'd97706' : 'dc2626';
+
+      children.push(
+        new Paragraph({
+          spacing: { before: 150 },
+          border: {
+            left: { style: BorderStyle.SINGLE, size: 24, color: confidenceColor },
+          },
+          children: [
+            new TextRun({ text: `[${source.id}] `, color: '666666', size: 18 }),
+            new TextRun({ text: source.source, bold: true, size: 22 }),
+          ],
+        }),
+        new Paragraph({
+          children: [
+            new TextRun({ text: `${source.publisher} • ${source.date}`, size: 20, color: '666666', italics: true }),
+            new TextRun({ text: '  |  ', color: '999999' }),
+            new TextRun({
+              text: source.type.replace(/_/g, ' ').toUpperCase(),
+              size: 18,
+              color: '2563eb',
+              bold: true,
+            }),
+            new TextRun({ text: '  |  ', color: '999999' }),
+            new TextRun({
+              text: `${source.confidence.toUpperCase()} CONFIDENCE`,
+              size: 18,
+              color: confidenceColor,
+              bold: true,
+            }),
+          ],
+        }),
+      );
+
+      if (source.url) {
+        children.push(
+          new Paragraph({
+            children: [
+              new TextRun({ text: 'URL: ', size: 18, color: '666666' }),
+              new TextRun({ text: source.url, size: 18, color: '2563eb' }),
+            ],
+          }),
+        );
+      }
+
+      if (source.claimsSupported && source.claimsSupported.length > 0) {
+        children.push(
+          new Paragraph({
+            spacing: { before: 50 },
+            children: [
+              new TextRun({ text: 'Supports:', size: 18, color: '666666', bold: true }),
+            ],
+          }),
+        );
+        for (const claim of source.claimsSupported) {
+          children.push(
+            new Paragraph({
+              bullet: { level: 0 },
+              children: [new TextRun({ text: claim, size: 20 })],
+            }),
+          );
+        }
+      }
+    }
+
+    // Note about confidence tags
+    children.push(
+      new Paragraph({
+        spacing: { before: 300 },
+        shading: { fill: 'EFF6FF' },
+        border: {
+          left: { style: BorderStyle.SINGLE, size: 24, color: '2563eb' },
+        },
+        children: [
+          new TextRun({
+            text: 'Note: ',
+            bold: true,
+            size: 20,
+            color: '1e40af',
+          }),
+          new TextRun({
+            text: 'All [V] VERIFIED claims in this memo are backed by sources listed above. [E] ESTIMATED claims are derived from industry models and available data. [U] UNVERIFIED claims require additional due diligence before investment decision.',
+            size: 20,
+            color: '1e40af',
+          }),
+        ],
+      }),
+    );
+  }
+
   // Footer with timestamp
   children.push(
     new Paragraph({ children: [new TextRun({ text: '' })] }),
@@ -939,6 +1071,64 @@ export function generateICMemoPdf(data: ICMemoExportData): PDFKit.PDFDocument {
     for (const condition of data.recommendation.conditions) {
       addBullet(condition, 11);
     }
+  }
+
+  // ==================== SOURCES APPENDIX ====================
+  if (data.sourcesAppendix && data.sourcesAppendix.length > 0) {
+    doc.addPage();
+    addTitle('APPENDIX: SOURCES & CITATIONS', 20);
+
+    doc.fontSize(11).fillColor(colors.gray).font('Helvetica-Oblique')
+      .text('The following sources were used to verify market data, statistics, and claims in this memorandum.');
+    doc.moveDown(1);
+
+    for (const source of data.sourcesAppendix) {
+      checkPageBreak(120);
+
+      const confidenceColor = source.confidence === 'high' ? colors.green : source.confidence === 'medium' ? colors.amber : colors.red;
+
+      // Source ID and title
+      doc.fontSize(9).fillColor(colors.gray).font('Helvetica')
+        .text(`[${source.id}]`, { continued: true });
+      doc.fontSize(12).fillColor(colors.primary).font('Helvetica-Bold')
+        .text(` ${source.source}`);
+
+      // Publisher, date, type, confidence
+      doc.fontSize(9).fillColor(colors.gray).font('Helvetica-Oblique')
+        .text(`${source.publisher} • ${source.date}`, { continued: true });
+      doc.fillColor(colors.blue).font('Helvetica-Bold')
+        .text(`  |  ${source.type.replace(/_/g, ' ').toUpperCase()}`, { continued: true });
+      doc.fillColor(confidenceColor)
+        .text(`  |  ${source.confidence.toUpperCase()} CONFIDENCE`);
+
+      // URL if available
+      if (source.url) {
+        doc.fontSize(9).fillColor(colors.gray).font('Helvetica')
+          .text('URL: ', { continued: true });
+        doc.fillColor(colors.blue)
+          .text(source.url);
+      }
+
+      // Claims supported
+      if (source.claimsSupported && source.claimsSupported.length > 0) {
+        doc.fontSize(9).fillColor(colors.gray).font('Helvetica-Bold')
+          .text('Supports:');
+        for (const claim of source.claimsSupported) {
+          doc.fontSize(9).fillColor('#333333').font('Helvetica')
+            .text(`  • ${claim}`);
+        }
+      }
+
+      doc.moveDown(0.8);
+    }
+
+    // Note about confidence tags
+    doc.moveDown(1);
+    doc.rect(72, doc.y, doc.page.width - 144, 50).fill('#EFF6FF');
+    doc.fontSize(9).fillColor(colors.blue).font('Helvetica-Bold')
+      .text('Note: ', 82, doc.y + 10, { continued: true });
+    doc.font('Helvetica')
+      .text('All [V] VERIFIED claims in this memo are backed by sources listed above. [E] ESTIMATED claims are derived from industry models and available data. [U] UNVERIFIED claims require additional due diligence before investment decision.');
   }
 
   // ==================== FOOTER ====================

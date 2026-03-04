@@ -62,6 +62,16 @@ app.use("/api/ai/market-sizing", (req, res, next) => {
   next();
 });
 
+// Extended timeout and large body limit for Future Cast (passes large research payloads between phases)
+app.use("/api/ai/future-cast", (req, res, next) => {
+  req.setTimeout(300000);  // 5 minutes
+  res.setTimeout(300000);
+  next();
+});
+
+// Large body parser for Future Cast routes (synthesis phase passes all previous phase data)
+app.use("/api/ai/future-cast", express.json({ limit: '10mb' }));
+
 // CRITICAL FIX: Conditionally apply body parsers to skip multipart/form-data
 // express.json() and express.urlencoded() will fail on multipart requests
 // Multer needs to handle multipart data, so we skip body parsing for those requests

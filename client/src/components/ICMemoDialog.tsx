@@ -37,6 +37,8 @@ import {
   TrendingDown,
   Minus,
   ExternalLink,
+  BookOpen,
+  Link2,
 } from "lucide-react";
 
 interface ICMemoDialogProps {
@@ -91,6 +93,17 @@ interface DiligenceItem {
   priority: 'high' | 'medium' | 'low';
 }
 
+interface SourceCitation {
+  id: string;
+  source: string;
+  type: 'market_research' | 'government_data' | 'academic_study' | 'industry_report' | 'company_filing' | 'news_article' | 'expert_interview';
+  publisher: string;
+  date: string;
+  url?: string | null;
+  claimsSupported: string[];
+  confidence: 'high' | 'medium' | 'low';
+}
+
 interface ICMemoResult {
   disclaimer?: string; // Executive-level disclaimer about data verification status
   sections: ICMemoSection[];
@@ -107,6 +120,7 @@ interface ICMemoResult {
     estimated: number;
     unverified: number;
   };
+  sourcesAppendix?: SourceCitation[];
   tier: 1 | 2 | 3;
   tierLabel: string;
   ideaId: string;
@@ -685,9 +699,9 @@ export default function ICMemoDialog({ open, onOpenChange, idea }: ICMemoDialogP
           ) : memoResult ? (
             // Results state
             <div className="flex-1 flex overflow-hidden">
-              {/* Sidebar */}
-              <div className="w-56 border-r bg-[#F8F9FC] flex flex-col">
-                <div className="p-4 space-y-4">
+              {/* Sidebar - scrollable to access export buttons */}
+              <div className="w-56 border-r bg-[#F8F9FC] flex flex-col overflow-y-auto max-h-full">
+                <div className="p-4 pb-8 space-y-4 flex-shrink-0">
                   {/* Section navigation */}
                   <div className="space-y-1">
                     <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
@@ -965,6 +979,95 @@ export default function ICMemoDialog({ open, onOpenChange, idea }: ICMemoDialogP
                       </CardContent>
                     </Card>
                   </div>
+
+                  {/* Sources Appendix */}
+                  {memoResult.sourcesAppendix && memoResult.sourcesAppendix.length > 0 && (
+                    <div
+                      ref={(el) => {
+                        sectionRefs.current['sources'] = el;
+                      }}
+                      className="mt-8 pt-6 border-t-2 border-[#1B2A4A]/10"
+                    >
+                      <h3 className="text-xl font-bold text-[#1B2A4A] flex items-center gap-2 mb-4">
+                        <BookOpen className="w-5 h-5" />
+                        Appendix: Sources & Citations
+                      </h3>
+                      <p className="text-sm text-muted-foreground mb-4">
+                        The following sources were used to verify market data, statistics, and claims in this memorandum.
+                      </p>
+                      <div className="space-y-3">
+                        {memoResult.sourcesAppendix.map((source, index) => (
+                          <Card key={source.id || index} className="border border-gray-200 bg-gray-50/50">
+                            <CardContent className="p-4">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-mono text-muted-foreground bg-gray-200 px-1.5 py-0.5 rounded">
+                                      [{source.id}]
+                                    </span>
+                                    <Badge
+                                      variant="outline"
+                                      className={`text-xs ${
+                                        source.confidence === 'high'
+                                          ? 'border-green-300 text-green-700 bg-green-50'
+                                          : source.confidence === 'medium'
+                                          ? 'border-amber-300 text-amber-700 bg-amber-50'
+                                          : 'border-red-300 text-red-700 bg-red-50'
+                                      }`}
+                                    >
+                                      {source.confidence} confidence
+                                    </Badge>
+                                    <Badge variant="outline" className="text-xs capitalize">
+                                      {source.type.replace(/_/g, ' ')}
+                                    </Badge>
+                                  </div>
+                                  <h4 className="font-semibold text-[#1B2A4A] text-sm leading-tight">
+                                    {source.source}
+                                  </h4>
+                                  <div className="text-xs text-muted-foreground mt-1">
+                                    {source.publisher} • {source.date}
+                                  </div>
+                                  {source.claimsSupported && source.claimsSupported.length > 0 && (
+                                    <div className="mt-2 pt-2 border-t border-gray-200">
+                                      <div className="text-xs font-medium text-muted-foreground mb-1">
+                                        Supports:
+                                      </div>
+                                      <ul className="text-xs text-gray-600 space-y-0.5">
+                                        {source.claimsSupported.map((claim, claimIdx) => (
+                                          <li key={claimIdx} className="flex items-start gap-1">
+                                            <ChevronRight className="w-3 h-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                                            {claim}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                </div>
+                                {source.url && (
+                                  <a
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex-shrink-0 p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                                    title="View source"
+                                  >
+                                    <Link2 className="w-4 h-4 text-[#1B2A4A]" />
+                                  </a>
+                                )}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs text-blue-800">
+                          <strong>Note:</strong> All [VERIFIED] claims in this memo are backed by sources listed above.
+                          [ESTIMATED] claims are derived from industry models and available data.
+                          [UNVERIFIED] claims require additional due diligence before investment decision.
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Close button */}
                   <div className="flex justify-end pt-4">

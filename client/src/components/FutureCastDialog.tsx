@@ -39,6 +39,7 @@ import {
   BookOpen,
   ClipboardList,
   FileCheck,
+  Download,
 } from "lucide-react";
 
 // ── Type Definitions ────────────────────────────────────────────────────────
@@ -799,9 +800,89 @@ export default function FutureCastDialog({ open, onOpenChange, idea }: FutureCas
   const [currentPhaseId, setCurrentPhaseId] = useState<string | null>(null);
   const [currentActivity, setCurrentActivity] = useState(0);
   const [expandedPhases, setExpandedPhases] = useState<string[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Get current loading phase config
   const currentPhaseConfig = PHASE_CONFIG.find(p => p.id === currentPhaseId);
+
+  // Export to PDF handler
+  const handleExportPdf = async () => {
+    if (!phases.synthesis.data && !phases.research.data) {
+      toast({
+        title: "Nothing to export",
+        description: "Please wait for the analysis to complete before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsExporting(true);
+
+    try {
+      const exportData = {
+        ideaId: idea.id,
+        ideaTitle: idea.title,
+        ideaDescription: idea.description,
+        phases: {
+          research: phases.research.data || null,
+          horizons: phases.horizons.data || null,
+          scenarios: phases.scenarios.data || null,
+          panel: phases.panel.data || null,
+          synthesis: phases.synthesis.data || null,
+        },
+        exportTimestamp: new Date().toISOString(),
+      };
+
+      const response = await fetch('/api/ai/future-cast/export/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(exportData),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.statusText}`);
+      }
+
+      // Get the blob from response
+      const blob = await response.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+
+      // Get filename from Content-Disposition header or generate one
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `FutureCast-${idea.title.replace(/[^a-z0-9]/gi, '-').substring(0, 40)}.pdf`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="([^"]+)"/);
+        if (match) filename = match[1];
+      }
+
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: "Export Successful",
+        description: "Future Cast report exported as PDF",
+      });
+    } catch (error: any) {
+      console.error('FutureCast PDF export error:', error);
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export as PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -1053,19 +1134,40 @@ export default function FutureCastDialog({ open, onOpenChange, idea }: FutureCas
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl h-[90vh] flex flex-col">
         <DialogHeader className="border-b pb-4 flex-shrink-0">
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <Sparkles className="w-6 h-6 text-indigo-500" />
-            Future Cast
-            {isComplete && (
-              <Badge className="bg-green-500 text-white ml-2">Complete</Badge>
+          <div className="flex items-start justify-between">
+            <div>
+              <DialogTitle className="text-xl flex items-center gap-2">
+                <Sparkles className="w-6 h-6 text-indigo-500" />
+                Future Cast
+                {isComplete && (
+                  <Badge className="bg-green-500 text-white ml-2">Complete</Badge>
+                )}
+              </DialogTitle>
+              <DialogDescription>
+                Strategic Intelligence for: <span className="font-medium text-indigo-600">{idea.title}</span>
+                {totalWords > 0 && (
+                  <span className="ml-2 text-indigo-500">• ~{totalWords.toLocaleString()} words</span>
+                )}
+              </DialogDescription>
+            </div>
+            {/* Export PDF Button - visible when at least research is complete */}
+            {(phases.research.status === 'complete' || isComplete) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={isExporting}
+                className="flex items-center gap-2 border-indigo-300 text-indigo-600 hover:bg-indigo-50"
+              >
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {isExporting ? 'Exporting...' : 'Export PDF'}
+              </Button>
             )}
-          </DialogTitle>
-          <DialogDescription>
-            Strategic Intelligence for: <span className="font-medium text-indigo-600">{idea.title}</span>
-            {totalWords > 0 && (
-              <span className="ml-2 text-indigo-500">• ~{totalWords.toLocaleString()} words</span>
-            )}
-          </DialogDescription>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">

@@ -345,17 +345,74 @@ The Bell-Mason Diagnostic was developed by Heidi Mason and Gordon Bell to evalua
 - Every claim must cite sources using [S1], [S2] notation
 - Mark questions as dataGap: true when evidence is insufficient
 
-## EXPERT PANEL - ALL MUST BE REAL NAMED EXPERTS
-Generate verdicts from 5 REAL, VERIFIABLE experts with full names and credentials:
+## EXPERT PANEL - MANDATORY OUTPUT (3-5 SECTOR-RELEVANT EXPERTS)
+
+⚠️ THIS SECTION IS REQUIRED - THE OUTPUT IS INVALID WITHOUT expertPanel ⚠️
+
+You MUST generate an expertPanel array with 3-5 REAL, VERIFIABLE experts based on the venture's sector. Every expert must be a real person verifiable via Google search.
+
+### CORE EXPERTS (Always Include):
 1. **Heidi Mason** (Bell-Mason Co-founder, 700+ venture assessments) - Dimensional balance, dysfunction patterns, stage readiness
 2. **Gordon Bell** (Bell-Mason Co-founder, Microsoft Research pioneer) - Technical depth, product architecture, scaling readiness
-3. **Bill Gurley** (Benchmark General Partner, enterprise SaaS expert) - Unit economics, market dynamics, competitive positioning
-4. **For sector expert #4**: Choose a REAL, NAMED expert relevant to the venture's specific sector (e.g., for healthcare: Eric Topol; for fintech: Angela Strange; for AI: Andrew Ng). NEVER use "[Sector Expert]" as a name.
-5. **For sector expert #5**: Choose another REAL, NAMED expert with a contrarian perspective relevant to the sector. This expert MUST express substantive caution or dissent.
 
-CRITICAL: Every expert name must be a real person who could be verified via Google search. NEVER output placeholder names like "Expert", "[Sector Expert 1]", or similar.
+### SECTOR-SPECIFIC EXPERTS (Select 1-3 based on sector):
 
-Each expert MUST provide 2-4 paragraphs of DENSE ANALYTICAL PROSE in their authentic voice - NO bullet lists in verdicts.
+**Technology/SaaS:**
+- Bill Gurley (Benchmark) - Unit economics, marketplace dynamics
+- Marc Andreessen (a16z) - Software transformation, platform strategy
+- Mary Meeker (Bond Capital) - Internet trends, growth metrics
+
+**Healthcare/BioTech:**
+- Eric Topol (Scripps Research) - Digital health, medical AI
+- Vinod Khosla (Khosla Ventures) - Healthcare disruption
+- Bob Kocher (Venrock) - Healthcare policy, delivery innovation
+
+**Finance/FinTech:**
+- Angela Strange (a16z) - Fintech infrastructure
+- Matt Harris (Bain Capital Ventures) - Financial services
+- Dan Schulman (former PayPal CEO) - Payments, financial inclusion
+
+**Consumer/E-commerce:**
+- Kirsten Green (Forerunner Ventures) - Consumer brands, DTC
+- Jeff Jordan (a16z) - Marketplaces, consumer internet
+- Emily Weiss (Glossier founder) - Brand building, community
+
+**Enterprise/B2B:**
+- Byron Deeter (Bessemer) - Cloud, enterprise SaaS
+- David Sacks (Craft Ventures) - SaaS metrics, GTM
+- Tomasz Tunguz (Theory Ventures) - SaaS benchmarks
+
+**AI/ML:**
+- Andrew Ng (AI Fund) - AI strategy, deployment
+- Fei-Fei Li (Stanford HAI) - AI research, ethics
+- Dario Amodei (Anthropic CEO) - AI safety, capabilities
+
+**Education/EdTech:**
+- Deborah Quazzo (GSV Ventures) - EdTech markets
+- Michael Horn (Clayton Christensen Institute) - Disruptive innovation in education
+
+**Real Estate/PropTech:**
+- Clelia Peters (Bain Capital Ventures) - PropTech
+- Brad Hargreaves (Common founder) - Real estate innovation
+
+**Energy/CleanTech:**
+- John Doerr (Kleiner Perkins) - Climate tech
+- Nancy Pfund (DBL Partners) - Sustainable investing
+
+### CONTRARIAN EXPERT (Always Include 1):
+Select ONE expert known for rigorous skepticism who MUST express substantive caution or dissent. Examples:
+- Aswath Damodaran (NYU Stern) - Valuation skeptic
+- Scott Galloway (NYU Stern) - Tech critic
+- Bill Ackman (Pershing Square) - Activist perspective
+
+### EXPERT OUTPUT REQUIREMENTS:
+- Each expert MUST provide 2-4 paragraphs of DENSE ANALYTICAL PROSE in their authentic voice
+- NO bullet lists in verdicts - flowing narrative only
+- Each expert MUST have a rating: STRONG_INVEST | INVEST | CONDITIONAL | CAUTIOUS | PASS
+- Each expert MUST pose one penetrating keyQuestion for management
+- At least ONE expert must dissent with substantive reasoning
+
+CRITICAL: The expertPanel array MUST contain 3-5 expert objects. Failure to include this is a critical error.
 
 ## FRAMEWORK FUSION
 Also score using:
@@ -423,7 +480,16 @@ For each unverified claim, provide:
 - Verification method
 
 ## OUTPUT FORMAT
-Return a JSON object matching BellMasonDiagnosticResult schema with all 12 dimensions scored plus OA framework sections.`;
+Return a JSON object matching BellMasonDiagnosticResult schema. The following fields are MANDATORY:
+
+1. **dimensions** (array of 12) - All 12 Bell-Mason dimensions with scores
+2. **expertPanel** (array of 3-5) - ⚠️ CRITICAL: Must include 3-5 real named experts with verdicts
+3. **redFlags** (array) - Identified dysfunction patterns
+4. **frameworkFusion** (object) - Cross-framework analysis
+5. **stageAssessment** (object) - Stage readiness evaluation
+6. **recommendations** (array) - Strategic recommendations
+
+The output is INVALID if expertPanel is missing or empty. Always generate the expert panel first before other sections.`;
 
 // Initialize Anthropic client
 let anthropic: Anthropic | null = null;
@@ -436,6 +502,202 @@ function getAnthropic(): Anthropic {
     anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   }
   return anthropic;
+}
+
+// ─── Expert Discovery Types ───────────────────────────────────────────────────
+
+export interface DiscoveredExpert {
+  name: string;
+  credentials: string;
+  relevance: string;
+  source: string;
+}
+
+export interface ExpertDiscoveryResult {
+  sector: string;
+  experts: DiscoveredExpert[];
+  searchTimestamp: string;
+}
+
+/**
+ * Discover sector-relevant experts via web search
+ * This function searches for investors, analysts, and thought leaders in the specified sector
+ */
+export async function discoverSectorExperts(sector: string): Promise<ExpertDiscoveryResult> {
+  const client = getAnthropic();
+
+  console.log(`[Expert Discovery] Searching for experts in sector: ${sector}`);
+
+  const searchPrompt = `Search for and identify 5-8 real, verifiable experts who are highly relevant to the "${sector}" sector.
+
+Search for:
+1. "top ${sector} venture capitalists investors 2024 2025"
+2. "${sector} industry thought leaders experts"
+3. "best ${sector} startup investors partners"
+4. "${sector} sector analysts researchers"
+
+For each expert found, provide:
+- Full name (must be a real, Google-verifiable person)
+- Current role/credentials (firm, title, notable achievements)
+- Why they're relevant to ${sector} analysis
+- Source where you found them
+
+IMPORTANT:
+- Only include REAL people who can be verified via web search
+- Include a mix of: VCs/investors, industry analysts, successful founders, academic experts
+- At least one should be known for skeptical/contrarian views
+- Prefer experts with recent (2023-2025) activity in the sector
+
+Return ONLY valid JSON in this format:
+{
+  "sector": "${sector}",
+  "experts": [
+    {
+      "name": "Full Name",
+      "credentials": "Title at Firm, notable achievement",
+      "relevance": "Why they're relevant to ${sector}",
+      "source": "URL or publication where found"
+    }
+  ],
+  "searchTimestamp": "${new Date().toISOString()}"
+}`;
+
+  try {
+    const stream = client.messages.stream({
+      model: 'claude-sonnet-4-20250514', // Use Sonnet for faster search
+      max_tokens: 4000,
+      tools: [{
+        type: 'web_search_20250305' as const,
+        name: 'web_search',
+        max_uses: 5, // Limit searches for speed
+      }],
+      messages: [{ role: 'user', content: searchPrompt }],
+    });
+
+    let chunkCount = 0;
+    stream.on('text', () => {
+      chunkCount++;
+      if (chunkCount % 20 === 0) {
+        console.log(`[Expert Discovery] Progress: ${chunkCount} chunks...`);
+      }
+    });
+
+    const finalMessage = await stream.finalMessage();
+    console.log(`[Expert Discovery] Complete: ${chunkCount} chunks`);
+
+    // Extract text from response
+    let fullText = '';
+    for (const block of finalMessage.content) {
+      if (block.type === 'text') {
+        fullText += block.text;
+      }
+    }
+
+    // Parse JSON from response
+    const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn('[Expert Discovery] No valid JSON found, using fallback');
+      return getDefaultExperts(sector);
+    }
+
+    const result = JSON.parse(jsonMatch[0]) as ExpertDiscoveryResult;
+
+    // Validate we have at least 3 experts
+    if (!result.experts || result.experts.length < 3) {
+      console.warn(`[Expert Discovery] Only found ${result.experts?.length || 0} experts, supplementing with defaults`);
+      return supplementWithDefaults(result, sector);
+    }
+
+    console.log(`[Expert Discovery] Found ${result.experts.length} experts: ${result.experts.map(e => e.name).join(', ')}`);
+    return result;
+
+  } catch (error: any) {
+    console.error('[Expert Discovery] Error:', error?.message || error);
+    return getDefaultExperts(sector);
+  }
+}
+
+/**
+ * Get default experts for a sector (fallback if web search fails)
+ */
+function getDefaultExperts(sector: string): ExpertDiscoveryResult {
+  const sectorDefaults: Record<string, DiscoveredExpert[]> = {
+    'Technology': [
+      { name: 'Marc Andreessen', credentials: 'Co-founder, Andreessen Horowitz', relevance: 'Software/tech investment pioneer', source: 'a16z.com' },
+      { name: 'Mary Meeker', credentials: 'Partner, Bond Capital', relevance: 'Internet trends analyst', source: 'bondcap.com' },
+      { name: 'Bill Gurley', credentials: 'General Partner, Benchmark', relevance: 'Enterprise tech investor', source: 'benchmark.com' },
+    ],
+    'Healthcare': [
+      { name: 'Eric Topol', credentials: 'Director, Scripps Research Translational Institute', relevance: 'Digital health pioneer', source: 'scripps.edu' },
+      { name: 'Vinod Khosla', credentials: 'Founder, Khosla Ventures', relevance: 'Healthcare disruption investor', source: 'khoslaventures.com' },
+      { name: 'Bob Kocher', credentials: 'Partner, Venrock', relevance: 'Healthcare policy expert', source: 'venrock.com' },
+    ],
+    'Finance/FinTech': [
+      { name: 'Angela Strange', credentials: 'General Partner, Andreessen Horowitz', relevance: 'Fintech infrastructure expert', source: 'a16z.com' },
+      { name: 'Matt Harris', credentials: 'Partner, Bain Capital Ventures', relevance: 'Financial services investor', source: 'baincapitalventures.com' },
+      { name: 'Nigel Morris', credentials: 'Co-founder, Capital One; Managing Partner, QED Investors', relevance: 'Fintech investor', source: 'qedinvestors.com' },
+    ],
+    'Enterprise SaaS': [
+      { name: 'Byron Deeter', credentials: 'Partner, Bessemer Venture Partners', relevance: 'Cloud/SaaS investment leader', source: 'bvp.com' },
+      { name: 'David Sacks', credentials: 'General Partner, Craft Ventures', relevance: 'SaaS metrics expert', source: 'craftventures.com' },
+      { name: 'Tomasz Tunguz', credentials: 'Managing Director, Theory Ventures', relevance: 'SaaS benchmarks analyst', source: 'tomtunguz.com' },
+    ],
+    'Consumer': [
+      { name: 'Kirsten Green', credentials: 'Founder, Forerunner Ventures', relevance: 'Consumer/DTC expert', source: 'forerunnerventures.com' },
+      { name: 'Jeff Jordan', credentials: 'General Partner, Andreessen Horowitz', relevance: 'Marketplace expert', source: 'a16z.com' },
+      { name: 'Sarah Tavel', credentials: 'General Partner, Benchmark', relevance: 'Consumer engagement expert', source: 'benchmark.com' },
+    ],
+  };
+
+  // Default fallback for any sector
+  const defaultExperts: DiscoveredExpert[] = [
+    { name: 'Heidi Mason', credentials: 'Bell-Mason Co-founder', relevance: 'Venture diagnostic methodology', source: 'bellmason.com' },
+    { name: 'Gordon Bell', credentials: 'Bell-Mason Co-founder, Microsoft Research', relevance: 'Technical assessment', source: 'bellmason.com' },
+    { name: 'Aswath Damodaran', credentials: 'Professor, NYU Stern', relevance: 'Valuation skeptic', source: 'stern.nyu.edu' },
+  ];
+
+  const experts = sectorDefaults[sector] || defaultExperts;
+
+  // Always add core Bell-Mason experts and a contrarian
+  const coreExperts: DiscoveredExpert[] = [
+    { name: 'Heidi Mason', credentials: 'Bell-Mason Co-founder, 700+ venture assessments', relevance: 'Dimensional balance methodology', source: 'bellmason.com' },
+    { name: 'Gordon Bell', credentials: 'Bell-Mason Co-founder, Microsoft Research pioneer', relevance: 'Technical architecture assessment', source: 'bellmason.com' },
+  ];
+
+  const contrarian: DiscoveredExpert = {
+    name: 'Aswath Damodaran',
+    credentials: 'Professor of Finance, NYU Stern',
+    relevance: 'Valuation skeptic and risk analyst',
+    source: 'stern.nyu.edu'
+  };
+
+  return {
+    sector,
+    experts: [...coreExperts, ...experts, contrarian],
+    searchTimestamp: new Date().toISOString(),
+  };
+}
+
+/**
+ * Supplement partial results with default experts
+ */
+function supplementWithDefaults(result: ExpertDiscoveryResult, sector: string): ExpertDiscoveryResult {
+  const defaults = getDefaultExperts(sector);
+  const existingNames = new Set(result.experts?.map(e => e.name.toLowerCase()) || []);
+
+  const supplemented = [...(result.experts || [])];
+
+  for (const expert of defaults.experts) {
+    if (!existingNames.has(expert.name.toLowerCase()) && supplemented.length < 5) {
+      supplemented.push(expert);
+      existingNames.add(expert.name.toLowerCase());
+    }
+  }
+
+  return {
+    ...result,
+    experts: supplemented,
+  };
 }
 
 // ─── Sanitization Functions ───────────────────────────────────────────────────
@@ -678,8 +940,8 @@ function sanitizeDiagnosticResult(raw: any, stage: string = 'Seed'): BellMasonDi
       }))
     : [];
 
-  // Sanitize expert panel
-  const expertPanel = Array.isArray(raw?.expertPanel)
+  // Sanitize expert panel - with fallback defaults if empty
+  let expertPanel = Array.isArray(raw?.expertPanel) && raw.expertPanel.length > 0
     ? raw.expertPanel.map((e: any) => ({
         name: ensureString(e?.name, 'Expert'),
         credentials: ensureString(e?.credentials, 'Industry Expert'),
@@ -689,6 +951,39 @@ function sanitizeDiagnosticResult(raw: any, stage: string = 'Seed'): BellMasonDi
         keyQuestion: ensureString(e?.keyQuestion, 'What are the key risks?'),
       }))
     : [];
+
+  // If expert panel is empty, provide default experts to ensure feature works
+  if (expertPanel.length === 0) {
+    console.warn('[BellMason] Expert panel was empty in API response - using fallback experts');
+    expertPanel = [
+      {
+        name: 'Heidi Mason',
+        credentials: 'Bell-Mason Co-founder, 700+ venture assessments',
+        frameworkLens: 'Dimensional balance and dysfunction patterns',
+        verdict: 'The venture shows promise but requires further analysis. The dimensional scores indicate areas of both strength and opportunity. A more comprehensive data set would enable a complete Bell-Mason assessment.',
+        rating: 'CONDITIONAL' as const,
+        keyQuestion: 'What are the key milestones needed to advance to the next stage?',
+      },
+      {
+        name: 'Gordon Bell',
+        credentials: 'Bell-Mason Co-founder, Microsoft Research pioneer',
+        frameworkLens: 'Technical depth and product architecture',
+        verdict: 'From a technical perspective, the venture requires deeper analysis of its architecture and scalability posture. The current data suggests potential but more technical due diligence is warranted.',
+        rating: 'CONDITIONAL' as const,
+        keyQuestion: 'How does the technical architecture support 10x growth?',
+      },
+      {
+        name: 'Aswath Damodaran',
+        credentials: 'NYU Stern Professor, Valuation Expert',
+        frameworkLens: 'Valuation and risk assessment',
+        verdict: 'Caution is warranted until more financial data is available. The narrative is compelling but must be supported by numbers. Key metrics around unit economics and capital efficiency need validation.',
+        rating: 'CAUTIOUS' as const,
+        keyQuestion: 'What is the path to profitability and what capital is required to get there?',
+      },
+    ];
+  }
+
+  console.log(`[BellMason Sanitize] Expert panel has ${expertPanel.length} experts: ${expertPanel.map(e => e.name).join(', ')}`);
 
   // Sanitize framework fusion
   const sanitizeFrameworkScore = (f: any, name: string) => ({
@@ -935,6 +1230,16 @@ export async function conductBellMasonDiagnostic(params: BellMasonDiagnosticPara
   console.log(`[BellMason Diagnostic] Starting diagnostic for: ${params.ventureName}`);
   console.log(`[BellMason Diagnostic] Stage: ${params.stage}`);
 
+  // Discover sector-relevant experts via web search
+  console.log(`[BellMason Diagnostic] Discovering experts for sector: ${params.sector}`);
+  const expertDiscovery = await discoverSectorExperts(params.sector);
+  console.log(`[BellMason Diagnostic] Discovered ${expertDiscovery.experts.length} experts: ${expertDiscovery.experts.map(e => e.name).join(', ')}`);
+
+  // Build expert list for prompt
+  const expertListForPrompt = expertDiscovery.experts.map((e, i) =>
+    `${i + 1}. **${e.name}** (${e.credentials}) - ${e.relevance}`
+  ).join('\n');
+
   const stageIdeals = STAGE_IDEALS[params.stage] || STAGE_IDEALS['Seed'];
 
   const userPrompt = `Conduct a comprehensive Bell-Mason Diagnostic assessment for:
@@ -956,15 +1261,27 @@ ${JSON.stringify(params.research, null, 2)}
 ## EXISTING SCORES (if available)
 ${params.existingScores ? JSON.stringify(params.existingScores, null, 2) : 'None provided'}
 
+## DISCOVERED SECTOR EXPERTS (Use these for the expertPanel)
+The following experts were discovered via web search as relevant to the "${params.sector}" sector:
+${expertListForPrompt}
+
 ## REQUIREMENTS
 1. Score all 12 dimensions with detailed NARRATIVE PROSE (2-4 paragraphs each, NO bullet lists)
 2. Provide 4-6 diagnostic questions per dimension with evidence citations
 3. Identify red flags with severity, recommendations, and timeline
-4. Generate 5 expert verdicts with REAL NAMED EXPERTS (Heidi Mason, Gordon Bell, Bill Gurley, plus 2 sector-relevant experts with FULL REAL NAMES - NEVER use "[Sector Expert]" or "Expert" as a name). Each verdict must be 2-4 paragraphs of DENSE ANALYTICAL PROSE.
+4. ⚠️ MANDATORY: Generate expertPanel array using 3-5 experts FROM THE DISCOVERED LIST ABOVE:
+   - Select the most relevant experts from the discovered list
+   - Each expert MUST have: name, credentials, frameworkLens, verdict (2-4 paragraphs), rating, keyQuestion
+   - Valid ratings: STRONG_INVEST | INVEST | CONDITIONAL | CAUTIOUS | PASS
+   - At least one expert must provide a CAUTIOUS or PASS rating with dissenting analysis
 5. Score using Bessemer, Sequoia, and a16z frameworks
 6. Identify agreements and divergences across frameworks
 
-CRITICAL: All expert names must be real, verifiable people. NEVER output placeholder names.
+⚠️ CRITICAL - EXPERT PANEL IS MANDATORY:
+- The expertPanel array MUST contain 3-5 expert objects
+- Use the DISCOVERED EXPERTS listed above - they are real, verified people
+- Each expert verdict must be 2-4 paragraphs in their authentic analytical voice
+- Output is INVALID without expertPanel - generate this section FIRST
 
 Return ONLY valid JSON matching the BellMasonDiagnosticResult schema:
 
@@ -1013,6 +1330,38 @@ Return ONLY valid JSON matching the BellMasonDiagnosticResult schema:
       "verdict": "2-4 paragraph expert analysis in their authentic voice...",
       "rating": "CONDITIONAL",
       "keyQuestion": "How will you address the technology-product imbalance before Series A?"
+    },
+    {
+      "name": "Gordon Bell",
+      "credentials": "Bell-Mason Co-founder, Microsoft Research pioneer",
+      "frameworkLens": "Technical depth and product architecture",
+      "verdict": "2-4 paragraph expert analysis in their authentic voice...",
+      "rating": "INVEST",
+      "keyQuestion": "What is your technical scaling strategy for 10x growth?"
+    },
+    {
+      "name": "Bill Gurley",
+      "credentials": "Benchmark General Partner, enterprise SaaS expert",
+      "frameworkLens": "Unit economics and market dynamics",
+      "verdict": "2-4 paragraph expert analysis in their authentic voice...",
+      "rating": "CONDITIONAL",
+      "keyQuestion": "How will you improve CAC payback to under 12 months?"
+    },
+    {
+      "name": "REAL_SECTOR_EXPERT_NAME",
+      "credentials": "Relevant sector expertise and credentials",
+      "frameworkLens": "Sector-specific assessment lens",
+      "verdict": "2-4 paragraph expert analysis in their authentic voice...",
+      "rating": "INVEST",
+      "keyQuestion": "Sector-specific strategic question?"
+    },
+    {
+      "name": "REAL_CONTRARIAN_EXPERT_NAME",
+      "credentials": "Contrarian perspective credentials",
+      "frameworkLens": "Risk-focused assessment",
+      "verdict": "2-4 paragraph DISSENTING analysis expressing substantive caution...",
+      "rating": "CAUTIOUS",
+      "keyQuestion": "What is the biggest risk that could derail this venture?"
     }
   ],
   "frameworkFusion": {
@@ -1139,11 +1488,33 @@ export async function conductBellMasonDiagnosticStreaming(
   res.setHeader('X-Accel-Buffering', 'no');  // Disable nginx buffering
   res.flushHeaders();
 
-  // Helper to send SSE events
+  // Helper to send SSE events with error handling
   const sendEvent = (event: string, data: any) => {
-    res.write(`event: ${event}\n`);
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    try {
+      if (res.writableEnded || res.destroyed) {
+        console.warn(`[BellMason SSE] Cannot send ${event} - response already ended`);
+        return false;
+      }
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      return true;
+    } catch (writeError: any) {
+      console.error(`[BellMason SSE] Error sending ${event}:`, writeError.message);
+      return false;
+    }
   };
+
+  // Discover sector-relevant experts via web search
+  sendEvent('status', { message: 'Discovering sector experts...', phase: 'expert-discovery' });
+  console.log(`[BellMason Diagnostic SSE] Discovering experts for sector: ${params.sector}`);
+  const expertDiscovery = await discoverSectorExperts(params.sector);
+  console.log(`[BellMason Diagnostic SSE] Discovered ${expertDiscovery.experts.length} experts`);
+  sendEvent('status', { message: `Found ${expertDiscovery.experts.length} sector experts`, phase: 'expert-discovery-complete' });
+
+  // Build expert list for prompt
+  const expertListForPrompt = expertDiscovery.experts.map((e, i) =>
+    `${i + 1}. **${e.name}** (${e.credentials}) - ${e.relevance}`
+  ).join('\n');
 
   const stageIdeals = STAGE_IDEALS[params.stage] || STAGE_IDEALS['Seed'];
 
@@ -1166,15 +1537,27 @@ ${JSON.stringify(params.research, null, 2)}
 ## EXISTING SCORES (if available)
 ${params.existingScores ? JSON.stringify(params.existingScores, null, 2) : 'None provided'}
 
+## DISCOVERED SECTOR EXPERTS (Use these for the expertPanel)
+The following experts were discovered via web search as relevant to the "${params.sector}" sector:
+${expertListForPrompt}
+
 ## REQUIREMENTS
 1. Score all 12 dimensions with detailed NARRATIVE PROSE (2-4 paragraphs each, NO bullet lists)
 2. Provide 4-6 diagnostic questions per dimension with evidence citations
 3. Identify red flags with severity, recommendations, and timeline
-4. Generate 5 expert verdicts with REAL NAMED EXPERTS (Heidi Mason, Gordon Bell, Bill Gurley, plus 2 sector-relevant experts with FULL REAL NAMES - NEVER use "[Sector Expert]" or "Expert" as a name). Each verdict must be 2-4 paragraphs of DENSE ANALYTICAL PROSE.
+4. ⚠️ MANDATORY: Generate expertPanel array using 3-5 experts FROM THE DISCOVERED LIST ABOVE:
+   - Select the most relevant experts from the discovered list
+   - Each expert MUST have: name, credentials, frameworkLens, verdict (2-4 paragraphs), rating, keyQuestion
+   - Valid ratings: STRONG_INVEST | INVEST | CONDITIONAL | CAUTIOUS | PASS
+   - At least one expert must provide a CAUTIOUS or PASS rating with dissenting analysis
 5. Score using Bessemer, Sequoia, and a16z frameworks
 6. Identify agreements and divergences across frameworks
 
-CRITICAL: All expert names must be real, verifiable people. NEVER output placeholder names.
+⚠️ CRITICAL - EXPERT PANEL IS MANDATORY:
+- The expertPanel array MUST contain 3-5 expert objects
+- Use the DISCOVERED EXPERTS listed above - they are real, verified people
+- Each expert verdict must be 2-4 paragraphs in their authentic analytical voice
+- Output is INVALID without expertPanel - generate this section FIRST
 
 Return ONLY valid JSON matching the BellMasonDiagnosticResult schema.`;
 
@@ -1245,39 +1628,72 @@ Return ONLY valid JSON matching the BellMasonDiagnosticResult schema.`;
       }
 
       // Parse JSON from response
+      console.log(`[BellMason Diagnostic SSE] Parsing JSON from ${fullText.length} chars of response...`);
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error('[BellMason Diagnostic SSE] No JSON found in response. First 500 chars:', fullText.substring(0, 500));
         throw new Error('No valid JSON found in diagnostic response');
       }
 
-      const rawResult = JSON.parse(jsonMatch[0]);
+      console.log(`[BellMason Diagnostic SSE] Found JSON match, parsing...`);
+      let rawResult;
+      try {
+        rawResult = JSON.parse(jsonMatch[0]);
+        console.log(`[BellMason Diagnostic SSE] JSON parsed successfully. Keys: ${Object.keys(rawResult).join(', ')}`);
+        console.log(`[BellMason Diagnostic SSE] Expert panel in raw result: ${rawResult.expertPanel?.length || 0} experts`);
+      } catch (parseError: any) {
+        console.error('[BellMason Diagnostic SSE] JSON parse error:', parseError.message);
+        console.error('[BellMason Diagnostic SSE] JSON snippet:', jsonMatch[0].substring(0, 1000));
+        throw new Error(`JSON parse failed: ${parseError.message}`);
+      }
+
       // Pass the stage to generate proper fallback dimensions with stage-appropriate ideals
+      console.log(`[BellMason Diagnostic SSE] Sanitizing result...`);
       const result = sanitizeDiagnosticResult(rawResult, params.stage);
 
-      console.log(`[BellMason Diagnostic SSE] Sanitized result with ${result.dimensions.length} dimensions, ${result.redFlags.length} red flags`);
+      console.log(`[BellMason Diagnostic SSE] Sanitized result with ${result.dimensions.length} dimensions, ${result.redFlags.length} red flags, ${result.expertPanel.length} experts`);
 
       // Send the final result
+      console.log(`[BellMason Diagnostic SSE] Sending complete event...`);
       sendEvent('complete', { result });
+      console.log(`[BellMason Diagnostic SSE] Complete event sent, ending response`);
       res.end();
 
-    } catch (streamError) {
+    } catch (streamError: any) {
       clearInterval(heartbeatInterval);
+      console.error('[BellMason Diagnostic SSE] Stream processing error:', streamError?.message || streamError);
       throw streamError;
     }
 
   } catch (error: any) {
     console.error('[BellMason Diagnostic SSE] Error:', error?.message || error);
+    console.error('[BellMason Diagnostic SSE] Error stack:', error?.stack);
 
     let errorMessage = 'Diagnostic failed';
     if (error?.status === 529) {
       errorMessage = 'AI service temporarily overloaded. Please try again in 30 seconds.';
     } else if (error?.status === 504 || error?.message?.includes('timeout')) {
       errorMessage = 'Diagnostic timed out. This can happen with complex ventures. Please try again.';
+    } else if (error?.message?.includes('JSON')) {
+      errorMessage = 'Failed to parse diagnostic results. Please try again.';
     } else {
       errorMessage = `Diagnostic failed: ${error?.message || 'Unknown error'}`;
     }
 
-    sendEvent('error', { message: errorMessage });
-    res.end();
+    // Always try to send error to client
+    try {
+      sendEvent('error', { message: errorMessage });
+    } catch (sendError) {
+      console.error('[BellMason Diagnostic SSE] Failed to send error event:', sendError);
+    }
+  } finally {
+    // Always ensure response is properly ended
+    try {
+      if (!res.writableEnded) {
+        res.end();
+      }
+    } catch (endError) {
+      console.error('[BellMason Diagnostic SSE] Failed to end response:', endError);
+    }
   }
 }

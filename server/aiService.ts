@@ -4183,7 +4183,19 @@ Return a JSON object with this exact structure:
     "verified": 12,
     "estimated": 8,
     "unverified": 5
-  }
+  },
+  "sourcesAppendix": [
+    {
+      "id": "S1",
+      "source": "Full source name (e.g., 'Gartner Market Report: Cloud Computing 2025')",
+      "type": "market_research" | "government_data" | "academic_study" | "industry_report" | "company_filing" | "news_article" | "expert_interview",
+      "publisher": "Publishing organization (e.g., 'Gartner', 'U.S. Census Bureau', 'Harvard Business Review')",
+      "date": "Publication date or access date (e.g., 'January 2025')",
+      "url": "Full URL if available, otherwise null",
+      "claimsSupported": ["Specific claim 1 this source backs", "Specific claim 2"],
+      "confidence": "high" | "medium" | "low"
+    }
+  ]
 }
 
 IMPORTANT:
@@ -4193,7 +4205,8 @@ IMPORTANT:
 - Expert panel should have ${tier === 3 ? '5' : tier === 2 ? '3' : '2'} experts with real names, each providing 200-300 words of framework-based analysis
 - Diligence items should cover all [UNVERIFIED] claims
 - Sum confidenceStats should equal total tags across all sections
-- For Tier ${tier}, verdict should reflect appropriate data confidence level`;
+- For Tier ${tier}, verdict should reflect appropriate data confidence level
+- sourcesAppendix MUST include every source cited in the memo - list ALL market reports, studies, and data sources that back your [VERIFIED] and [ESTIMATED] claims`;
 
     try {
       console.log(`[IC Memo] Generating Tier ${tier} memo for: ${idea.title}`);
@@ -4470,14 +4483,27 @@ Return a JSON object with this exact structure:
     "verified": 12,
     "estimated": 8,
     "unverified": 5
-  }
+  },
+  "sourcesAppendix": [
+    {
+      "id": "S1",
+      "source": "Full source name (e.g., 'Gartner Market Report: Cloud Computing 2025')",
+      "type": "market_research" | "government_data" | "academic_study" | "industry_report" | "company_filing" | "news_article" | "expert_interview",
+      "publisher": "Publishing organization (e.g., 'Gartner', 'U.S. Census Bureau', 'Harvard Business Review')",
+      "date": "Publication date or access date (e.g., 'January 2025')",
+      "url": "Full URL if available, otherwise null",
+      "claimsSupported": ["Specific claim 1 this source backs", "Specific claim 2"],
+      "confidence": "high" | "medium" | "low"
+    }
+  ]
 }
 
 IMPORTANT:
 - Generate exactly ${config.sections.length} sections in the order specified
 - CRITICAL: Section lengths MUST vary dramatically - Market Opportunity should be 3-4x longer than Executive Summary
 - Follow the section-specific word targets provided above - heavy sections (market_opportunity, competitive_landscape) need 1000+ words
-- Expert panel should have ${tier === 3 ? '5' : tier === 2 ? '3' : '2'} experts with real names, each providing 200-300 words of framework-based analysis`;
+- Expert panel should have ${tier === 3 ? '5' : tier === 2 ? '3' : '2'} experts with real names, each providing 200-300 words of framework-based analysis
+- sourcesAppendix MUST include every source cited in the memo - list ALL market reports, studies, and data sources that back your [VERIFIED] and [ESTIMATED] claims`;
 
     try {
       console.log(`[IC Memo Stream] Generating Tier ${tier} memo for: ${idea.title}`);
@@ -4640,15 +4666,6 @@ Generate the complete 10-section market sizing document now. Write with authorit
 
     try {
       console.log(`[Market Sizing Stream] Generating report for: ${idea.title}`);
-
-      // Send initial metadata
-      yield {
-        type: 'chunk',
-        data: JSON.stringify({
-          event: 'start',
-          ideaTitle: idea.title,
-        })
-      };
 
       const stream = await getAnthropic().messages.stream({
         model: "claude-sonnet-4-20250514",

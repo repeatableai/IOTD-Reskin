@@ -3748,6 +3748,429 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
+  // Future Cast PDF Export
+  app.post('/api/ai/future-cast/export/pdf', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Lenient schema for FutureCast export
+      const exportSchema = z.object({
+        ideaId: z.string().min(1),
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().optional().default(''),
+        phases: z.object({
+          research: z.any().nullable(),
+          horizons: z.any().nullable(),
+          scenarios: z.any().nullable(),
+          panel: z.any().nullable(),
+          synthesis: z.any().nullable(),
+        }),
+        exportTimestamp: z.string().optional(),
+      });
+
+      const data = exportSchema.parse(req.body);
+      console.log(`[FutureCast Export] User ${userId} exporting PDF for: ${data.ideaTitle}`);
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: 'LETTER',
+        margins: { top: 72, bottom: 72, left: 72, right: 72 },
+        info: {
+          Title: `FutureCast - ${data.ideaTitle}`,
+          Author: 'IOTD Platform',
+          Subject: 'Strategic Future Analysis',
+          Creator: 'IOTD FutureCast',
+        },
+      });
+
+      // Collect PDF chunks
+      const chunks: Buffer[] = [];
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+
+      // Colors
+      const colors = {
+        primary: '#1B2A4A',
+        accent: '#6366F1', // Indigo for FutureCast
+        green: '#16a34a',
+        amber: '#d97706',
+        red: '#dc2626',
+        gray: '#666666',
+        lightGray: '#F3F4F6',
+      };
+
+      // Helper functions
+      const addTitle = (text: string, size: number = 24, color: string = colors.primary) => {
+        doc.fontSize(size).fillColor(color).font('Helvetica-Bold').text(text, { align: 'left' });
+        doc.moveDown(0.5);
+      };
+
+      const addParagraph = (text: string, size: number = 11) => {
+        if (!text) return;
+        doc.fontSize(size).fillColor('#333333').font('Helvetica').text(text, {
+          align: 'justify',
+          lineGap: 3,
+        });
+        doc.moveDown(0.5);
+      };
+
+      const addBullet = (text: string, size: number = 11) => {
+        if (!text) return;
+        doc.fontSize(size).fillColor('#333333').font('Helvetica').text(`• ${text}`, {
+          indent: 20,
+          lineGap: 2,
+        });
+      };
+
+      const checkPageBreak = (neededSpace: number = 100) => {
+        if (doc.y > doc.page.height - doc.page.margins.bottom - neededSpace) {
+          doc.addPage();
+        }
+      };
+
+      // ==================== TITLE PAGE ====================
+      doc.moveDown(4);
+      doc.fontSize(36).fillColor(colors.accent).font('Helvetica-Bold')
+        .text('FUTURECAST', { align: 'center' });
+      doc.fontSize(24).fillColor(colors.primary).font('Helvetica')
+        .text('Strategic Future Analysis', { align: 'center' });
+      doc.moveDown(2);
+
+      doc.fontSize(24).fillColor(colors.primary).font('Helvetica-Bold')
+        .text(data.ideaTitle, { align: 'center' });
+      doc.moveDown(1);
+
+      if (data.ideaDescription) {
+        doc.fontSize(12).fillColor(colors.gray).font('Helvetica')
+          .text(data.ideaDescription, { align: 'center' });
+        doc.moveDown(1);
+      }
+
+      doc.fontSize(12).fillColor(colors.gray).font('Helvetica-Oblique')
+        .text(`Generated: ${new Date().toLocaleDateString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}`, { align: 'center' });
+
+      // ==================== PHASE 1: RESEARCH ====================
+      if (data.phases.research) {
+        doc.addPage();
+        addTitle('PHASE 1: STRATEGIC RESEARCH', 20, colors.accent);
+
+        const research = data.phases.research;
+
+        if (research.research?.marketLandscape) {
+          addTitle('Market Landscape', 14);
+          addParagraph(research.research.marketLandscape);
+        }
+
+        if (research.research?.competitiveIntelligence) {
+          checkPageBreak(100);
+          addTitle('Competitive Intelligence', 14);
+          addParagraph(research.research.competitiveIntelligence);
+        }
+
+        if (research.research?.technologyTrends) {
+          checkPageBreak(100);
+          addTitle('Technology Trends', 14);
+          addParagraph(research.research.technologyTrends);
+        }
+
+        if (research.research?.keyUncertainties?.length) {
+          checkPageBreak(100);
+          addTitle('Key Uncertainties', 14);
+          for (const item of research.research.keyUncertainties) {
+            addBullet(item);
+          }
+          doc.moveDown(0.5);
+        }
+
+        if (research.research?.criticalAssumptions?.length) {
+          checkPageBreak(100);
+          addTitle('Critical Assumptions', 14);
+          for (const item of research.research.criticalAssumptions) {
+            addBullet(item);
+          }
+        }
+      }
+
+      // ==================== PHASE 2: HORIZONS ====================
+      if (data.phases.horizons) {
+        doc.addPage();
+        addTitle('PHASE 2: FUTURE HORIZONS', 20, colors.accent);
+
+        const horizons = data.phases.horizons;
+
+        for (const horizonKey of ['horizon1', 'horizon2', 'horizon3']) {
+          const horizon = horizons.horizons?.[horizonKey];
+          if (horizon) {
+            checkPageBreak(150);
+            doc.fontSize(14).fillColor(colors.primary).font('Helvetica-Bold')
+              .text(`${horizon.title}`, { continued: true });
+            doc.fillColor(colors.gray).font('Helvetica').text(`  (${horizon.timeframe})`);
+            doc.moveDown(0.3);
+            addParagraph(horizon.narrative);
+            if (horizon.impactOnVenture) {
+              doc.fontSize(10).fillColor(colors.accent).font('Helvetica-Oblique')
+                .text(`Impact: ${horizon.impactOnVenture}`);
+              doc.moveDown(0.5);
+            }
+          }
+        }
+
+        if (horizons.drivingForces?.length) {
+          checkPageBreak(100);
+          addTitle('Driving Forces', 14);
+          for (const force of horizons.drivingForces.slice(0, 6)) {
+            doc.fontSize(11).fillColor(colors.primary).font('Helvetica-Bold')
+              .text(force.force, { continued: true });
+            doc.fillColor(colors.gray).font('Helvetica')
+              .text(` (${force.certainty} certainty, ${force.impact} impact)`);
+            addParagraph(force.description, 10);
+          }
+        }
+      }
+
+      // ==================== PHASE 3: SCENARIOS ====================
+      if (data.phases.scenarios) {
+        doc.addPage();
+        addTitle('PHASE 3: SCENARIO PLANNING', 20, colors.accent);
+
+        const scenarios = data.phases.scenarios;
+
+        if (scenarios.scenarios?.length) {
+          for (const scenario of scenarios.scenarios) {
+            checkPageBreak(150);
+            doc.fontSize(14).fillColor(colors.primary).font('Helvetica-Bold')
+              .text(scenario.name, { continued: true });
+            doc.fillColor(colors.green).font('Helvetica-Bold')
+              .text(` (${scenario.probability}% probability)`);
+            doc.moveDown(0.3);
+            addParagraph(scenario.narrative);
+
+            if (scenario.strategicMoves?.length) {
+              doc.fontSize(10).fillColor(colors.gray).font('Helvetica-Oblique')
+                .text('Strategic Moves:');
+              for (const move of scenario.strategicMoves.slice(0, 3)) {
+                addBullet(move, 10);
+              }
+            }
+            doc.moveDown(0.5);
+          }
+        }
+
+        if (scenarios.robustStrategies?.length) {
+          checkPageBreak(100);
+          addTitle('Robust Strategies', 14);
+          doc.fontSize(10).fillColor(colors.gray).font('Helvetica-Oblique')
+            .text('Strategies that work across all scenarios:');
+          doc.moveDown(0.3);
+          for (const strategy of scenarios.robustStrategies) {
+            addBullet(strategy);
+          }
+        }
+      }
+
+      // ==================== PHASE 4: EXPERT PANEL ====================
+      if (data.phases.panel) {
+        doc.addPage();
+        addTitle('PHASE 4: EXPERT PANEL', 20, colors.accent);
+
+        const panel = data.phases.panel;
+
+        if (panel.panelists?.length) {
+          for (const expert of panel.panelists) {
+            checkPageBreak(150);
+            doc.fontSize(14).fillColor(colors.primary).font('Helvetica-Bold')
+              .text(expert.name);
+            doc.fontSize(10).fillColor(colors.gray).font('Helvetica-Oblique')
+              .text(expert.credentials);
+            doc.fontSize(10).fillColor(colors.accent).font('Helvetica')
+              .text(`Framework: ${expert.framework} | Confidence: ${expert.confidence}%`);
+            doc.moveDown(0.3);
+            addParagraph(expert.perspectiveAnalysis, 10);
+
+            if (expert.dissent) {
+              doc.fontSize(10).fillColor(colors.amber).font('Helvetica-Oblique')
+                .text(`Dissent: ${expert.dissent}`);
+            }
+            doc.moveDown(0.5);
+          }
+        }
+
+        if (panel.consensusPoints?.length) {
+          checkPageBreak(100);
+          addTitle('Consensus Points', 14);
+          for (const point of panel.consensusPoints.slice(0, 5)) {
+            addBullet(point);
+          }
+        }
+
+        if (panel.synthesizedRecommendations?.length) {
+          checkPageBreak(100);
+          addTitle('Synthesized Recommendations', 14);
+          for (const rec of panel.synthesizedRecommendations.slice(0, 5)) {
+            addBullet(rec);
+          }
+        }
+      }
+
+      // ==================== PHASE 5: SYNTHESIS ====================
+      if (data.phases.synthesis) {
+        doc.addPage();
+        addTitle('PHASE 5: FINAL SYNTHESIS', 20, colors.accent);
+
+        const synthesis = data.phases.synthesis;
+
+        // Disclaimer
+        if (synthesis.disclaimer) {
+          doc.rect(doc.x - 10, doc.y - 5, doc.page.width - doc.page.margins.left - doc.page.margins.right + 20, 60)
+            .fill('#FEF3C7');
+          doc.fillColor(colors.amber).fontSize(10).font('Helvetica-Oblique')
+            .text(synthesis.disclaimer, doc.x, doc.y + 5, {
+              width: doc.page.width - doc.page.margins.left - doc.page.margins.right
+            });
+          doc.moveDown(3);
+        }
+
+        // Executive Summary
+        if (synthesis.executiveSummary) {
+          addTitle('Executive Summary', 16);
+          const outlook = synthesis.executiveSummary.ventureOutlook?.replace(/_/g, ' ') || 'N/A';
+          const confidence = synthesis.executiveSummary.confidenceLevel || 'N/A';
+          doc.fontSize(11).fillColor(colors.primary).font('Helvetica-Bold')
+            .text(`Venture Outlook: ${outlook} | Confidence: ${confidence}%`);
+          doc.moveDown(0.3);
+          addParagraph(synthesis.executiveSummary.summaryNarrative);
+        }
+
+        // Strategic Imperatives
+        if (synthesis.strategicImperatives?.length) {
+          checkPageBreak(150);
+          addTitle('Strategic Imperatives', 16);
+          for (const imp of synthesis.strategicImperatives.slice(0, 5)) {
+            doc.fontSize(12).fillColor(colors.accent).font('Helvetica-Bold')
+              .text(`#${imp.priority}: ${imp.imperative}`);
+            doc.fontSize(10).fillColor(colors.gray).font('Helvetica')
+              .text(`Timeframe: ${imp.timeframe}`);
+            addParagraph(imp.rationale, 10);
+            doc.moveDown(0.3);
+          }
+        }
+
+        // Future Readiness Assessment
+        if (synthesis.futureReadinessAssessment) {
+          checkPageBreak(150);
+          addTitle('Future Readiness Assessment', 16);
+          const fra = synthesis.futureReadinessAssessment;
+          doc.fontSize(14).fillColor(colors.green).font('Helvetica-Bold')
+            .text(`Overall Score: ${fra.overallScore}/100`);
+          doc.moveDown(0.5);
+
+          if (fra.dimensions?.length) {
+            for (const dim of fra.dimensions.slice(0, 4)) {
+              doc.fontSize(11).fillColor(colors.primary).font('Helvetica')
+                .text(`${dim.dimension}: ${dim.score}/100`);
+            }
+          }
+        }
+
+        // Implementation Roadmap
+        if (synthesis.implementationRoadmap) {
+          checkPageBreak(150);
+          addTitle('Implementation Roadmap', 16);
+          for (const [phase, details] of Object.entries(synthesis.implementationRoadmap)) {
+            const phaseData = details as any;
+            if (phaseData.timeframe && phaseData.actions) {
+              doc.fontSize(12).fillColor(colors.primary).font('Helvetica-Bold')
+                .text(`${phase.replace(/([A-Z])/g, ' $1').trim()} (${phaseData.timeframe})`);
+              for (const action of phaseData.actions.slice(0, 3)) {
+                addBullet(action, 10);
+              }
+              doc.moveDown(0.5);
+            }
+          }
+        }
+
+        // Research Checklist
+        if (synthesis.researchChecklist?.length) {
+          checkPageBreak(150);
+          addTitle('Research Verification Checklist', 16);
+          for (const item of synthesis.researchChecklist.slice(0, 8)) {
+            doc.fontSize(11).fillColor(colors.primary).font('Helvetica')
+              .text(`☐ ${item.claimSummary}`);
+            doc.fontSize(9).fillColor(colors.gray)
+              .text(`   Category: ${item.category} | Priority: ${item.priority}`);
+            doc.moveDown(0.3);
+          }
+        }
+
+        // Appendix
+        if (synthesis.appendix) {
+          doc.addPage();
+          addTitle('APPENDIX: Sources & Methodology', 18, colors.gray);
+
+          if (synthesis.appendix.sourcesConsulted?.length) {
+            addTitle('Sources Consulted', 14);
+            for (const source of synthesis.appendix.sourcesConsulted.slice(0, 10)) {
+              addBullet(source, 10);
+            }
+            doc.moveDown(0.5);
+          }
+
+          if (synthesis.appendix.methodologyNotes) {
+            addTitle('Methodology Notes', 14);
+            addParagraph(synthesis.appendix.methodologyNotes, 10);
+          }
+
+          if (synthesis.appendix.confidenceIntervals) {
+            addTitle('Confidence & Limitations', 14);
+            addParagraph(synthesis.appendix.confidenceIntervals, 10);
+          }
+        }
+      }
+
+      // ==================== FOOTER ====================
+      doc.addPage();
+      doc.moveDown(10);
+      doc.fontSize(10).fillColor(colors.gray).font('Helvetica-Oblique')
+        .text('This FutureCast report was generated by IOTD Platform.', { align: 'center' });
+      doc.text('Strategic foresight analysis using Three Horizons Framework and Shell/GBN scenario planning.', { align: 'center' });
+      doc.moveDown(1);
+      doc.fontSize(9).fillColor(colors.gray)
+        .text(`Report ID: ${data.ideaId}`, { align: 'center' });
+
+      // Finalize PDF
+      doc.end();
+
+      // Wait for PDF to complete
+      await new Promise<void>((resolve, reject) => {
+        doc.on('end', resolve);
+        doc.on('error', reject);
+      });
+
+      const pdfBuffer = Buffer.concat(chunks);
+
+      // Send response
+      const filename = `FutureCast-${data.ideaTitle.replace(/[^a-z0-9]/gi, '-').substring(0, 40)}.pdf`;
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.send(pdfBuffer);
+
+      console.log(`[FutureCast Export] PDF generated successfully: ${filename} (${pdfBuffer.length} bytes)`);
+    } catch (error) {
+      console.error('[FutureCast Export] PDF generation error:', error);
+      logErrorToFile(error, 'FutureCast PDF Export');
+      res.status(500).json({
+        message: 'Failed to generate FutureCast PDF',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // IC Memo Generator - Investment Committee Memorandum with OA framework tier-based analysis
   app.post('/api/ai/ic-memo', isAuthenticated, async (req: any, res) => {
     try {
@@ -3902,7 +4325,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     try {
       const userId = req.user.claims.sub;
 
-      // Validate request body - expect full memoResult
+      // Validate request body - lenient schema that transforms data
       const exportSchema = z.object({
         memoResult: z.object({
           disclaimer: z.string().optional(),
@@ -3917,7 +4340,14 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
             }),
           })),
           recommendation: z.object({
-            verdict: z.enum(['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS']),
+            verdict: z.string().transform(v => {
+              const normalized = v.toUpperCase().replace(/\s+/g, '_');
+              if (['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS'].includes(normalized)) return normalized;
+              if (normalized.includes('INVEST')) return 'INVEST';
+              if (normalized.includes('CONDITIONAL')) return 'CONDITIONAL';
+              if (normalized.includes('PASS')) return 'PASS';
+              return 'MORE_DATA';
+            }),
             confidence: z.number(),
             conditions: z.array(z.string()).optional(),
             summary: z.string(),
@@ -3925,27 +4355,50 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           expertPanel: z.array(z.object({
             name: z.string(),
             credentials: z.string(),
-            framework: z.string(),
-            rating: z.enum(['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS']),
+            framework: z.string().optional().default('General Assessment'),
+            rating: z.string().transform(r => {
+              const normalized = r.toUpperCase().replace(/\s+/g, '_');
+              if (['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS'].includes(normalized)) return normalized;
+              if (normalized.includes('STRONG')) return 'STRONG_INVEST';
+              if (normalized.includes('INVEST')) return 'INVEST';
+              if (normalized.includes('CONDITIONAL')) return 'CONDITIONAL';
+              if (normalized.includes('CAUTIOUS')) return 'CAUTIOUS';
+              if (normalized.includes('PASS')) return 'PASS';
+              return 'CONDITIONAL';
+            }),
             analysis: z.string(),
           })),
           diligenceItems: z.array(z.object({
-            category: z.enum(['gating', 'pre_close', 'supplementary']),
+            category: z.string().transform(c => {
+              const normalized = c.toLowerCase();
+              if (['gating', 'pre_close', 'supplementary'].includes(normalized)) return normalized;
+              if (normalized.includes('gate') || normalized.includes('critical')) return 'gating';
+              if (normalized.includes('pre') || normalized.includes('close')) return 'pre_close';
+              return 'supplementary';
+            }),
             item: z.string(),
-            priority: z.enum(['high', 'medium', 'low']),
+            priority: z.string().transform(p => {
+              const normalized = p.toLowerCase();
+              if (['high', 'medium', 'low'].includes(normalized)) return normalized;
+              if (normalized.includes('high') || normalized.includes('critical')) return 'high';
+              if (normalized.includes('med')) return 'medium';
+              return 'low';
+            }),
           })),
           confidenceStats: z.object({
             verified: z.number(),
             estimated: z.number(),
             unverified: z.number(),
           }),
+          sourcesAppendix: z.array(z.any()).optional(),
           tier: z.number().min(1).max(3),
           tierLabel: z.string(),
           ideaId: z.string(),
           ideaTitle: z.string(),
           completenessScore: z.number(),
-          populatedFields: z.array(z.string()),
-          missingFields: z.array(z.string()),
+          populatedFields: z.array(z.string()).optional().default([]),
+          missingFields: z.array(z.string()).optional().default([]),
+          researchQueries: z.array(z.string()).optional().default([]),
         }),
       });
 
@@ -3981,7 +4434,7 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     try {
       const userId = req.user.claims.sub;
 
-      // Validate request body - expect full memoResult
+      // Validate request body - lenient schema that transforms data
       const exportSchema = z.object({
         memoResult: z.object({
           disclaimer: z.string().optional(),
@@ -3996,7 +4449,14 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
             }),
           })),
           recommendation: z.object({
-            verdict: z.enum(['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS']),
+            verdict: z.string().transform(v => {
+              const normalized = v.toUpperCase().replace(/\s+/g, '_');
+              if (['INVEST', 'CONDITIONAL', 'MORE_DATA', 'PASS'].includes(normalized)) return normalized;
+              if (normalized.includes('INVEST')) return 'INVEST';
+              if (normalized.includes('CONDITIONAL')) return 'CONDITIONAL';
+              if (normalized.includes('PASS')) return 'PASS';
+              return 'MORE_DATA';
+            }),
             confidence: z.number(),
             conditions: z.array(z.string()).optional(),
             summary: z.string(),
@@ -4004,27 +4464,50 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
           expertPanel: z.array(z.object({
             name: z.string(),
             credentials: z.string(),
-            framework: z.string(),
-            rating: z.enum(['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS']),
+            framework: z.string().optional().default('General Assessment'),
+            rating: z.string().transform(r => {
+              const normalized = r.toUpperCase().replace(/\s+/g, '_');
+              if (['STRONG_INVEST', 'INVEST', 'CONDITIONAL', 'CAUTIOUS', 'PASS'].includes(normalized)) return normalized;
+              if (normalized.includes('STRONG')) return 'STRONG_INVEST';
+              if (normalized.includes('INVEST')) return 'INVEST';
+              if (normalized.includes('CONDITIONAL')) return 'CONDITIONAL';
+              if (normalized.includes('CAUTIOUS')) return 'CAUTIOUS';
+              if (normalized.includes('PASS')) return 'PASS';
+              return 'CONDITIONAL';
+            }),
             analysis: z.string(),
           })),
           diligenceItems: z.array(z.object({
-            category: z.enum(['gating', 'pre_close', 'supplementary']),
+            category: z.string().transform(c => {
+              const normalized = c.toLowerCase();
+              if (['gating', 'pre_close', 'supplementary'].includes(normalized)) return normalized;
+              if (normalized.includes('gate') || normalized.includes('critical')) return 'gating';
+              if (normalized.includes('pre') || normalized.includes('close')) return 'pre_close';
+              return 'supplementary';
+            }),
             item: z.string(),
-            priority: z.enum(['high', 'medium', 'low']),
+            priority: z.string().transform(p => {
+              const normalized = p.toLowerCase();
+              if (['high', 'medium', 'low'].includes(normalized)) return normalized;
+              if (normalized.includes('high') || normalized.includes('critical')) return 'high';
+              if (normalized.includes('med')) return 'medium';
+              return 'low';
+            }),
           })),
           confidenceStats: z.object({
             verified: z.number(),
             estimated: z.number(),
             unverified: z.number(),
           }),
+          sourcesAppendix: z.array(z.any()).optional(),
           tier: z.number().min(1).max(3),
           tierLabel: z.string(),
           ideaId: z.string(),
           ideaTitle: z.string(),
           completenessScore: z.number(),
-          populatedFields: z.array(z.string()),
-          missingFields: z.array(z.string()),
+          populatedFields: z.array(z.string()).optional().default([]),
+          missingFields: z.array(z.string()).optional().default([]),
+          researchQueries: z.array(z.string()).optional().default([]),
         }),
       });
 
