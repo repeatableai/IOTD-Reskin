@@ -51,7 +51,9 @@ import {
   ArrowRight,
   Home,
   Award,
-  LogOut
+  LogOut,
+  Layers,
+  Calculator
 } from "lucide-react";
 
 export default function Header() {
@@ -194,7 +196,7 @@ export default function Header() {
             {/* Tools Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
+                <Button
                   variant="ghost"
                   className="hover:bg-muted"
                   data-testid="dropdown-tools"
@@ -214,7 +216,7 @@ export default function Header() {
                     <Search className="w-5 h-5 mt-0.5 flex-shrink-0" />
                     <div>
                       <div className="font-semibold inline-flex items-center gap-2">
-                        Research Your Apps 
+                        Research Your Apps
                         <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">PRO</span>
                       </div>
                       <div className="text-sm text-muted-foreground">Get comprehensive research reports in 24 hours</div>
@@ -260,6 +262,53 @@ export default function Header() {
                         <span className="text-xs bg-primary text-primary-foreground px-1.5 py-0.5 rounded">PRO</span>
                       </div>
                       <div className="text-sm text-muted-foreground">Dive deep into any opportunity with AI</div>
+                    </div>
+                  </button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* VC Tools Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="hover:bg-muted"
+                  data-testid="dropdown-vc-tools"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#B8860B]"></span>
+                    VC Tools
+                  </span>
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-[400px] p-6">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase mb-4">Venture Capital Suite</h3>
+                <div className="space-y-4">
+                  <button
+                    onClick={() => setLocation('/venture-os')}
+                    className="flex items-start gap-3 text-left w-full hover:bg-muted/50 p-2 rounded-md transition-colors"
+                    data-testid="link-venture-os"
+                  >
+                    <Layers className="w-5 h-5 mt-0.5 flex-shrink-0 text-[#B8860B]" />
+                    <div>
+                      <div className="font-semibold inline-flex items-center gap-2">
+                        Venture OS
+                        <span className="text-xs bg-[#B8860B] text-white px-1.5 py-0.5 rounded">NEW</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">AI-Native Venture Operating System for portfolio management</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setLocation('/venture-os/revaluation')}
+                    className="flex items-start gap-3 text-left w-full hover:bg-muted/50 p-2 rounded-md transition-colors"
+                    data-testid="link-revaluation"
+                  >
+                    <Calculator className="w-5 h-5 mt-0.5 flex-shrink-0 text-[#B8860B]" />
+                    <div>
+                      <div className="font-semibold">Portfolio Re-Valuation Engine</div>
+                      <div className="text-sm text-muted-foreground">Model AI adoption impact on company valuations</div>
                     </div>
                   </button>
                 </div>
@@ -676,6 +725,35 @@ export default function Header() {
                         >
                           <CreditCard className="w-4 h-4 text-muted-foreground" />
                           <span>Upgrade Plans</span>
+                        </button>
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+
+                  {/* VC Tools */}
+                  <AccordionItem value="vc-tools">
+                    <AccordionTrigger className="text-base font-semibold">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#B8860B]"></span>
+                        VC Tools
+                      </span>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div className="space-y-1 pl-2">
+                        <button
+                          onClick={() => navigateTo('/venture-os')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Layers className="w-4 h-4 text-[#B8860B]" />
+                          <span>Venture OS</span>
+                          <span className="text-xs bg-[#B8860B] text-white px-1.5 py-0.5 rounded ml-auto">NEW</span>
+                        </button>
+                        <button
+                          onClick={() => navigateTo('/venture-os/revaluation')}
+                          className="flex items-center gap-3 w-full p-2 rounded-md hover:bg-muted transition-colors text-left"
+                        >
+                          <Calculator className="w-4 h-4 text-[#B8860B]" />
+                          <span>Re-Valuation Engine</span>
                         </button>
                       </div>
                     </AccordionContent>

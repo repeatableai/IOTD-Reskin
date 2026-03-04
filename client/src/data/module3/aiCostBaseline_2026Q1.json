@@ -1,0 +1,167 @@
+{
+  "metadata": {
+    "version": "2026-Q1",
+    "lastUpdated": "2026-01-15",
+    "source": "Industry benchmarks and AI platform pricing as of Q1 2026"
+  },
+  "fractionalExecutives": {
+    "cfo": {
+      "traditional": {
+        "monthlyRetainer": 15000,
+        "hoursPerWeek": 10,
+        "description": "Traditional fractional CFO engagement"
+      },
+      "aiAugmented": {
+        "monthlyRetainer": 8000,
+        "hoursPerWeek": 5,
+        "aiPlatformCost": 500,
+        "description": "AI-augmented fractional CFO with automated reporting"
+      },
+      "savingsPercent": 43
+    },
+    "cmo": {
+      "traditional": {
+        "monthlyRetainer": 12000,
+        "hoursPerWeek": 8,
+        "description": "Traditional fractional CMO engagement"
+      },
+      "aiAugmented": {
+        "monthlyRetainer": 6000,
+        "hoursPerWeek": 4,
+        "aiPlatformCost": 800,
+        "description": "AI-augmented fractional CMO with AI content generation"
+      },
+      "savingsPercent": 43
+    },
+    "cto": {
+      "traditional": {
+        "monthlyRetainer": 18000,
+        "hoursPerWeek": 12,
+        "description": "Traditional fractional CTO engagement"
+      },
+      "aiAugmented": {
+        "monthlyRetainer": 10000,
+        "hoursPerWeek": 6,
+        "aiPlatformCost": 1200,
+        "description": "AI-augmented fractional CTO with AI code review and architecture"
+      },
+      "savingsPercent": 38
+    },
+    "chro": {
+      "traditional": {
+        "monthlyRetainer": 10000,
+        "hoursPerWeek": 8,
+        "description": "Traditional fractional CHRO engagement"
+      },
+      "aiAugmented": {
+        "monthlyRetainer": 5000,
+        "hoursPerWeek": 4,
+        "aiPlatformCost": 400,
+        "description": "AI-augmented fractional CHRO with AI recruiting and HR analytics"
+      },
+      "savingsPercent": 46
+    }
+  },
+  "aiPlatforms": {
+    "contentGeneration": {
+      "name": "AI Content Suite",
+      "monthlyBaseCost": 299,
+      "perSeatCost": 49,
+      "capabilities": ["Blog posts", "Social media", "Email campaigns", "Ad copy"]
+    },
+    "dataAnalytics": {
+      "name": "AI Analytics Pro",
+      "monthlyBaseCost": 499,
+      "perSeatCost": 99,
+      "capabilities": ["Predictive analytics", "Automated reporting", "Anomaly detection"]
+    },
+    "codeAssistance": {
+      "name": "AI Dev Suite",
+      "monthlyBaseCost": 399,
+      "perSeatCost": 79,
+      "capabilities": ["Code generation", "Code review", "Documentation", "Testing"]
+    },
+    "customerService": {
+      "name": "AI Support Hub",
+      "monthlyBaseCost": 599,
+      "perSeatCost": 49,
+      "capabilities": ["Chatbots", "Ticket routing", "Sentiment analysis", "Knowledge base"]
+    },
+    "salesIntelligence": {
+      "name": "AI Sales Engine",
+      "monthlyBaseCost": 899,
+      "perSeatCost": 149,
+      "capabilities": ["Lead scoring", "Pipeline prediction", "Call analysis", "Email optimization"]
+    }
+  },
+  "departmentCosts": {
+    "engineering": {
+      "traditional": {
+        "avgSalary": 150000,
+        "toolingCostPerHead": 5000,
+        "overheadMultiplier": 1.35
+      },
+      "aiNative": {
+        "avgSalary": 175000,
+        "toolingCostPerHead": 15000,
+        "overheadMultiplier": 1.25,
+        "productivityMultiplier": 2.5,
+        "description": "Higher individual cost, but 2.5x productivity"
+      }
+    },
+    "marketing": {
+      "traditional": {
+        "avgSalary": 85000,
+        "toolingCostPerHead": 8000,
+        "overheadMultiplier": 1.3
+      },
+      "aiNative": {
+        "avgSalary": 95000,
+        "toolingCostPerHead": 12000,
+        "overheadMultiplier": 1.2,
+        "productivityMultiplier": 3.0,
+        "description": "AI content generation dramatically increases output"
+      }
+    },
+    "sales": {
+      "traditional": {
+        "avgSalary": 75000,
+        "commissionRate": 0.08,
+        "toolingCostPerHead": 6000,
+        "overheadMultiplier": 1.25
+      },
+      "aiNative": {
+        "avgSalary": 85000,
+        "commissionRate": 0.06,
+        "toolingCostPerHead": 10000,
+        "overheadMultiplier": 1.2,
+        "productivityMultiplier": 1.8,
+        "description": "AI lead scoring and automation improve close rates"
+      }
+    },
+    "customerSuccess": {
+      "traditional": {
+        "avgSalary": 70000,
+        "toolingCostPerHead": 4000,
+        "overheadMultiplier": 1.3
+      },
+      "aiNative": {
+        "avgSalary": 75000,
+        "toolingCostPerHead": 8000,
+        "overheadMultiplier": 1.2,
+        "productivityMultiplier": 2.0,
+        "description": "AI chatbots handle tier-1, humans focus on high-value"
+      }
+    }
+  },
+  "industryMultipliers": {
+    "saas": 1.0,
+    "fintech": 1.15,
+    "healthcare": 1.25,
+    "ecommerce": 0.95,
+    "manufacturing": 0.85,
+    "professional_services": 1.1,
+    "media": 1.05,
+    "education": 0.9
+  }
+}

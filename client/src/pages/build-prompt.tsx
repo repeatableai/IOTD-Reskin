@@ -13,6 +13,7 @@ import BellMasonDiagnosticDialog from "@/components/BellMasonDiagnosticDialog";
 import DisruptionScannerDialog from "@/components/DisruptionScannerDialog";
 import FutureCastDialog from "@/components/FutureCastDialog";
 import MarketSizingDialog from "@/components/MarketSizingDialog";
+import PreMortemDialog from "@/components/PreMortemDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users, Loader2, FileText, Shield, Activity, TrendingUp } from "lucide-react";
+import { ArrowLeft, Sparkles, Copy, CheckCircle2, Wand2, ChevronRight, Star, Megaphone, Rocket, DollarSign, Search, Code, Flame, Download, Users, Loader2, FileText, Shield, Activity, TrendingUp, Skull } from "lucide-react";
 import { MarketTrendGraph } from "@/components/MarketTrendGraph";
 import { useCollaborationPortal } from "@/contexts/CollaborationPortalContext";
 
@@ -259,6 +260,7 @@ export default function BuildPrompt() {
   const [showBellMasonDialog, setShowBellMasonDialog] = useState(false);
   const [showDisruptionScanner, setShowDisruptionScanner] = useState(false);
   const [showFutureCastDialog, setShowFutureCastDialog] = useState(false);
+  const [showPreMortemDialog, setShowPreMortemDialog] = useState(false);
   const [showMarketSizingDialog, setShowMarketSizingDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { openPortal } = useCollaborationPortal();
@@ -1578,6 +1580,15 @@ ${idea?.description || 'Description of your solution'}
                       <Activity className="w-3 h-3 mr-2" />
                       Bell-Mason Diagnostic
                     </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowPreMortemDialog(true)}
+                      className="w-full justify-start text-xs h-8 border-red-300/50 text-red-600 hover:bg-red-50"
+                    >
+                      <Skull className="w-3 h-3 mr-2" />
+                      Pre-Mortem Analysis
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -2613,6 +2624,35 @@ ${idea?.description || 'Description of your solution'}
               marketScore: idea.opportunityScore,
               teamScore: idea.executionScore,
             },
+          }}
+        />
+      )}
+
+      {/* Pre-Mortem Analysis Dialog */}
+      {idea && (
+        <PreMortemDialog
+          open={showPreMortemDialog}
+          onOpenChange={setShowPreMortemDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            slug: idea.slug,
+            description: idea.description || '',
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            revenueModel: idea.frameworkData?.revenueModel,
+            competitors: idea.frameworkData?.competitors,
+            riskFactors: idea.frameworkData?.riskFactors,
+            tamSamSom: idea.frameworkData?.tamSamSom,
+            regulatoryMentions: idea.frameworkData?.regulatoryMentions,
+            executionComplexity: idea.frameworkData?.executionComplexity,
+            financialProjections: idea.frameworkData?.financialProjections,
+            marketGap: idea.marketGap,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            frameworkData: idea.frameworkData,
           }}
         />
       )}

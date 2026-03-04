@@ -1,0 +1,157 @@
+{
+  "metadata": {
+    "version": "2026-Q1",
+    "lastUpdated": "2026-01-15",
+    "description": "Industry regulation flags for AI adoption constraints"
+  },
+  "regulatedIndustries": {
+    "healthcare": {
+      "isRegulated": true,
+      "regulatoryBodies": ["FDA", "HIPAA", "HHS"],
+      "aiConstraints": {
+        "patientData": "HIPAA compliance required for all AI systems handling PHI",
+        "clinicalDecisions": "FDA clearance may be required for AI diagnostic tools",
+        "documentation": "Audit trails required for all AI-assisted decisions"
+      },
+      "lockedDeliverables": [
+        "ai_diagnostic_without_oversight",
+        "automated_treatment_plans",
+        "unsupervised_patient_communication"
+      ],
+      "warningMessage": "Healthcare AI implementations require HIPAA compliance review and may need FDA clearance for clinical applications."
+    },
+    "fintech": {
+      "isRegulated": true,
+      "regulatoryBodies": ["SEC", "FINRA", "CFPB", "OCC"],
+      "aiConstraints": {
+        "creditDecisions": "Fair lending laws require explainable AI for credit decisions",
+        "trading": "SEC oversight for algorithmic trading systems",
+        "customerData": "GLBA and state privacy laws apply"
+      },
+      "lockedDeliverables": [
+        "opaque_credit_scoring",
+        "unsupervised_trading_algorithms",
+        "automated_investment_advice_without_disclosure"
+      ],
+      "warningMessage": "Financial services AI must comply with fair lending laws, SEC regulations, and maintain explainability for regulatory audits."
+    },
+    "insurance": {
+      "isRegulated": true,
+      "regulatoryBodies": ["State Insurance Commissioners", "NAIC"],
+      "aiConstraints": {
+        "underwriting": "Must avoid discriminatory factors in AI underwriting",
+        "claims": "AI claims processing requires human oversight for denials",
+        "pricing": "Rate-setting algorithms subject to regulatory review"
+      },
+      "lockedDeliverables": [
+        "automated_claim_denial_without_review",
+        "discriminatory_risk_scoring",
+        "opaque_pricing_algorithms"
+      ],
+      "warningMessage": "Insurance AI must comply with anti-discrimination laws and maintain human oversight for adverse decisions."
+    },
+    "legalServices": {
+      "isRegulated": true,
+      "regulatoryBodies": ["State Bar Associations", "ABA"],
+      "aiConstraints": {
+        "clientAdvice": "AI cannot provide legal advice without attorney supervision",
+        "privilegedData": "Attorney-client privilege must be maintained",
+        "courtFilings": "Human attorney review required for all filings"
+      },
+      "lockedDeliverables": [
+        "unsupervised_legal_advice",
+        "automated_court_filings",
+        "ai_only_contract_review"
+      ],
+      "warningMessage": "Legal AI tools must operate under attorney supervision and cannot independently provide legal advice."
+    },
+    "education": {
+      "isRegulated": true,
+      "regulatoryBodies": ["DOE", "FERPA", "State Education Boards"],
+      "aiConstraints": {
+        "studentData": "FERPA compliance required for student records",
+        "assessments": "AI grading must be transparent and auditable",
+        "admissions": "AI admissions tools must avoid discriminatory bias"
+      },
+      "lockedDeliverables": [
+        "opaque_admissions_algorithms",
+        "automated_student_discipline",
+        "unsupervised_special_education_decisions"
+      ],
+      "warningMessage": "Education AI must comply with FERPA and maintain transparency in grading and admissions processes."
+    },
+    "government": {
+      "isRegulated": true,
+      "regulatoryBodies": ["OMB", "GSA", "Agency-specific"],
+      "aiConstraints": {
+        "procurement": "FAR compliance required for AI tools",
+        "citizenData": "Privacy Act and agency-specific rules apply",
+        "decisionMaking": "AI cannot make final determinations on benefits or rights"
+      },
+      "lockedDeliverables": [
+        "automated_benefits_denial",
+        "ai_only_procurement_decisions",
+        "unsupervised_citizen_profiling"
+      ],
+      "warningMessage": "Government AI implementations require extensive compliance review and cannot make final determinations affecting citizen rights."
+    }
+  },
+  "unregulatedIndustries": {
+    "saas": {
+      "isRegulated": false,
+      "considerations": ["General data privacy laws", "Contract obligations", "Industry best practices"],
+      "aiFlexibility": "high",
+      "notes": "Most flexibility for AI adoption; focus on competitive advantage"
+    },
+    "ecommerce": {
+      "isRegulated": false,
+      "considerations": ["Consumer protection", "Payment card compliance", "Privacy laws"],
+      "aiFlexibility": "high",
+      "notes": "Strong AI use cases in personalization, inventory, and customer service"
+    },
+    "media": {
+      "isRegulated": false,
+      "considerations": ["Copyright law", "Content moderation policies", "Platform terms"],
+      "aiFlexibility": "high",
+      "notes": "AI content generation is transforming the industry"
+    },
+    "professional_services": {
+      "isRegulated": false,
+      "considerations": ["Client confidentiality", "Professional liability", "Quality standards"],
+      "aiFlexibility": "medium",
+      "notes": "AI augmentation valuable but human expertise still premium"
+    },
+    "manufacturing": {
+      "isRegulated": false,
+      "considerations": ["Safety standards", "Quality control", "Supply chain compliance"],
+      "aiFlexibility": "medium",
+      "notes": "AI adoption in operations and predictive maintenance"
+    }
+  },
+  "globalConsiderations": {
+    "GDPR": {
+      "applies": "EU data subjects",
+      "aiRequirements": [
+        "Right to explanation for automated decisions",
+        "Data minimization in AI training",
+        "Purpose limitation for AI applications"
+      ]
+    },
+    "CCPA": {
+      "applies": "California residents",
+      "aiRequirements": [
+        "Disclosure of AI profiling",
+        "Opt-out rights for automated decision-making",
+        "Data access and deletion rights"
+      ]
+    },
+    "AIActEU": {
+      "applies": "EU market",
+      "aiRequirements": [
+        "Risk classification of AI systems",
+        "High-risk AI requires conformity assessment",
+        "Prohibited AI practices defined"
+      ]
+    }
+  }
+}

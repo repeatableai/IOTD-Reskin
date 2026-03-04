@@ -56,6 +56,12 @@ const BulkImport = lazy(() => import("@/pages/bulk-import"));
 const Dashboard = lazy(() => import("@/pages/dashboard"));
 const Settings = lazy(() => import("@/pages/settings"));
 
+// Module 3 - Venture OS
+const Module3Landing = lazy(() => import("@/pages/module3/Module3Landing"));
+const Sub3C_Revaluation = lazy(() => import("@/pages/module3/Sub3C_Revaluation"));
+const Sub3A_BusinessPlan = lazy(() => import("@/pages/module3/Sub3A_BusinessPlan"));
+const Sub3B_Transformation = lazy(() => import("@/pages/module3/Sub3B_Transformation"));
+
 // Loading fallback component
 function PageLoader() {
   return (
@@ -122,6 +128,11 @@ function Router() {
         <Route path="/faq" component={FAQ} />
         <Route path="/contact" component={Contact} />
         <Route path="/plan-details" component={PlanDetails} />
+        {/* Module 3 - Venture OS Routes */}
+        <Route path="/venture-os" component={Module3Landing} />
+        <Route path="/venture-os/revaluation" component={Sub3C_Revaluation} />
+        <Route path="/venture-os/business-plan" component={Sub3A_BusinessPlan} />
+        <Route path="/venture-os/transformation" component={Sub3B_Transformation} />
         {isAuthenticated && (
           <>
             <Route path="/dashboard" component={Dashboard} />

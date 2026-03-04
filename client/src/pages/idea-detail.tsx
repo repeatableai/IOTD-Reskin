@@ -47,7 +47,8 @@ import {
   Play,
   MessageSquare,
   RefreshCw,
-  Loader2
+  Loader2,
+  Skull
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -57,6 +58,8 @@ import ICMemoDialog from "@/components/ICMemoDialog";
 import BellMasonDiagnosticDialog from "@/components/BellMasonDiagnosticDialog";
 import FutureCastDialog from "@/components/FutureCastDialog";
 import MarketSizingDialog from "@/components/MarketSizingDialog";
+import PreMortemDialog from "@/components/PreMortemDialog";
+import IcpBuilderDialog from "@/components/IcpBuilderDialog";
 import { PreviewModal } from "@/components/PreviewModal";
 import CommunitySignalDialog from "@/components/CommunitySignalDialog";
 import ClaimButton from "@/components/ClaimButton";
@@ -104,6 +107,8 @@ export default function IdeaDetail() {
   const [showBellMasonDialog, setShowBellMasonDialog] = useState(false);
   const [showFutureCastDialog, setShowFutureCastDialog] = useState(false);
   const [showMarketSizingDialog, setShowMarketSizingDialog] = useState(false);
+  const [showPreMortemDialog, setShowPreMortemDialog] = useState(false);
+  const [showIcpBuilderDialog, setShowIcpBuilderDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const { openPortal } = useCollaborationPortal();
 
@@ -705,6 +710,26 @@ export default function IdeaDetail() {
             >
               <Flame className="w-4 h-4 mr-2" />
               Torpedo
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowPreMortemDialog(true)}
+              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
+              data-testid="button-pre-mortem"
+            >
+              <Skull className="w-4 h-4 mr-2" />
+              Pre-Mortem
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setShowIcpBuilderDialog(true)}
+              className="border-blue-300 text-blue-600 hover:bg-blue-50 hover:text-blue-700 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+              data-testid="button-icp-builder"
+            >
+              <Users className="w-4 h-4 mr-2" />
+              ICP Builder
             </Button>
 
             <Button
@@ -2103,6 +2128,55 @@ export default function IdeaDetail() {
             timingScore: idea.timingScore,
             executionScore: idea.executionScore,
             gtmScore: idea.gtmScore,
+            revenuePotential: idea.revenuePotential,
+          }}
+        />
+      )}
+
+      {/* Pre-Mortem Analysis Dialog */}
+      {idea && (
+        <PreMortemDialog
+          open={showPreMortemDialog}
+          onOpenChange={setShowPreMortemDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            slug: idea.slug,
+            description: idea.description,
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
+            revenueModel: idea.frameworkData?.revenueModel,
+            competitors: idea.frameworkData?.competitors,
+            riskFactors: idea.frameworkData?.riskFactors,
+            tamSamSom: idea.frameworkData?.tamSamSom,
+            regulatoryMentions: idea.frameworkData?.regulatoryMentions,
+            executionComplexity: idea.frameworkData?.executionComplexity,
+            financialProjections: idea.frameworkData?.financialProjections,
+            marketGap: idea.marketGap,
+            whyNowAnalysis: idea.whyNowAnalysis,
+            frameworkData: idea.frameworkData,
+          }}
+        />
+      )}
+
+      {/* ICP Builder Dialog */}
+      {idea && (
+        <IcpBuilderDialog
+          open={showIcpBuilderDialog}
+          onOpenChange={setShowIcpBuilderDialog}
+          idea={{
+            id: idea.id,
+            title: idea.title,
+            slug: idea.slug,
+            description: idea.description,
+            content: idea.content,
+            market: idea.market,
+            type: idea.type,
+            targetAudience: idea.targetAudience,
+            mainCompetitor: idea.mainCompetitor,
             revenuePotential: idea.revenuePotential,
           }}
         />

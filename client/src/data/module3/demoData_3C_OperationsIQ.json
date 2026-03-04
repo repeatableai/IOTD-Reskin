@@ -1,0 +1,189 @@
+{
+  "companyProfile": {
+    "name": "OperationsIQ",
+    "description": "AI-powered operations management platform for mid-market manufacturers",
+    "industry": "saas",
+    "fundingStage": "series_b",
+    "founded": 2021,
+    "headquarters": "Austin, TX",
+    "employees": 85
+  },
+  "currentFinancials": {
+    "valuation": 42000000,
+    "annualRevenue": 5200000,
+    "monthlyRevenue": 433333,
+    "ebitdaMargin": 0.12,
+    "revenueMultiple": 8.1,
+    "headcount": 85,
+    "burnRate": 450000,
+    "runway": 18
+  },
+  "aiContext": {
+    "adoptionStatus": "early",
+    "adoptionStatusDescription": "Basic AI features in roadmap; no production deployment yet",
+    "competitorThreatLevel": "high",
+    "competitorThreatDescription": "3+ well-funded competitors actively deploying AI features",
+    "currentAIInitiatives": [
+      "Exploring GPT integration for customer support",
+      "Proof of concept for predictive maintenance alerts",
+      "Manual data labeling for future ML models"
+    ],
+    "aiReadinessScore": 34
+  },
+  "moats": {
+    "proprietaryData": true,
+    "proprietaryDataDescription": "5 years of manufacturing operations data across 200+ facilities",
+    "networkEffects": false,
+    "networkEffectsDescription": "Limited network effects in current product",
+    "regulatoryAdvantage": false,
+    "regulatoryAdvantageDescription": "No specific regulatory moats",
+    "brandLoyalty": true,
+    "brandLoyaltyDescription": "Strong NPS (62) and low churn (< 5% annual)",
+    "switchingCosts": true,
+    "switchingCostsDescription": "Deep integrations with ERP systems create stickiness"
+  },
+  "expectedResults": {
+    "conservative": {
+      "aiAdoptedValuation": 54600000,
+      "aiAdoptedChange": 0.30,
+      "competitorFirstValuation": 25200000,
+      "competitorFirstChange": -0.40,
+      "aiAdoptionScore": 34
+    },
+    "base": {
+      "aiAdoptedValuation": 61400000,
+      "aiAdoptedChange": 0.46,
+      "competitorFirstValuation": 28700000,
+      "competitorFirstChange": -0.32,
+      "aiAdoptionScore": 34
+    },
+    "aggressive": {
+      "aiAdoptedValuation": 71400000,
+      "aiAdoptedChange": 0.70,
+      "competitorFirstValuation": 31500000,
+      "competitorFirstChange": -0.25,
+      "aiAdoptionScore": 34
+    }
+  },
+  "marginProjections": {
+    "currentPath": [
+      { "month": 0, "margin": 12 },
+      { "month": 3, "margin": 11 },
+      { "month": 6, "margin": 10 },
+      { "month": 9, "margin": 9 },
+      { "month": 12, "margin": 8 },
+      { "month": 15, "margin": 7 },
+      { "month": 18, "margin": 6 },
+      { "month": 21, "margin": 5 },
+      { "month": 24, "margin": 4 }
+    ],
+    "aiAdopted": [
+      { "month": 0, "margin": 12 },
+      { "month": 3, "margin": 13 },
+      { "month": 6, "margin": 15 },
+      { "month": 9, "margin": 18 },
+      { "month": 12, "margin": 21 },
+      { "month": 15, "margin": 24 },
+      { "month": 18, "margin": 26 },
+      { "month": 21, "margin": 28 },
+      { "month": 24, "margin": 30 }
+    ],
+    "competitorFirst": [
+      { "month": 0, "margin": 12 },
+      { "month": 3, "margin": 10 },
+      { "month": 6, "margin": 7 },
+      { "month": 9, "margin": 4 },
+      { "month": 12, "margin": 1 },
+      { "month": 15, "margin": -2 },
+      { "month": 18, "margin": -4 },
+      { "month": 21, "margin": -6 },
+      { "month": 24, "margin": -8 }
+    ]
+  },
+  "adoptionScoreBreakdown": {
+    "overall": 34,
+    "components": {
+      "currentDeployment": { "score": 15, "max": 30, "label": "Current AI Deployment" },
+      "dataReadiness": { "score": 22, "max": 25, "label": "Data Infrastructure Readiness" },
+      "teamCapability": { "score": 8, "max": 20, "label": "Team AI Capability" },
+      "competitivePosition": { "score": 5, "max": 15, "label": "Competitive AI Position" },
+      "executionRisk": { "score": 6, "max": 10, "label": "Execution Risk Mitigation" }
+    }
+  },
+  "recommendedActions": [
+    {
+      "priority": 1,
+      "action": "Accelerate AI feature deployment",
+      "description": "Move from POC to production deployment within 90 days to prevent further competitive erosion",
+      "impact": "high",
+      "effort": "high"
+    },
+    {
+      "priority": 2,
+      "action": "Hire AI/ML engineering talent",
+      "description": "Add 2-3 ML engineers to build proprietary models on your unique dataset",
+      "impact": "high",
+      "effort": "medium"
+    },
+    {
+      "priority": 3,
+      "action": "Monetize data advantage",
+      "description": "Your 5 years of manufacturing data is a moat—build AI features that leverage this unique asset",
+      "impact": "medium",
+      "effort": "medium"
+    }
+  ],
+  "methodology": {
+    "baseValuationFormula": "Revenue × Revenue Multiple",
+    "steps": [
+      {
+        "step": 1,
+        "name": "Base Valuation",
+        "inputUsed": "$5.2M ARR × 8.1x multiple",
+        "formula": "Revenue × Multiple",
+        "result": "$42.1M",
+        "source": "Company financials"
+      },
+      {
+        "step": 2,
+        "name": "AI Adoption Adjustment",
+        "inputUsed": "Early adoption status",
+        "formula": "Base × (1 + adoption_factor)",
+        "result": "+30% to +70% potential",
+        "source": "Damodaran AI adjustment framework"
+      },
+      {
+        "step": 3,
+        "name": "Competitive Threat Haircut",
+        "inputUsed": "High threat level",
+        "formula": "Base × (1 - threat_factor)",
+        "result": "-25% to -40% risk",
+        "source": "Competitive analysis"
+      },
+      {
+        "step": 4,
+        "name": "Moat Durability Factor",
+        "inputUsed": "3 of 5 moats present",
+        "formula": "Adjustment × moat_multiplier",
+        "result": "0.85x multiplier",
+        "source": "Moat assessment"
+      },
+      {
+        "step": 5,
+        "name": "Margin Trajectory",
+        "inputUsed": "12% current EBITDA",
+        "formula": "NPV of projected margins",
+        "result": "Scenario-dependent",
+        "source": "Financial projections"
+      },
+      {
+        "step": 6,
+        "name": "Final Scenario Valuations",
+        "inputUsed": "All factors combined",
+        "formula": "Weighted scenario analysis",
+        "result": "$28.7M - $61.4M range",
+        "source": "Combined analysis"
+      }
+    ]
+  }
+}

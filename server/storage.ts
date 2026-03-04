@@ -14,6 +14,9 @@ import {
   toolsLibrary,
   userToolFavorites,
   importJobs,
+  icpProfiles,
+  validationContacts,
+  validationScripts,
   type User,
   type UpsertUser,
   type Idea,
@@ -32,6 +35,12 @@ import {
   type UserIdeaInteraction,
   type ImportJob,
   type InsertImportJob,
+  type IcpProfileRecord,
+  type InsertIcpProfile,
+  type ValidationContactRecord,
+  type InsertValidationContact,
+  type ValidationScriptRecord,
+  type InsertValidationScript,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, or, ilike, desc, asc, sql, inArray } from "drizzle-orm";
@@ -120,6 +129,25 @@ export interface IStorage {
   
   // Slug checking - check if ANY idea (published or unpublished) has this slug
   slugExists(slug: string): Promise<boolean>;
+
+  // ICP Builder - ICP Profiles
+  createIcpProfile(profile: InsertIcpProfile): Promise<IcpProfileRecord>;
+  getIcpProfilesForIdea(ideaId: string, userId: string): Promise<IcpProfileRecord[]>;
+  getIcpProfileById(id: string): Promise<IcpProfileRecord | undefined>;
+  deleteIcpProfile(id: string): Promise<void>;
+
+  // ICP Builder - Validation Contacts
+  createValidationContact(contact: InsertValidationContact): Promise<ValidationContactRecord>;
+  getValidationContacts(ideaId: string, userId: string, filters?: { icpProfileId?: string; validationStatus?: string }): Promise<ValidationContactRecord[]>;
+  getValidationContactById(id: string): Promise<ValidationContactRecord | undefined>;
+  updateValidationContact(id: string, updates: Partial<InsertValidationContact>): Promise<ValidationContactRecord>;
+  deleteValidationContact(id: string): Promise<void>;
+
+  // ICP Builder - Validation Scripts
+  createValidationScript(script: InsertValidationScript): Promise<ValidationScriptRecord>;
+  getValidationScripts(ideaId: string, userId: string, icpProfileId?: string): Promise<ValidationScriptRecord[]>;
+  getValidationScriptById(id: string): Promise<ValidationScriptRecord | undefined>;
+  deleteValidationScript(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1128,6 +1156,116 @@ export class DatabaseStorage implements IStorage {
       .where(eq(ideas.slug, slug))
       .limit(1);
     return !!idea;
+  }
+
+  // ─── ICP Builder - ICP Profiles ────────────────────────────────────────────────
+
+  async createIcpProfile(profile: InsertIcpProfile): Promise<IcpProfileRecord> {
+    const [newProfile] = await db.insert(icpProfiles).values(profile).returning();
+    return newProfile;
+  }
+
+  async getIcpProfilesForIdea(ideaId: string, userId: string): Promise<IcpProfileRecord[]> {
+    return await db
+      .select()
+      .from(icpProfiles)
+      .where(and(
+        eq(icpProfiles.ideaId, ideaId),
+        eq(icpProfiles.userId, userId)
+      ))
+      .orderBy(desc(icpProfiles.createdAt));
+  }
+
+  async getIcpProfileById(id: string): Promise<IcpProfileRecord | undefined> {
+    const [profile] = await db.select().from(icpProfiles).where(eq(icpProfiles.id, id));
+    return profile;
+  }
+
+  async deleteIcpProfile(id: string): Promise<void> {
+    await db.delete(icpProfiles).where(eq(icpProfiles.id, id));
+  }
+
+  // ─── ICP Builder - Validation Contacts ─────────────────────────────────────────
+
+  async createValidationContact(contact: InsertValidationContact): Promise<ValidationContactRecord> {
+    const [newContact] = await db.insert(validationContacts).values(contact).returning();
+    return newContact;
+  }
+
+  async getValidationContacts(
+    ideaId: string,
+    userId: string,
+    filters?: { icpProfileId?: string; validationStatus?: string }
+  ): Promise<ValidationContactRecord[]> {
+    const conditions = [
+      eq(validationContacts.ideaId, ideaId),
+      eq(validationContacts.userId, userId)
+    ];
+
+    if (filters?.icpProfileId) {
+      conditions.push(eq(validationContacts.icpProfileId, filters.icpProfileId));
+    }
+
+    if (filters?.validationStatus) {
+      conditions.push(eq(validationContacts.validationStatus, filters.validationStatus));
+    }
+
+    return await db
+      .select()
+      .from(validationContacts)
+      .where(and(...conditions))
+      .orderBy(desc(validationContacts.createdAt));
+  }
+
+  async getValidationContactById(id: string): Promise<ValidationContactRecord | undefined> {
+    const [contact] = await db.select().from(validationContacts).where(eq(validationContacts.id, id));
+    return contact;
+  }
+
+  async updateValidationContact(id: string, updates: Partial<InsertValidationContact>): Promise<ValidationContactRecord> {
+    const [updated] = await db
+      .update(validationContacts)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(validationContacts.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteValidationContact(id: string): Promise<void> {
+    await db.delete(validationContacts).where(eq(validationContacts.id, id));
+  }
+
+  // ─── ICP Builder - Validation Scripts ──────────────────────────────────────────
+
+  async createValidationScript(script: InsertValidationScript): Promise<ValidationScriptRecord> {
+    const [newScript] = await db.insert(validationScripts).values(script).returning();
+    return newScript;
+  }
+
+  async getValidationScripts(ideaId: string, userId: string, icpProfileId?: string): Promise<ValidationScriptRecord[]> {
+    const conditions = [
+      eq(validationScripts.ideaId, ideaId),
+      eq(validationScripts.userId, userId)
+    ];
+
+    if (icpProfileId) {
+      conditions.push(eq(validationScripts.icpProfileId, icpProfileId));
+    }
+
+    return await db
+      .select()
+      .from(validationScripts)
+      .where(and(...conditions))
+      .orderBy(desc(validationScripts.createdAt));
+  }
+
+  async getValidationScriptById(id: string): Promise<ValidationScriptRecord | undefined> {
+    const [script] = await db.select().from(validationScripts).where(eq(validationScripts.id, id));
+    return script;
+  }
+
+  async deleteValidationScript(id: string): Promise<void> {
+    await db.delete(validationScripts).where(eq(validationScripts.id, id));
   }
 }
 

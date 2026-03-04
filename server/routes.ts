@@ -4697,6 +4697,724 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
+  // Pre-Mortem Engine - Deep venture failure analysis with OA framework integration
+  app.post('/api/ai/pre-mortem', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      // Import the pre-mortem service dynamically to avoid circular deps
+      const { generatePreMortem } = await import('./preMortemService');
+
+      // Validate request body
+      const preMortemSchema = z.object({
+        ideaId: z.string().min(1),
+        ventureName: z.string().min(1),
+        ventureSlug: z.string().min(1),
+        description: z.string().optional(),
+        content: z.string().optional(),
+        market: z.string().optional(),
+        type: z.string().optional(),
+        targetAudience: z.string().optional(),
+        mainCompetitor: z.string().optional(),
+        revenueModel: z.string().optional(),
+        competitors: z.array(z.string()).optional(),
+        riskFactors: z.array(z.string()).optional(),
+        tamSamSom: z.object({
+          tam: z.string().optional(),
+          sam: z.string().optional(),
+          som: z.string().optional(),
+        }).optional(),
+        regulatoryMentions: z.array(z.string()).optional(),
+        executionComplexity: z.enum(['simple', 'moderate', 'complex']).optional(),
+        financialProjections: z.string().optional(),
+        marketGap: z.string().optional(),
+        whyNowAnalysis: z.string().optional(),
+        frameworkData: z.any().optional(),
+      });
+
+      const params = preMortemSchema.parse(req.body);
+
+      console.log(`[PreMortem] User ${userId} analyzing: ${params.ventureName}`);
+
+      // Fetch venture context for OA framework enrichment
+      let ventureContext = null;
+      try {
+        ventureContext = await assembleVentureContext(params.ideaId);
+        console.log(`[PreMortem] Assembled venture context with ${ventureContext.completenessScore}% completeness`);
+      } catch (contextError) {
+        console.warn('[PreMortem] Could not assemble venture context:', contextError);
+        // Continue without context - it's optional enrichment
+      }
+
+      // Enrich params with venture context data
+      const enrichedParams = {
+        ...params,
+        // Override with venture context if available
+        description: params.description || ventureContext?.description,
+        market: params.market || ventureContext?.sector,
+        targetAudience: params.targetAudience || ventureContext?.targetAudience,
+        mainCompetitor: params.mainCompetitor || ventureContext?.mainCompetitor,
+        marketGap: params.marketGap || ventureContext?.marketGap,
+        // Add scores from venture context
+        scores: ventureContext?.scores,
+        // Add prior analyses for cross-tool enrichment
+        priorAnalyses: ventureContext?.priorAnalyses,
+        // Pass completeness score
+        oaCompletenessScore: ventureContext?.completenessScore,
+      };
+
+      // Generate pre-mortem analysis
+      const result = await generatePreMortem(enrichedParams);
+
+      // Include venture context summary in response
+      res.json({
+        ...result,
+        ventureContext: ventureContext ? {
+          completenessScore: ventureContext.completenessScore,
+          stage: ventureContext.stage,
+          priorAnalysesAvailable: Object.keys(ventureContext.priorAnalyses).filter(
+            k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+          ),
+        } : null,
+      });
+    } catch (error) {
+      console.error("[PreMortem] Error:", error);
+      logErrorToFile(error, 'Pre-Mortem Engine');
+      res.status(500).json({
+        message: "Failed to generate pre-mortem analysis",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Pre-Mortem Check - Data completeness check using OA framework
+  app.post('/api/ai/pre-mortem/check', isAuthenticated, async (req: any, res) => {
+    try {
+      const { canGeneratePreMortem } = await import('./preMortemService');
+
+      // Validate request body
+      const preMortemSchema = z.object({
+        ideaId: z.string().min(1),
+        ventureName: z.string().min(1),
+        ventureSlug: z.string().min(1),
+        description: z.string().optional(),
+        content: z.string().optional(),
+        market: z.string().optional(),
+        type: z.string().optional(),
+        targetAudience: z.string().optional(),
+        mainCompetitor: z.string().optional(),
+        revenueModel: z.string().optional(),
+        competitors: z.array(z.string()).optional(),
+        riskFactors: z.array(z.string()).optional(),
+        tamSamSom: z.object({
+          tam: z.string().optional(),
+          sam: z.string().optional(),
+          som: z.string().optional(),
+        }).optional(),
+        regulatoryMentions: z.array(z.string()).optional(),
+        executionComplexity: z.enum(['simple', 'moderate', 'complex']).optional(),
+        financialProjections: z.string().optional(),
+        marketGap: z.string().optional(),
+        whyNowAnalysis: z.string().optional(),
+        frameworkData: z.any().optional(),
+      });
+
+      const params = preMortemSchema.parse(req.body);
+
+      // Also fetch venture context for OA-based completeness
+      let ventureContext = null;
+      try {
+        ventureContext = await assembleVentureContext(params.ideaId);
+      } catch (contextError) {
+        console.warn('[PreMortem Check] Could not assemble venture context:', contextError);
+      }
+
+      // Enrich params with venture context
+      const enrichedParams = {
+        ...params,
+        description: params.description || ventureContext?.description,
+        market: params.market || ventureContext?.sector,
+        targetAudience: params.targetAudience || ventureContext?.targetAudience,
+        mainCompetitor: params.mainCompetitor || ventureContext?.mainCompetitor,
+        marketGap: params.marketGap || ventureContext?.marketGap,
+        scores: ventureContext?.scores,
+        priorAnalyses: ventureContext?.priorAnalyses,
+        oaCompletenessScore: ventureContext?.completenessScore,
+      };
+
+      // Check completeness using enriched data
+      const result = canGeneratePreMortem(enrichedParams);
+
+      // Return with OA framework completeness info
+      res.json({
+        ...result,
+        oaCompletenessScore: ventureContext?.completenessScore || null,
+        ventureStage: ventureContext?.stage || null,
+        priorAnalysesAvailable: ventureContext ? Object.keys(ventureContext.priorAnalyses).filter(
+          k => ventureContext.priorAnalyses[k as keyof typeof ventureContext.priorAnalyses] !== undefined
+        ) : [],
+      });
+    } catch (error) {
+      console.error("[PreMortem Check] Error:", error);
+      res.status(500).json({
+        message: "Failed to check pre-mortem data completeness",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // ─── ICP Builder Routes ────────────────────────────────────────────────────────
+
+  // Generate ICP Profiles
+  app.post('/api/ai/icp-builder/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const { generateIcpProfiles } = await import('./icpBuilderService');
+
+      const icpSchema = z.object({
+        ideaId: z.string().min(1),
+        title: z.string().min(1),
+        description: z.string().min(1),
+        content: z.string().optional(),
+        market: z.string().optional(),
+        type: z.string().optional(),
+        targetAudience: z.string().optional(),
+        mainCompetitor: z.string().optional(),
+        revenuePotential: z.string().optional(),
+        maxProfiles: z.number().min(1).max(3).optional(),
+      });
+
+      const params = icpSchema.parse(req.body);
+
+      console.log(`[IcpBuilder] User ${userId} generating ICPs for: ${params.title}`);
+
+      const result = await generateIcpProfiles(params, userId);
+
+      // Save profiles to database
+      for (const profile of result.profiles) {
+        await storage.createIcpProfile({
+          ideaId: params.ideaId,
+          userId: userId,
+          name: profile.name,
+          description: profile.description,
+          profileData: {
+            demographics: profile.demographics,
+            psychographics: profile.psychographics,
+            buyingBehavior: profile.buyingBehavior,
+          },
+          validationPriority: profile.validationPriority,
+          confidence: profile.confidence,
+        });
+      }
+
+      res.json(result);
+    } catch (error) {
+      console.error("[IcpBuilder] Generate error:", error);
+      logErrorToFile(error, 'ICP Builder Generate');
+      res.status(500).json({
+        message: "Failed to generate ICP profiles",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get ICP Profiles for an idea
+  app.get('/api/ideas/:ideaId/icp-profiles', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+
+      const profiles = await storage.getIcpProfilesForIdea(ideaId, userId);
+
+      // Transform to include parsed profile data
+      const transformedProfiles = profiles.map(profile => ({
+        id: profile.id,
+        ideaId: profile.ideaId,
+        userId: profile.userId,
+        name: profile.name,
+        description: profile.description,
+        demographics: (profile.profileData as any)?.demographics,
+        psychographics: (profile.profileData as any)?.psychographics,
+        buyingBehavior: (profile.profileData as any)?.buyingBehavior,
+        validationPriority: profile.validationPriority,
+        confidence: profile.confidence,
+        createdAt: profile.createdAt,
+      }));
+
+      res.json(transformedProfiles);
+    } catch (error) {
+      console.error("[IcpBuilder] Get profiles error:", error);
+      res.status(500).json({
+        message: "Failed to get ICP profiles",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Generate Validation Script
+  app.post('/api/ai/icp-builder/script', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const { generateValidationScript } = await import('./icpBuilderService');
+
+      const scriptSchema = z.object({
+        ideaId: z.string().min(1),
+        icpProfileId: z.string().min(1),
+        icpProfile: z.object({
+          id: z.string(),
+          name: z.string(),
+          description: z.string(),
+          demographics: z.object({
+            companySize: z.string(),
+            industry: z.array(z.string()),
+            geography: z.array(z.string()),
+            revenue: z.string(),
+          }),
+          psychographics: z.object({
+            painPoints: z.array(z.string()),
+            goals: z.array(z.string()),
+            objections: z.array(z.string()),
+          }),
+          buyingBehavior: z.object({
+            decisionMakers: z.array(z.string()),
+            budget: z.string(),
+            buyingCycle: z.string(),
+            channels: z.array(z.string()),
+          }),
+        }),
+        ideaTitle: z.string().min(1),
+        ideaDescription: z.string().min(1),
+        scriptType: z.enum(['discovery', 'validation', 'follow_up']),
+      });
+
+      const params = scriptSchema.parse(req.body);
+
+      console.log(`[IcpBuilder] User ${userId} generating ${params.scriptType} script`);
+
+      const result = await generateValidationScript(params as any, userId);
+
+      // Save script to database
+      await storage.createValidationScript({
+        ideaId: params.ideaId,
+        userId: userId,
+        icpProfileId: params.icpProfileId,
+        title: result.script.title,
+        scriptType: params.scriptType,
+        objective: result.script.objective,
+        totalDuration: result.script.totalDuration,
+        scriptData: {
+          sections: result.script.sections,
+          branches: result.script.branches,
+          keyQuestions: result.script.keyQuestions,
+          hypothesesToValidate: result.script.hypothesesToValidate,
+          closingTechniques: result.script.closingTechniques,
+        },
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("[IcpBuilder] Script generation error:", error);
+      logErrorToFile(error, 'ICP Builder Script');
+      res.status(500).json({
+        message: "Failed to generate validation script",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get Validation Scripts for an idea
+  app.get('/api/ideas/:ideaId/scripts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+      const { icpProfileId } = req.query;
+
+      const scripts = await storage.getValidationScripts(ideaId, userId, icpProfileId as string);
+
+      // Transform to include parsed script data
+      const transformedScripts = scripts.map(script => ({
+        id: script.id,
+        ideaId: script.ideaId,
+        userId: script.userId,
+        icpProfileId: script.icpProfileId,
+        title: script.title,
+        scriptType: script.scriptType,
+        objective: script.objective,
+        totalDuration: script.totalDuration,
+        sections: (script.scriptData as any)?.sections,
+        branches: (script.scriptData as any)?.branches,
+        keyQuestions: (script.scriptData as any)?.keyQuestions,
+        hypothesesToValidate: (script.scriptData as any)?.hypothesesToValidate,
+        closingTechniques: (script.scriptData as any)?.closingTechniques,
+        createdAt: script.createdAt,
+      }));
+
+      res.json(transformedScripts);
+    } catch (error) {
+      console.error("[IcpBuilder] Get scripts error:", error);
+      res.status(500).json({
+        message: "Failed to get validation scripts",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Create Validation Contact (manual entry)
+  app.post('/api/ideas/:ideaId/contacts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+
+      const { checkCompliance } = await import('./complianceService');
+
+      const contactSchema = z.object({
+        icpProfileId: z.string().optional(),
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        email: z.string().email().optional().or(z.literal('')),
+        phone: z.string().optional(),
+        linkedInUrl: z.string().url().optional().or(z.literal('')),
+        jobTitle: z.string().min(1),
+        company: z.string().min(1),
+        companySize: z.string().optional(),
+        industry: z.string().optional(),
+        region: z.string().min(1),
+        notes: z.string().optional(),
+      });
+
+      const params = contactSchema.parse(req.body);
+
+      // Check compliance based on region
+      const complianceResult = checkCompliance({
+        region: params.region,
+        email: params.email || undefined,
+        phone: params.phone || undefined,
+      });
+
+      const contact = await storage.createValidationContact({
+        ideaId,
+        userId,
+        icpProfileId: params.icpProfileId || null,
+        firstName: params.firstName,
+        lastName: params.lastName,
+        email: params.email || null,
+        phone: params.phone || null,
+        linkedInUrl: params.linkedInUrl || null,
+        jobTitle: params.jobTitle,
+        company: params.company,
+        companySize: params.companySize || null,
+        industry: params.industry || null,
+        region: params.region,
+        complianceFlags: complianceResult.flags,
+        consentStatus: 'unknown',
+        source: 'manual',
+        validationStatus: 'pending',
+        notes: params.notes || null,
+      });
+
+      res.json({
+        contact,
+        compliance: complianceResult,
+      });
+    } catch (error) {
+      console.error("[IcpBuilder] Create contact error:", error);
+      res.status(500).json({
+        message: "Failed to create validation contact",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Get Validation Contacts
+  app.get('/api/ideas/:ideaId/contacts', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+      const { icpProfileId, validationStatus } = req.query;
+
+      const contacts = await storage.getValidationContacts(ideaId, userId, {
+        icpProfileId: icpProfileId as string,
+        validationStatus: validationStatus as string,
+      });
+
+      res.json(contacts);
+    } catch (error) {
+      console.error("[IcpBuilder] Get contacts error:", error);
+      res.status(500).json({
+        message: "Failed to get validation contacts",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Update Validation Contact
+  app.patch('/api/ideas/:ideaId/contacts/:contactId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { contactId } = req.params;
+
+      const { checkCompliance } = await import('./complianceService');
+
+      // Verify ownership
+      const existing = await storage.getValidationContactById(contactId);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      const updateSchema = z.object({
+        icpProfileId: z.string().optional().nullable(),
+        firstName: z.string().min(1).optional(),
+        lastName: z.string().min(1).optional(),
+        email: z.string().email().optional().nullable(),
+        phone: z.string().optional().nullable(),
+        linkedInUrl: z.string().url().optional().nullable(),
+        jobTitle: z.string().min(1).optional(),
+        company: z.string().min(1).optional(),
+        companySize: z.string().optional().nullable(),
+        industry: z.string().optional().nullable(),
+        region: z.string().min(1).optional(),
+        consentStatus: z.enum(['unknown', 'pending', 'granted', 'denied']).optional(),
+        validationStatus: z.enum(['pending', 'contacted', 'responded', 'completed']).optional(),
+        notes: z.string().optional().nullable(),
+      });
+
+      const params = updateSchema.parse(req.body);
+
+      // Recheck compliance if region changed
+      let complianceFlags = existing.complianceFlags;
+      if (params.region && params.region !== existing.region) {
+        const complianceResult = checkCompliance({
+          region: params.region,
+          email: params.email ?? existing.email ?? undefined,
+          phone: params.phone ?? existing.phone ?? undefined,
+        });
+        complianceFlags = complianceResult.flags;
+      }
+
+      const updated = await storage.updateValidationContact(contactId, {
+        ...params,
+        complianceFlags,
+      });
+
+      res.json(updated);
+    } catch (error) {
+      console.error("[IcpBuilder] Update contact error:", error);
+      res.status(500).json({
+        message: "Failed to update validation contact",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Delete Validation Contact
+  app.delete('/api/ideas/:ideaId/contacts/:contactId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { contactId } = req.params;
+
+      // Verify ownership
+      const existing = await storage.getValidationContactById(contactId);
+      if (!existing || existing.userId !== userId) {
+        return res.status(404).json({ message: "Contact not found" });
+      }
+
+      await storage.deleteValidationContact(contactId);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[IcpBuilder] Delete contact error:", error);
+      res.status(500).json({
+        message: "Failed to delete validation contact",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Search for Contacts using AI Web Search
+  app.post('/api/ideas/:ideaId/contacts/search', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+
+      const { contactDiscoveryRegistry } = await import('./contactDiscoveryService');
+      const { checkCompliance } = await import('./complianceService');
+
+      const searchSchema = z.object({
+        icpProfileId: z.string().optional(),
+        icpProfile: z.object({
+          name: z.string(),
+          description: z.string(),
+          demographics: z.object({
+            companySize: z.string(),
+            industry: z.array(z.string()),
+            geography: z.array(z.string()),
+            revenue: z.string(),
+          }),
+          psychographics: z.object({
+            painPoints: z.array(z.string()),
+            goals: z.array(z.string()),
+            objections: z.array(z.string()),
+          }),
+          buyingBehavior: z.object({
+            decisionMakers: z.array(z.string()),
+            budget: z.string(),
+            buyingCycle: z.string(),
+            channels: z.array(z.string()),
+          }),
+        }).optional(),
+        jobTitles: z.array(z.string()).optional(),
+        industries: z.array(z.string()).optional(),
+        locations: z.array(z.string()).optional(),
+        limit: z.number().min(1).max(50).optional(),
+        adapter: z.enum(['web_search', 'web_scrape']).optional(),
+      });
+
+      const params = searchSchema.parse(req.body);
+
+      // Default to web_search (Anthropic AI) since scraping is blocked by anti-bot protections
+      const adapterName = params.adapter || 'web_search';
+      console.log(`[IcpBuilder] User ${userId} searching for contacts using adapter: ${adapterName}`);
+
+      // Use specified adapter (default: web_scrape for full pipeline)
+      const result = await contactDiscoveryRegistry.searchContacts(adapterName, {
+        icpProfile: params.icpProfile as any,
+        jobTitles: params.jobTitles,
+        industries: params.industries,
+        locations: params.locations,
+        limit: params.limit || 10,
+      });
+
+      // Add compliance flags and save contacts
+      const savedContacts = [];
+      for (const contact of result.contacts) {
+        if (!contact.firstName || !contact.lastName || !contact.jobTitle || !contact.company) {
+          continue; // Skip incomplete contacts
+        }
+
+        const complianceResult = checkCompliance({
+          region: contact.region || 'Unknown',
+          email: contact.email,
+          phone: contact.phone,
+        });
+
+        const saved = await storage.createValidationContact({
+          ideaId,
+          userId,
+          icpProfileId: params.icpProfileId || null,
+          firstName: contact.firstName,
+          lastName: contact.lastName,
+          email: contact.email || null,
+          phone: contact.phone || null,
+          linkedInUrl: contact.linkedInUrl || null,
+          jobTitle: contact.jobTitle,
+          company: contact.company,
+          companySize: contact.companySize || null,
+          industry: contact.industry || null,
+          region: contact.region || 'Unknown',
+          complianceFlags: complianceResult.flags,
+          consentStatus: 'unknown',
+          source: adapterName,
+          validationStatus: 'pending',
+          notes: contact.notes || null,
+        });
+
+        savedContacts.push(saved);
+      }
+
+      res.json({
+        contacts: savedContacts,
+        total: savedContacts.length,
+        source: adapterName,
+        metadata: (result as any).metadata, // Include scraping metadata if available
+      });
+    } catch (error) {
+      console.error("[IcpBuilder] Contact search error:", error);
+      res.status(500).json({
+        message: "Failed to search for contacts",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Export Contacts as CSV
+  app.get('/api/ideas/:ideaId/contacts/export', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { ideaId } = req.params;
+      const { includeComplianceFlags, icpProfileId, validationStatus } = req.query;
+
+      const { formatComplianceForExport } = await import('./complianceService');
+
+      const contacts = await storage.getValidationContacts(ideaId, userId, {
+        icpProfileId: icpProfileId as string,
+        validationStatus: validationStatus as string,
+      });
+
+      // Build CSV
+      const includeCompliance = includeComplianceFlags === 'true';
+      const headers = [
+        'First Name',
+        'Last Name',
+        'Email',
+        'Phone',
+        'LinkedIn',
+        'Job Title',
+        'Company',
+        'Company Size',
+        'Industry',
+        'Region',
+        'Status',
+        'Consent',
+        'Notes',
+        ...(includeCompliance ? ['Compliance Types', 'Compliance Severity', 'Compliance Region'] : []),
+      ];
+
+      const rows = contacts.map(contact => {
+        const complianceData = includeCompliance
+          ? formatComplianceForExport(contact.complianceFlags as any)
+          : {};
+
+        return [
+          contact.firstName,
+          contact.lastName,
+          contact.email || '',
+          contact.phone || '',
+          contact.linkedInUrl || '',
+          contact.jobTitle,
+          contact.company,
+          contact.companySize || '',
+          contact.industry || '',
+          contact.region,
+          contact.validationStatus,
+          contact.consentStatus,
+          (contact.notes || '').replace(/"/g, '""'),
+          ...(includeCompliance ? [
+            complianceData.complianceTypes || '',
+            complianceData.complianceSeverity || '',
+            complianceData.complianceRegion || '',
+          ] : []),
+        ];
+      });
+
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${cell}"`).join(',')),
+      ].join('\n');
+
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="contacts-${ideaId}.csv"`);
+      res.send(csv);
+    } catch (error) {
+      console.error("[IcpBuilder] Export contacts error:", error);
+      res.status(500).json({
+        message: "Failed to export contacts",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Bell-Mason Research - Phase 1: Deep web research for venture assessment
   app.post('/api/ai/bell-mason-research', isAuthenticated, async (req: any, res) => {
     try {

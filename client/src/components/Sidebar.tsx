@@ -1,5 +1,6 @@
 import { useLocation, Link } from "wouter";
 import { cn } from "@/lib/utils";
+import { Layers } from "lucide-react";
 
 interface NavItem {
   label: string;
@@ -48,6 +49,17 @@ const navSections: NavSection[] = [
       { label: "Idea Generator", path: "/idea-generator", dotColor: "purple" },
       { label: "Solution Builder", path: "/idea-builder", dotColor: "green" },
       { label: "AI Chat", path: "/ai-chat", dotColor: "blue" },
+    ],
+  },
+  {
+    label: "VC Modules",
+    items: [
+      {
+        label: "Venture OS",
+        path: "/venture-os",
+        dotColor: "gold",
+        icon: <Layers className="w-4 h-4" />,
+      },
     ],
   },
 ];

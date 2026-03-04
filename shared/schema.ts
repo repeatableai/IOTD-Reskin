@@ -535,3 +535,141 @@ export const ideaFiltersSchema = z.object({
 });
 
 export type IdeaFilters = z.infer<typeof ideaFiltersSchema>;
+
+// ─── ICP Builder Tables ────────────────────────────────────────────────────────
+
+// ICP Profiles table - stores generated Ideal Customer Profiles
+export const icpProfiles = pgTable("icp_profiles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  profileData: jsonb("profile_data").notNull(), // IcpDemographics, IcpPsychographics, IcpBuyingBehavior
+  validationPriority: varchar("validation_priority").default('medium'), // high, medium, low
+  confidence: integer("confidence").default(50), // 0-100
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_icp_profiles_idea_id").on(table.ideaId),
+  index("IDX_icp_profiles_user_id").on(table.userId),
+]);
+
+// Validation Contacts table - stores contacts for market validation
+export const validationContacts = pgTable("validation_contacts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  icpProfileId: varchar("icp_profile_id").references(() => icpProfiles.id, { onDelete: 'set null' }),
+  firstName: varchar("first_name").notNull(),
+  lastName: varchar("last_name").notNull(),
+  email: varchar("email"),
+  phone: varchar("phone"),
+  linkedInUrl: varchar("linkedin_url"),
+  jobTitle: varchar("job_title").notNull(),
+  company: varchar("company").notNull(),
+  companySize: varchar("company_size"),
+  industry: varchar("industry"),
+  region: varchar("region").notNull(),
+  complianceFlags: jsonb("compliance_flags").default([]), // ComplianceFlag[]
+  consentStatus: varchar("consent_status").default('unknown'), // unknown, pending, granted, denied
+  matchScore: integer("match_score"), // 0-100
+  source: varchar("source").default('manual'), // manual, custom_api, imported
+  validationStatus: varchar("validation_status").default('pending'), // pending, contacted, responded, completed
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => [
+  index("IDX_validation_contacts_idea_id").on(table.ideaId),
+  index("IDX_validation_contacts_user_id").on(table.userId),
+  index("IDX_validation_contacts_icp_profile_id").on(table.icpProfileId),
+  index("IDX_validation_contacts_status").on(table.validationStatus),
+]);
+
+// Validation Scripts table - stores generated call scripts
+export const validationScripts = pgTable("validation_scripts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ideaId: varchar("idea_id").references(() => ideas.id, { onDelete: 'cascade' }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: 'cascade' }),
+  icpProfileId: varchar("icp_profile_id").references(() => icpProfiles.id, { onDelete: 'set null' }),
+  title: varchar("title").notNull(),
+  scriptType: varchar("script_type").default('discovery'), // discovery, validation, follow_up
+  objective: text("objective"),
+  totalDuration: varchar("total_duration"),
+  scriptData: jsonb("script_data").notNull(), // sections, branches, keyQuestions, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  index("IDX_validation_scripts_idea_id").on(table.ideaId),
+  index("IDX_validation_scripts_user_id").on(table.userId),
+  index("IDX_validation_scripts_icp_profile_id").on(table.icpProfileId),
+]);
+
+// ICP Builder Relations
+export const icpProfilesRelations = relations(icpProfiles, ({ one, many }) => ({
+  idea: one(ideas, {
+    fields: [icpProfiles.ideaId],
+    references: [ideas.id],
+  }),
+  user: one(users, {
+    fields: [icpProfiles.userId],
+    references: [users.id],
+  }),
+  contacts: many(validationContacts),
+  scripts: many(validationScripts),
+}));
+
+export const validationContactsRelations = relations(validationContacts, ({ one }) => ({
+  idea: one(ideas, {
+    fields: [validationContacts.ideaId],
+    references: [ideas.id],
+  }),
+  user: one(users, {
+    fields: [validationContacts.userId],
+    references: [users.id],
+  }),
+  icpProfile: one(icpProfiles, {
+    fields: [validationContacts.icpProfileId],
+    references: [icpProfiles.id],
+  }),
+}));
+
+export const validationScriptsRelations = relations(validationScripts, ({ one }) => ({
+  idea: one(ideas, {
+    fields: [validationScripts.ideaId],
+    references: [ideas.id],
+  }),
+  user: one(users, {
+    fields: [validationScripts.userId],
+    references: [users.id],
+  }),
+  icpProfile: one(icpProfiles, {
+    fields: [validationScripts.icpProfileId],
+    references: [icpProfiles.id],
+  }),
+}));
+
+// ICP Builder Types
+export type InsertIcpProfile = typeof icpProfiles.$inferInsert;
+export type IcpProfileRecord = typeof icpProfiles.$inferSelect;
+
+export type InsertValidationContact = typeof validationContacts.$inferInsert;
+export type ValidationContactRecord = typeof validationContacts.$inferSelect;
+
+export type InsertValidationScript = typeof validationScripts.$inferInsert;
+export type ValidationScriptRecord = typeof validationScripts.$inferSelect;
+
+// ICP Builder Insert Schemas
+export const insertIcpProfileSchema = createInsertSchema(icpProfiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertValidationContactSchema = createInsertSchema(validationContacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertValidationScriptSchema = createInsertSchema(validationScripts).omit({
+  id: true,
+  createdAt: true,
+});
