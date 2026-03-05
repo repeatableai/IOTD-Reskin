@@ -224,7 +224,7 @@ export default function Landing() {
         {/* Primary Module Grid (from IVE Visual Reference v2) */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           <ModuleCard icon="🛡" title="AI Disruption Scanner" description="Score any portfolio company against 5 AI disruption vectors. Helfert moat framework." metric="73" metricLabel="avg. vulnerability" color="rose" status="Live" />
-          <ModuleCard icon="⊕" title="Expert Premortem Destruction" description="Premortem destruction test. 5 expert perspectives at escalating severity. Kill shots and survival paths." metric="5" metricLabel="expert panels" color="purple" status="Live" />
+          <ModuleCard icon="⊕" title="Expert Premortem Deconstruction" description="Premortem destruction test. 5 expert perspectives at escalating severity. Kill shots and survival paths." metric="5" metricLabel="expert panels" color="purple" status="Live" />
           <ModuleCard icon="📄" title="IC Memo Generator" description="Bessemer-quality investment memoranda. 10 sections. Bull/base/bear scenarios." metric="~3,000" metricLabel="words / memo" color="gold" status="Live" />
           <ModuleCard icon="◈" title="Bell-Mason Diagnostic" description="5-phase venture assessment at AI scale. Framework Fusion: Bell-Mason + Bessemer + Sequoia." metric="5" metricLabel="dimensions" color="green" status="Live" />
           <ModuleCard icon="↗" title="Market Sizing Engine" description="TAM/SAM/SOM with Sequoia Market Curve. Bottom-up validation." metric="Sequoia framework" color="amber" status="Building" />
