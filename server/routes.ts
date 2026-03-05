@@ -5024,6 +5024,95 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // AI-NATIVE BUSINESS PLAN BUILDER (Company OS)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Generate AI-First Business Plan
+  app.post('/api/ai/business-plan/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+
+      const { generateBusinessPlan } = await import('./businessPlanService');
+
+      const businessPlanSchema = z.object({
+        name: z.string().min(1, 'Company name is required'),
+        industry: z.string().min(1, 'Industry is required'),
+        stage: z.string().min(1, 'Stage is required'),
+        value: z.string().min(1, 'Value proposition is required'),
+        customer: z.string().optional(),
+        revenue: z.string().optional(),
+        acv: z.string().optional(),
+        headcount: z.string().optional(),
+        aiFte: z.string().optional(),
+        team: z.string().optional(),
+        aiStack: z.string().optional(),
+        aiFunctions: z.string().optional(),
+        humanFunctions: z.string().optional(),
+        geo: z.string().optional(),
+        capital: z.string().optional(),
+        moat: z.string().optional(),
+        context: z.string().optional(),
+        edition: z.enum(['vc', 'enterprise']),
+      });
+
+      const params = businessPlanSchema.parse(req.body);
+
+      console.log(`[BusinessPlan] User ${userId} generating plan for: ${params.name}`);
+
+      const result = await generateBusinessPlan(params, userId);
+
+      res.json(result);
+    } catch (error) {
+      console.error("[BusinessPlan] Generate error:", error);
+      logErrorToFile(error, 'Business Plan Generate');
+      res.status(500).json({
+        message: "Failed to generate business plan",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Generate Master Prompt (copy-paste for any LLM)
+  app.post('/api/ai/business-plan/prompt', isAuthenticated, async (req: any, res) => {
+    try {
+      const { buildMasterPrompt } = await import('./businessPlanService');
+
+      const promptSchema = z.object({
+        name: z.string().optional().default(''),
+        industry: z.string().optional().default(''),
+        stage: z.string().optional().default(''),
+        value: z.string().optional().default(''),
+        customer: z.string().optional(),
+        revenue: z.string().optional(),
+        acv: z.string().optional(),
+        headcount: z.string().optional(),
+        aiFte: z.string().optional(),
+        team: z.string().optional(),
+        aiStack: z.string().optional(),
+        aiFunctions: z.string().optional(),
+        humanFunctions: z.string().optional(),
+        geo: z.string().optional(),
+        capital: z.string().optional(),
+        moat: z.string().optional(),
+        context: z.string().optional(),
+        edition: z.enum(['vc', 'enterprise']).default('vc'),
+      });
+
+      const params = promptSchema.parse(req.body);
+
+      const prompt = buildMasterPrompt(params as any);
+
+      res.json({ prompt });
+    } catch (error) {
+      console.error("[BusinessPlan] Prompt generation error:", error);
+      res.status(500).json({
+        message: "Failed to generate prompt",
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Get Validation Scripts for an idea
   app.get('/api/ideas/:ideaId/scripts', isAuthenticated, async (req: any, res) => {
     try {

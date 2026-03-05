@@ -61,6 +61,7 @@ const Module3Landing = lazy(() => import("@/pages/module3/Module3Landing"));
 const Sub3C_Revaluation = lazy(() => import("@/pages/module3/Sub3C_Revaluation"));
 const Sub3A_BusinessPlan = lazy(() => import("@/pages/module3/Sub3A_BusinessPlan"));
 const Sub3B_Transformation = lazy(() => import("@/pages/module3/Sub3B_Transformation"));
+const Sub3D_RiskMitigation = lazy(() => import("@/pages/module3/Sub3D_RiskMitigation"));
 
 // Loading fallback component
 function PageLoader() {
@@ -133,6 +134,7 @@ function Router() {
         <Route path="/venture-os/revaluation" component={Sub3C_Revaluation} />
         <Route path="/venture-os/business-plan" component={Sub3A_BusinessPlan} />
         <Route path="/venture-os/transformation" component={Sub3B_Transformation} />
+        <Route path="/venture-os/risk-mitigation" component={Sub3D_RiskMitigation} />
         {isAuthenticated && (
           <>
             <Route path="/dashboard" component={Dashboard} />

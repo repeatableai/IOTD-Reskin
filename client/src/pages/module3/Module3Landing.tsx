@@ -1,6 +1,6 @@
 import { Link } from 'wouter';
-import { Sidebar } from '@/components/Sidebar';
-import { Layers, Calculator, FileText, Sparkles, ArrowRight, Users, Building2, Zap } from 'lucide-react';
+import Header from '@/components/Header';
+import { Layers, Calculator, FileText, Sparkles, ArrowRight, Users, Building2, Zap, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ModuleTileProps {
@@ -13,6 +13,8 @@ interface ModuleTileProps {
   icon: React.ReactNode;
   isProminent?: boolean;
   comingSoon?: boolean;
+  externalLink?: string;
+  externalLinkText?: string;
 }
 
 function ModuleTile({
@@ -25,6 +27,8 @@ function ModuleTile({
   icon,
   isProminent = false,
   comingSoon = false,
+  externalLink,
+  externalLinkText,
 }: ModuleTileProps) {
   const content = (
     <div
@@ -80,8 +84,18 @@ function ModuleTile({
           )}
           style={{ color: accentColor }}
         >
-          {comingSoon ? (
-            <span className="text-slate-400">Coming Soon</span>
+          {comingSoon && externalLink ? (
+            <a
+              href={externalLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {externalLinkText || 'External Tool'}
+            </a>
+          ) : comingSoon ? (
+            <span className="text-slate-400">Repeatable AI Implementation</span>
           ) : (
             <>
               Open Module
@@ -102,10 +116,9 @@ function ModuleTile({
 
 export default function Module3Landing() {
   return (
-    <div className="flex min-h-screen bg-[#FAFAFA]">
-      <Sidebar />
-      <main className="flex-1 ml-[252px]">
-        <div className="max-w-6xl mx-auto px-8 py-10">
+    <div className="min-h-screen bg-[#FAFAFA]">
+      <Header />
+      <main className="max-w-6xl mx-auto px-8 py-10">
           {/* Header */}
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
@@ -132,7 +145,7 @@ export default function Module3Landing() {
           </div>
 
           {/* Module Tiles */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Portfolio Re-Valuation Engine - Prominent */}
             <ModuleTile
               title="Portfolio Re-Valuation Engine"
@@ -145,40 +158,55 @@ export default function Module3Landing() {
               isProminent={true}
             />
 
+            {/* AI Economy OS */}
+            <ModuleTile
+              title="AI Economy OS"
+              description="Design the first AI-first company architecture before spending a dollar. Define every deliverable and prove capital efficiency before hiring."
+              href="/venture-os/risk-mitigation"
+              accentColor="#7C3AED"
+              badge="NEW"
+              badgeColor="#7C3AED"
+              icon={<ShieldCheck className="w-6 h-6" />}
+              isProminent={true}
+            />
+
             {/* AI-Native Business Plan Builder */}
             <ModuleTile
               title="AI-Native Business Plan Builder"
               description="Generate comprehensive, AI-first business plans that satisfy LP due diligence requirements while showcasing modern operational thinking."
               href="/venture-os/business-plan"
               accentColor="#059669"
-              badge="Build Sprint 2"
+              badge="NEW"
               badgeColor="#059669"
               icon={<FileText className="w-6 h-6" />}
-              comingSoon={true}
+              isProminent={true}
             />
 
-            {/* AI Transformation Blueprint */}
+            {/* Portfolio Companies: Risk Mitigation */}
             <ModuleTile
-              title="AI Transformation Blueprint"
-              description="Create detailed transformation roadmaps for portfolio companies. Identify AI integration opportunities and build implementation timelines."
+              title="Portfolio Companies: Risk Mitigation"
+              description="Create detailed risk mitigation roadmaps for portfolio companies. Identify AI integration opportunities and build implementation timelines."
               href="/venture-os/transformation"
               accentColor="#3B82F6"
               badge="Build Sprint 3"
               badgeColor="#3B82F6"
               icon={<Zap className="w-6 h-6" />}
               comingSoon={true}
+              externalLink="https://delta-valuation-engine.lovable.app/"
+              externalLinkText="Risk Assessment Tool"
             />
           </div>
 
           {/* Quick Stats */}
           <div className="mt-10 grid grid-cols-3 gap-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <div className="flex items-center gap-3 mb-2">
-                <Users className="w-5 h-5 text-slate-400" />
-                <span className="text-sm font-medium text-slate-600">Target Users</span>
-              </div>
-              <p className="text-slate-900 font-semibold">VC Partners & Portfolio Teams</p>
-            </div>
+            <a
+              href="https://roi-pro.base44.app/Dashboard"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white rounded-xl border border-slate-200 p-5 block hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer"
+            >
+              <p className="text-slate-900 font-semibold">AI ROI Assessment</p>
+            </a>
             <div className="bg-white rounded-xl border border-slate-200 p-5">
               <div className="flex items-center gap-3 mb-2">
                 <Building2 className="w-5 h-5 text-slate-400" />
@@ -201,7 +229,6 @@ export default function Module3Landing() {
               Part of the Intelligent Venture Engine (IVE) — AI-powered tools for modern venture capital
             </p>
           </div>
-        </div>
       </main>
     </div>
   );

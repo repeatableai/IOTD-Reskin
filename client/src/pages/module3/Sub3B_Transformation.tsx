@@ -1,13 +1,12 @@
 import { Link } from 'wouter';
-import { Sidebar } from '@/components/Sidebar';
+import Header from '@/components/Header';
 import { ArrowLeft, Zap, Clock } from 'lucide-react';
 
 export default function Sub3B_Transformation() {
   return (
-    <div className="flex min-h-screen bg-[#FAFAFA]">
-      <Sidebar />
-      <main className="flex-1 ml-[252px]">
-        <div className="max-w-4xl mx-auto px-8 py-8">
+    <div className="min-h-screen bg-[#FAFAFA]">
+      <Header />
+      <main className="max-w-4xl mx-auto px-8 py-8">
           {/* Header */}
           <div className="mb-8">
             <Link
@@ -88,7 +87,6 @@ export default function Sub3B_Transformation() {
               </Link>
             </div>
           </div>
-        </div>
       </main>
     </div>
   );
