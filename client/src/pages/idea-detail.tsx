@@ -736,6 +736,10 @@ export default function IdeaDetail() {
             <Link
               href={`/venture-os/risk-mitigation?ideaId=${idea.id}`}
               onClick={() => {
+                // Store return URL so Company OS can navigate back to this venture
+                localStorage.setItem('companyOS_returnUrl', `/ideas/${idea.slug}`);
+                localStorage.setItem('companyOS_returnLabel', idea.title);
+
                 // Store comprehensive venture context for Company OS pre-fill
                 // Extracts all available OA framework data for maximum pre-fill
                 localStorage.setItem('companyOS_venture', JSON.stringify({
