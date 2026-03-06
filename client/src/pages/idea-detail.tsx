@@ -736,21 +736,46 @@ export default function IdeaDetail() {
             <Link
               href={`/venture-os/risk-mitigation?ideaId=${idea.id}`}
               onClick={() => {
-                // Store venture context for the Company OS page
+                // Store comprehensive venture context for Company OS pre-fill
+                // Extracts all available OA framework data for maximum pre-fill
                 localStorage.setItem('companyOS_venture', JSON.stringify({
                   id: idea.id,
                   name: idea.title,
                   industry: idea.market || idea.category || '',
-                  stage: idea.type || '',
+                  businessType: idea.type || '', // SaaS, marketplace, mobile_app, etc.
                   value: idea.description || '',
                   customer: idea.targetAudience || '',
                   content: idea.content || '',
+
+                  // Revenue & Business metrics
+                  revenuePotential: idea.revenuePotential || '',
+                  mainCompetitor: idea.mainCompetitor || '',
+                  executionDifficulty: idea.executionDifficulty || '',
+                  gtmStrength: idea.gtmStrength || '',
+
+                  // Framework data (rich structured data)
+                  frameworkData: idea.frameworkData || null,
+                  // - marketMatrix: marketSize, painLevel, targetingEase, purchasingPower
+                  // - acpFramework: avatar, catalyst, promise
+                  // - valueEquation: dreamOutcome, perceivedLikelihood, etc.
+                  // - financialProjections, tamSamSom, competitors, riskFactors
+
+                  // Offer/pricing structure
+                  offerTiers: idea.offerTiers || null,
+
+                  // Analysis content
+                  executionPlan: idea.executionPlan || '',
+                  whyNowAnalysis: idea.whyNowAnalysis || '',
+                  marketGap: idea.marketGap || '',
+
+                  // OA Framework scores
                   scores: {
                     opportunityScore: idea.opportunityScore,
                     problemScore: idea.problemScore,
                     feasibilityScore: idea.feasibilityScore,
                     timingScore: idea.timingScore,
                     executionScore: idea.executionScore,
+                    gtmScore: idea.gtmScore,
                   }
                 }));
               }}

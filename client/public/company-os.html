@@ -3746,46 +3746,149 @@ document.addEventListener('DOMContentLoaded', function() {
 function loadVentureContext(data) {
   if (!data) return;
 
-  // Map the idea data to venture brief form fields
+  const framework = data.frameworkData || {};
+  const scores = data.scores || {};
+
+  // === CORE MAPPINGS ===
+  const mappedIndustry = mapIndustry(data.industry || '');
+  const mappedStage = mapStage(data.businessType || data.stage || '');
+  const mappedModel = mapBusinessModel(data.businessType || '');
+
+  // === REVENUE TARGET ===
+  // Parse revenue potential like "$10M+", "$1M-$10M ARR", etc.
+  let revenueTarget = '';
+  if (data.revenuePotential) {
+    revenueTarget = data.revenuePotential;
+    // Normalize common formats
+    if (revenueTarget.includes('10M+')) revenueTarget = '$10M+ ARR';
+    else if (revenueTarget.includes('1M-10M')) revenueTarget = '$1M-$10M ARR';
+    else if (revenueTarget.includes('100K-1M')) revenueTarget = '$100K-$1M ARR';
+  } else if (framework.financialProjections) {
+    revenueTarget = framework.financialProjections;
+  }
+
+  // === COMPETITIVE MOAT ===
+  let moatText = '';
+  if (data.mainCompetitor) {
+    moatText = `Key competitor: ${data.mainCompetitor}. `;
+  }
+  if (framework.competitors && Array.isArray(framework.competitors)) {
+    moatText += `Competitive landscape: ${framework.competitors.join(', ')}. `;
+  }
+  if (framework.riskFactors) {
+    moatText += `Risk factors: ${framework.riskFactors}. `;
+  }
+  if (data.marketGap) {
+    moatText += `Market gap: ${data.marketGap.substring(0, 200)}`;
+  }
+
+  // === AI STACK INFERENCE ===
+  // Look for AI/tech mentions in content and execution plan
+  let aiStackHint = '';
+  const contentLower = ((data.content || '') + ' ' + (data.executionPlan || '')).toLowerCase();
+  const aiKeywords = ['claude', 'gpt', 'openai', 'anthropic', 'llm', 'machine learning', 'ai', 'automation', 'chatbot'];
+  const foundAI = aiKeywords.filter(k => contentLower.includes(k));
+  if (foundAI.length > 0) {
+    aiStackHint = 'AI-powered solution leveraging modern LLM capabilities';
+    if (contentLower.includes('claude') || contentLower.includes('anthropic')) {
+      aiStackHint = 'Claude API, ';
+    }
+    if (contentLower.includes('voice') || contentLower.includes('speech')) {
+      aiStackHint += 'ElevenLabs/Deepgram for voice, ';
+    }
+    if (contentLower.includes('automation')) {
+      aiStackHint += 'workflow automation';
+    }
+  }
+
+  // === HEADCOUNT ESTIMATE ===
+  // Based on execution difficulty and stage
+  let headcountEstimate = '';
+  const execScore = scores.executionScore || 5;
+  if (mappedStage.includes('Pre-Seed') || mappedStage.includes('Idea')) {
+    headcountEstimate = execScore > 7 ? '3-5' : '2-3';
+  } else if (mappedStage.includes('Seed')) {
+    headcountEstimate = execScore > 7 ? '15-25' : '8-15';
+  } else if (mappedStage.includes('Series')) {
+    headcountEstimate = execScore > 7 ? '50-100' : '25-50';
+  }
+
+  // === CONTEXT / TRACTION ===
+  let contextText = '';
+  if (data.whyNowAnalysis) {
+    contextText = data.whyNowAnalysis.substring(0, 300);
+  } else if (data.content) {
+    contextText = data.content.substring(0, 500);
+  }
+
+  // === MAP TO FORM FIELDS ===
   const fieldMappings = {
     'v-name': data.name || '',
-    'v-industry': mapIndustry(data.industry || ''),
-    'v-stage': mapStage(data.stage || ''),
+    'v-industry': mappedIndustry,
+    'v-stage': mappedStage,
+    'v-model': mappedModel,
     'v-value': data.value || '',
     'v-customer': data.customer || '',
-    'v-context': data.content || '',
+    'v-revenue': revenueTarget,
+    'v-headcount': headcountEstimate,
+    'v-moat': moatText.trim(),
+    'v-ai-stack': aiStackHint,
+    'v-context': contextText,
   };
 
   // Fill in the form fields
+  let filledCount = 0;
   Object.entries(fieldMappings).forEach(([id, val]) => {
     const el = document.getElementById(id);
     if (el && val) {
       el.value = val;
+      filledCount++;
     }
   });
 
-  // Store in state for use in later phases
+  // Store complete state for later phases
   state.venture = {
     name: data.name || '',
-    industry: mapIndustry(data.industry || ''),
-    stage: mapStage(data.stage || ''),
+    industry: mappedIndustry,
+    stage: mappedStage,
+    model: mappedModel,
     value: data.value || '',
     customer: data.customer || '',
-    context: data.content || '',
-    // Preserve OA framework scores for downstream phases
-    scores: data.scores || {}
+    revenue: revenueTarget,
+    headcount: headcountEstimate,
+    moat: moatText.trim(),
+    aiStack: aiStackHint,
+    context: contextText,
+    // Preserve full OA framework data for downstream phases
+    scores: scores,
+    frameworkData: framework,
+    originalData: data
   };
 
   // Update UI elements
   updateVentureName();
-  if (state.venture.name) {
-    updateMetrics();
-  }
+  updateMetrics();
 
-  // Show success message
+  // Show success message with field count
   setTimeout(() => {
-    toast('✓ Opportunity context loaded: ' + (data.name || 'Unknown'));
+    toast(`✓ ${filledCount} fields pre-filled from "${data.name || 'venture'}"`);
   }, 300);
+}
+
+// Business model mapping helper
+function mapBusinessModel(type) {
+  if (!type) return '';
+  const lc = type.toLowerCase();
+  if (lc.includes('saas') || lc.includes('subscription')) return 'B2B SaaS (Subscription)';
+  if (lc.includes('marketplace')) return 'Marketplace';
+  if (lc.includes('service') || lc.includes('consulting') || lc.includes('agency')) return 'B2B Services / Consulting';
+  if (lc.includes('b2c')) return 'B2C SaaS';
+  if (lc.includes('transaction') || lc.includes('usage')) return 'Transaction / Usage-Based';
+  if (lc.includes('hybrid')) return 'Hybrid (SaaS + Services)';
+  if (lc.includes('product') || lc.includes('license')) return 'Product + Licensing';
+  if (lc.includes('mobile') || lc.includes('app')) return 'B2C SaaS';
+  if (lc.includes('web')) return 'B2B SaaS (Subscription)';
+  return '';
 }
 </script>
 </body>
