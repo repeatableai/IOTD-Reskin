@@ -1,8 +1,56 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link, useSearch } from 'wouter';
 import Header from '@/components/Header';
 import { ArrowLeft, ShieldCheck, Sun, Moon, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Industry mapping from idea categories to venture industries
+const INDUSTRY_MAP: Record<string, string> = {
+  'Healthcare': 'Healthcare / MedTech',
+  'Health': 'Healthcare / MedTech',
+  'MedTech': 'Healthcare / MedTech',
+  'Finance': 'Fintech / Financial Services',
+  'Fintech': 'Fintech / Financial Services',
+  'Financial': 'Fintech / Financial Services',
+  'SaaS': 'B2B SaaS',
+  'Software': 'B2B SaaS',
+  'AI': 'AI / Machine Learning',
+  'Machine Learning': 'AI / Machine Learning',
+  'HR': 'HR Tech',
+  'Human Resources': 'HR Tech',
+  'Sales': 'Sales & Revenue Ops',
+  'Supply Chain': 'Supply Chain / Logistics',
+  'Logistics': 'Supply Chain / Logistics',
+  'Real Estate': 'Real Estate / PropTech',
+  'PropTech': 'Real Estate / PropTech',
+  'Education': 'Education / EdTech',
+  'EdTech': 'Education / EdTech',
+  'Professional Services': 'Professional Services',
+  'Manufacturing': 'Manufacturing',
+  'Defense': 'Defense / Gov Contracting',
+  'Government': 'Defense / Gov Contracting',
+  'Retail': 'Retail / eCommerce',
+  'eCommerce': 'Retail / eCommerce',
+  'E-commerce': 'Retail / eCommerce',
+};
+
+// Stage mapping from idea types to venture stages
+const STAGE_MAP: Record<string, string> = {
+  'idea': 'Pre-Seed / Idea Stage',
+  'concept': 'Pre-Seed / Idea Stage',
+  'pre-seed': 'Pre-Seed / Idea Stage',
+  'seed': 'Seed / Pre-Revenue',
+  'early': 'Seed / Early Revenue',
+  'series-a': 'Series A',
+  'series a': 'Series A',
+  'series-b': 'Series B+',
+  'series b': 'Series B+',
+  'growth': 'Series B+',
+  'bootstrapped': 'Bootstrapped / Profitable',
+  'profitable': 'Bootstrapped / Profitable',
+  'established': 'Established / Scaling',
+  'scaling': 'Established / Scaling',
+};
 
 // Department data
 const DEPARTMENTS = [
@@ -50,6 +98,7 @@ const initialVenture: VentureBrief = {
 type PageId = 'p1' | 'p2' | 'p3' | 'p4' | 'p5' | 'p6' | 'bp';
 
 export default function Sub3D_RiskMitigation() {
+  const searchString = useSearch();
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [currentPage, setCurrentPage] = useState<PageId>('p1');
   const [venture, setVenture] = useState<VentureBrief>(initialVenture);
@@ -58,6 +107,52 @@ export default function Sub3D_RiskMitigation() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [mapOutput, setMapOutput] = useState<string>('');
   const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null);
+  const [sourceIdea, setSourceIdea] = useState<string | null>(null);
+
+  // Load venture context from localStorage if coming from an idea page
+  useEffect(() => {
+    const params = new URLSearchParams(searchString);
+    const ideaId = params.get('ideaId');
+
+    if (ideaId) {
+      const storedVenture = localStorage.getItem('companyOS_venture');
+      if (storedVenture) {
+        try {
+          const ideaData = JSON.parse(storedVenture);
+
+          // Only load if it matches the ideaId in URL
+          if (ideaData.id === ideaId || ideaData.id === parseInt(ideaId)) {
+            // Map the idea data to venture brief format
+            const mappedIndustry = Object.entries(INDUSTRY_MAP).find(
+              ([key]) => ideaData.industry?.toLowerCase().includes(key.toLowerCase())
+            )?.[1] || ideaData.industry || '';
+
+            const mappedStage = Object.entries(STAGE_MAP).find(
+              ([key]) => ideaData.stage?.toLowerCase().includes(key.toLowerCase())
+            )?.[1] || '';
+
+            setVenture(prev => ({
+              ...prev,
+              name: ideaData.name || '',
+              industry: mappedIndustry,
+              stage: mappedStage,
+              value: ideaData.value || '',
+              customer: ideaData.customer || '',
+              context: ideaData.content || '',
+            }));
+
+            setSourceIdea(ideaData.name);
+            showToast(`Loaded venture context: ${ideaData.name}`);
+
+            // Clean up localStorage after loading
+            localStorage.removeItem('companyOS_venture');
+          }
+        } catch (e) {
+          console.error('Failed to parse venture context:', e);
+        }
+      }
+    }
+  }, [searchString]);
 
   // Toast handler
   const showToast = (message: string, isError = false) => {

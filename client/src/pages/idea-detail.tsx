@@ -48,7 +48,8 @@ import {
   MessageSquare,
   RefreshCw,
   Loader2,
-  Skull
+  Skull,
+  ShieldCheck
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -731,6 +732,38 @@ export default function IdeaDetail() {
               <Users className="w-4 h-4 mr-2" />
               ICP Builder
             </Button>
+
+            <Link
+              href={`/venture-os/risk-mitigation?ideaId=${idea.id}`}
+              onClick={() => {
+                // Store venture context for the Company OS page
+                localStorage.setItem('companyOS_venture', JSON.stringify({
+                  id: idea.id,
+                  name: idea.title,
+                  industry: idea.market || idea.category || '',
+                  stage: idea.type || '',
+                  value: idea.description || '',
+                  customer: idea.targetAudience || '',
+                  content: idea.content || '',
+                  scores: {
+                    opportunityScore: idea.opportunityScore,
+                    problemScore: idea.problemScore,
+                    feasibilityScore: idea.feasibilityScore,
+                    timingScore: idea.timingScore,
+                    executionScore: idea.executionScore,
+                  }
+                }));
+              }}
+            >
+              <Button
+                variant="outline"
+                className="border-purple-300 text-purple-600 hover:bg-purple-50 hover:text-purple-700 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950"
+                data-testid="button-ai-economy-os"
+              >
+                <ShieldCheck className="w-4 h-4 mr-2" />
+                AI Economy OS
+              </Button>
+            </Link>
 
             <Button
               variant="outline"
