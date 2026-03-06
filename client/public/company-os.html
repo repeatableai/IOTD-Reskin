@@ -3719,7 +3719,21 @@ function mapStage(stage) {
 // Initialize on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
   buildDeptGrid();
-  // Check for URL params for direct loading
+
+  // Check localStorage for venture context from parent app (Opportunity Analysis framework)
+  const storedVenture = localStorage.getItem('companyOS_venture');
+  if (storedVenture) {
+    try {
+      const data = JSON.parse(storedVenture);
+      loadVentureContext(data);
+      // Clear localStorage after loading to prevent stale data on refresh
+      localStorage.removeItem('companyOS_venture');
+    } catch (e) {
+      console.error('Failed to parse venture context:', e);
+    }
+  }
+
+  // Also check for URL params for direct loading
   const urlParams = new URLSearchParams(window.location.search);
   const ventureName = urlParams.get('venture');
   if (ventureName) {
@@ -3727,6 +3741,52 @@ document.addEventListener('DOMContentLoaded', function() {
     updateVentureName();
   }
 });
+
+// Load venture context from parent app (Opportunity Analysis framework)
+function loadVentureContext(data) {
+  if (!data) return;
+
+  // Map the idea data to venture brief form fields
+  const fieldMappings = {
+    'v-name': data.name || '',
+    'v-industry': mapIndustry(data.industry || ''),
+    'v-stage': mapStage(data.stage || ''),
+    'v-value': data.value || '',
+    'v-customer': data.customer || '',
+    'v-context': data.content || '',
+  };
+
+  // Fill in the form fields
+  Object.entries(fieldMappings).forEach(([id, val]) => {
+    const el = document.getElementById(id);
+    if (el && val) {
+      el.value = val;
+    }
+  });
+
+  // Store in state for use in later phases
+  state.venture = {
+    name: data.name || '',
+    industry: mapIndustry(data.industry || ''),
+    stage: mapStage(data.stage || ''),
+    value: data.value || '',
+    customer: data.customer || '',
+    context: data.content || '',
+    // Preserve OA framework scores for downstream phases
+    scores: data.scores || {}
+  };
+
+  // Update UI elements
+  updateVentureName();
+  if (state.venture.name) {
+    updateMetrics();
+  }
+
+  // Show success message
+  setTimeout(() => {
+    toast('✓ Opportunity context loaded: ' + (data.name || 'Unknown'));
+  }, 300);
+}
 </script>
 </body>
 </html>
