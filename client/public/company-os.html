@@ -1,0 +1,3732 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Company OS™ | Intelligent Venture Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════ LIGHT THEME ═══════════════ */
+[data-theme="light"] {
+  --bg:           #F0F2F8;
+  --bg-nav:       #1B2444;
+  --bg-card:      #FFFFFF;
+  --bg-input:     #F5F7FB;
+  --bg-phase-act: #1B2444;
+  --bg-phase:     #FFFFFF;
+  --border:       #D4DBF0;
+  --border-med:   #B8C4E0;
+
+  --ink:          #111827;
+  --ink-2:        #1F2937;
+  --ink-3:        #374151;
+  --ink-dim:      #6B7280;
+  --ink-muted:    #9CA3AF;
+  --ink-on-dark:  #FFFFFF;
+  --ink-nav:      #E2E8F8;
+
+  --gold:         #D97706;
+  --gold-bright:  #F59E0B;
+  --gold-mid:     #B45309;
+  --gold-bg:      #FFFBEB;
+  --gold-border:  #FCD34D;
+
+  --blue:         #1E40AF;
+  --blue-mid:     #2563EB;
+  --blue-bg:      #EFF6FF;
+  --blue-border:  #93C5FD;
+
+  --green:        #065F46;
+  --green-mid:    #059669;
+  --green-bg:     #ECFDF5;
+  --green-border: #6EE7B7;
+
+  --red:          #991B1B;
+  --red-bg:       #FEF2F2;
+
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.08);
+  --shadow:       0 4px 12px rgba(0,0,0,0.08);
+  --shadow-lg:    0 8px 24px rgba(0,0,0,0.10);
+}
+
+/* ═══════════════ DARK THEME ═══════════════ */
+[data-theme="dark"] {
+  --bg:           #0B0F1A;
+  --bg-nav:       #070A12;
+  --bg-card:      #131929;
+  --bg-input:     #1A2235;
+  --bg-phase-act: #D97706;
+  --bg-phase:     #131929;
+  --border:       #1E2D4A;
+  --border-med:   #2D4070;
+
+  --ink:          #F1F5FF;
+  --ink-2:        #E2E8F8;
+  --ink-3:        #C7D2EC;
+  --ink-dim:      #8B9EC8;
+  --ink-muted:    #5A6E94;
+  --ink-on-dark:  #F1F5FF;
+  --ink-nav:      #E2E8F8;
+
+  --gold:         #F59E0B;
+  --gold-bright:  #FBBF24;
+  --gold-mid:     #D97706;
+  --gold-bg:      rgba(251,191,36,0.10);
+  --gold-border:  rgba(251,191,36,0.35);
+
+  --blue:         #93C5FD;
+  --blue-mid:     #60A5FA;
+  --blue-bg:      rgba(96,165,250,0.10);
+  --blue-border:  rgba(96,165,250,0.35);
+
+  --green:        #6EE7B7;
+  --green-mid:    #34D399;
+  --green-bg:     rgba(52,211,153,0.10);
+  --green-border: rgba(52,211,153,0.35);
+
+  --red:          #FCA5A5;
+  --red-bg:       rgba(252,165,165,0.10);
+
+  --shadow-sm:    0 1px 3px rgba(0,0,0,0.4);
+  --shadow:       0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg:    0 8px 24px rgba(0,0,0,0.5);
+}
+
+/* ═══════════════ BASE ═══════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  display: grid;
+  grid-template-rows: 56px 1fr;
+  grid-template-columns: 220px 1fr;
+  height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* ═══════════════ TOP BAR ═══════════════ */
+.topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  background: var(--bg-nav);
+  border-bottom: 2px solid var(--gold-bright);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 16px;
+  z-index: 100;
+}
+.topbar-left { display: flex; align-items: center; gap: 16px; }
+.t-logo {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.t-logo span { color: var(--gold-bright); }
+.t-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  color: var(--gold-bright);
+  border: 1px solid var(--gold-border);
+  background: var(--gold-bg);
+  padding: 3px 8px;
+  border-radius: 3px;
+}
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.t-venture-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94A3B8;
+  letter-spacing: 0.02em;
+}
+.t-venture-name span { color: #FFFFFF; }
+
+.t-btn {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.02em;
+}
+.t-btn-ghost {
+  background: rgba(255,255,255,0.08);
+  color: #CBD5E1;
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.t-btn-ghost:hover { background: rgba(255,255,255,0.14); color: #fff; }
+.t-btn-gold { background: var(--gold-bright); color: #000; }
+.t-btn-gold:hover { filter: brightness(1.1); }
+
+/* ═══════════════ LEFT NAV ═══════════════ */
+.sidenav {
+  grid-column: 1;
+  grid-row: 2;
+  background: var(--bg-nav);
+  border-right: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.nav-section-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #4B5E80;
+  padding: 16px 16px 8px;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  position: relative;
+  transition: background 0.2s;
+}
+.nav-item:hover { background: rgba(255,255,255,0.05); }
+.nav-item.active {
+  background: rgba(217,119,6,0.12);
+  border-left-color: var(--gold-bright);
+}
+.nav-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  font-weight: 700;
+  background: rgba(255,255,255,0.06);
+  color: #64748B;
+}
+.nav-item.active .nav-icon { background: var(--gold-bright); color: #000; }
+.nav-item.locked .nav-icon { opacity: 0.4; }
+.nav-text { flex: 1; }
+.nav-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94A3B8;
+  line-height: 1.3;
+}
+.nav-item.active .nav-title { color: #FFFFFF; }
+.nav-sub {
+  font-size: 11px;
+  color: #4B5E80;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+.nav-item.active .nav-sub { color: #FCD34D; }
+.nav-status {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.status-live { background: rgba(52,211,153,0.15); color: #34D399; border: 1px solid rgba(52,211,153,0.3); }
+.status-soon { background: rgba(251,191,36,0.1); color: #FBBF24; border: 1px solid rgba(251,191,36,0.25); }
+.status-lock { background: rgba(255,255,255,0.04); color: #4B5E80; border: 1px solid rgba(255,255,255,0.08); }
+
+.nav-divider { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 14px; }
+
+.nav-bottom {
+  margin-top: auto;
+  padding: 14px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.nav-progress-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748B;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.nav-progress-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.nav-progress-fill {
+  height: 100%;
+  background: var(--gold-bright);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.nav-progress-pct {
+  font-size: 11px;
+  font-weight: 600;
+  color: #FBBF24;
+  text-align: right;
+  margin-top: 5px;
+}
+
+/* ═══════════════ MAIN CONTENT ═══════════════ */
+.main-content {
+  grid-column: 2;
+  grid-row: 2;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.main-content::-webkit-scrollbar { width: 5px; }
+.main-content::-webkit-scrollbar-track { background: transparent; }
+.main-content::-webkit-scrollbar-thumb { background: var(--border-med); border-radius: 4px; }
+
+/* ═══════════════ PHASE PAGES ═══════════════ */
+.phase-page { display: none; padding: 32px 36px; min-height: 100%; }
+.phase-page.active { display: block; }
+
+/* Phase header */
+.phase-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 2px solid var(--border);
+}
+.ph-left {}
+.ph-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.ph-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.15;
+  margin-bottom: 8px;
+}
+.ph-desc {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink-3);
+  max-width: 620px;
+  line-height: 1.75;
+}
+.ph-right { flex-shrink: 0; display: flex; gap: 10px; margin-top: 4px; }
+
+/* ═══════════════ CARDS ═══════════════ */
+.card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-sm);
+}
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.4;
+}
+.card-title-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--gold-bg);
+  border: 1.5px solid var(--gold-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* Form elements */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field.full { grid-column: 1 / -1; }
+.f-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.f-label .req { color: var(--gold-bright); }
+input[type="text"],
+input[type="number"],
+input[type="email"],
+select,
+textarea {
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  padding: 10px 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  resize: vertical;
+  min-height: 42px;
+  line-height: 1.6;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 3px var(--gold-bg);
+}
+select { cursor: pointer; }
+textarea { min-height: 80px; line-height: 1.55; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  border-radius: 7px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+}
+.btn-primary {
+  background: var(--bg-nav);
+  color: #FFFFFF;
+}
+[data-theme="dark"] .btn-primary { background: var(--gold-bright); color: #000; }
+.btn-primary:hover { filter: brightness(1.15); transform: translateY(-1px); box-shadow: var(--shadow); }
+
+.btn-gold { background: var(--gold-bright); color: #000; }
+.btn-gold:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+.btn-outline {
+  background: transparent;
+  color: var(--blue-mid);
+  border: 1.5px solid var(--blue-border);
+  background: var(--blue-bg);
+}
+.btn-outline:hover { filter: brightness(0.96); }
+
+.btn-ghost {
+  background: var(--bg-input);
+  color: var(--ink-dim);
+  border: 1.5px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--border-med); color: var(--ink); }
+
+.btn-sm { padding: 7px 14px; font-size: 12px; }
+.btn-lg { padding: 14px 28px; font-size: 15px; }
+.btn-full { width: 100%; justify-content: center; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+
+/* ═══════════════ PHASE 1: VENTURE BRIEF ═══════════════ */
+#p1-save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--green-bg);
+  border: 1.5px solid var(--green-border);
+  border-radius: 8px;
+  padding: 12px 18px;
+  margin-bottom: 20px;
+}
+.save-label { font-size: 13px; font-weight: 600; color: var(--green); }
+.save-actions { display: flex; gap: 10px; }
+
+/* ═══════════════ PHASE 2: DELIVERABLE MAP ═══════════════ */
+.dept-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.dept-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+.dept-card:hover { border-color: var(--border-med); box-shadow: var(--shadow); }
+.dept-card.selected { border-color: var(--gold-bright); background: var(--gold-bg); }
+.dept-icon { font-size: 20px; margin-bottom: 8px; }
+.dept-name { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+.dept-count { font-size: 12px; font-weight: 500; color: var(--ink-dim); line-height: 1.5; }
+.dept-bar { height: 3px; background: var(--border); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.dept-bar-fill { height: 100%; background: var(--gold-bright); border-radius: 2px; }
+.dept-check {
+  position: absolute;
+  top: 10px; right: 10px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  color: #000;
+  font-size: 11px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.dept-card.selected .dept-check { display: flex; }
+
+/* Deliverable table */
+.deliverable-table-wrap { overflow-x: auto; border-radius: 8px; border: 1.5px solid var(--border); }
+.deliverable-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.deliverable-table th {
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 2px solid var(--gold-border);
+  white-space: nowrap;
+}
+.deliverable-table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-3);
+  font-weight: 400;
+  vertical-align: middle;
+  line-height: 1.55;
+  font-size: 14px;
+}
+.deliverable-table tr:last-child td { border-bottom: none; }
+.deliverable-table tr:hover td { background: var(--bg-input); }
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.owner-ai { background: var(--blue-bg); color: var(--blue); border: 1px solid var(--blue-border); }
+.owner-human { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+.owner-frac { background: var(--gold-bg); color: var(--gold-mid); border: 1px solid var(--gold-border); }
+
+/* ═══════════════ COMING SOON PHASES ═══════════════ */
+.coming-soon-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: 16px;
+}
+.cs-icon { font-size: 52px; margin-bottom: 8px; opacity: 0.5; }
+.cs-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.cs-desc {
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--ink-3);
+  max-width: 480px;
+  line-height: 1.75;
+}
+.cs-features {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+  margin-top: 8px;
+  width: 100%;
+  max-width: 480px;
+}
+.cs-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-3);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 14px;
+  line-height: 1.55;
+}
+.cs-feature-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  flex-shrink: 0;
+  margin-top: 6px;
+}
+
+/* ═══════════════ ROI SUMMARY BAR ═══════════════ */
+.roi-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.roi-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  text-align: center;
+}
+.roi-card:first-child { border-color: var(--gold-bright); background: var(--gold-bg); }
+.roi-val {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1;
+}
+.roi-card:first-child .roi-val { color: var(--gold-mid); }
+.roi-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-top: 5px;
+}
+
+/* ═══════════════ OUTPUT PANEL ═══════════════ */
+.output-panel {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 24px;
+}
+.op-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-input);
+}
+.op-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.op-body { padding: 20px; }
+.op-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.7;
+  color: var(--ink-3);
+  white-space: pre-wrap;
+}
+
+/* ═══════════════ LOADING ═══════════════ */
+.gen-loading {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 40px;
+  text-align: center;
+}
+.gen-loading.active { display: flex; }
+.gen-ring {
+  width: 40px; height: 40px;
+  border: 3px solid var(--border);
+  border-top-color: var(--gold-bright);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.gen-label { font-size: 13px; font-weight: 600; color: var(--ink); }
+
+/* ═══════════════ MISC ═══════════════ */
+.inline-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.divider-line {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+.info-box {
+  background: var(--blue-bg);
+  border: 1.5px solid var(--blue-border);
+  border-radius: 8px;
+  padding: 16px 20px;
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--blue);
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
+.info-box strong { font-weight: 700; display: block; margin-bottom: 4px; }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 2px solid var(--green-mid);
+  color: var(--green);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.28s;
+  box-shadow: var(--shadow);
+  z-index: 1000;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { border-color: var(--red); color: var(--red); }
+
+/* Deliverable row highlight for AI/Human split */
+.split-bar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 6px;
+  background: var(--border);
+}
+.split-ai { background: var(--blue-mid); }
+.split-human { background: var(--green-mid); }
+.split-frac { background: var(--gold-bright); }
+
+/* Phase 2 generate button area */
+.gen-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+/* ═══ PHASE 3 CSS ═══ */
+.p3-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+}
+.p3-controls-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.p3-toggle-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: 7px;
+  padding: 3px;
+}
+.p3-toggle-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-dim);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.18s;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.p3-toggle-btn.active { background: var(--bg-nav); color: #FFFFFF; }
+[data-theme="dark"] .p3-toggle-btn.active { background: var(--gold-bright); color: #000; }
+.assign-table-wrap { overflow-x: auto; border-radius: 0 0 10px 10px; }
+.assign-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 860px;
+}
+.assign-table th {
+  background: var(--gold-bg);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  padding: 11px 14px;
+  text-align: left;
+  border-bottom: 2px solid var(--gold-border);
+  white-space: nowrap;
+}
+.assign-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--ink-3);
+  vertical-align: middle;
+  line-height: 1.5;
+  font-size: 14px;
+}
+.assign-table tr:last-child td { border-bottom: none; }
+.assign-table tr:hover td { background: var(--bg-input); }
+.three-way {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.three-way-btn {
+  padding: 5px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink-muted);
+  font-family: 'DM Sans', sans-serif;
+  transition: all 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+.three-way-btn + .three-way-btn { border-left: 1px solid var(--border); }
+.three-way-btn.active-ai    { background: var(--blue-bg);  color: var(--blue);     }
+.three-way-btn.active-human { background: var(--green-bg); color: var(--green);    }
+.three-way-btn.active-frac  { background: var(--gold-bg);  color: var(--gold-mid); }
+.cost-input {
+  width: 88px;
+  background: var(--bg-input);
+  border: 1.5px solid var(--border);
+  border-radius: 5px;
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.2s;
+  text-align: right;
+  min-height: unset;
+}
+.cost-input:focus { border-color: var(--gold-bright); box-shadow: 0 0 0 2px var(--gold-bg); }
+.compliance-flag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  background: var(--red-bg);
+  color: var(--red);
+  border: 1px solid rgba(153,27,27,0.25);
+  cursor: help;
+  position: relative;
+  white-space: nowrap;
+}
+.cf-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 8px 11px;
+  border-radius: 6px;
+  width: 220px;
+  text-align: center;
+  z-index: 200;
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: normal;
+}
+.compliance-flag:hover .cf-tooltip { display: block; }
+.savings-positive { font-weight: 700; color: var(--green); }
+.savings-negative { font-weight: 700; color: var(--red); }
+.kpi-savings { border-color: var(--green-mid) !important; background: var(--green-bg) !important; }
+.kpi-savings .roi-val { color: var(--green) !important; }
+.kpi-leverage { border-color: var(--blue-mid) !important; background: var(--blue-bg) !important; }
+.kpi-leverage .roi-val { color: var(--blue-mid) !important; }
+.p3-empty-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  gap: 16px;
+}
+.p3-empty-icon { font-size: 52px; opacity: 0.38; }
+.p3-empty-title {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.p3-empty-desc {
+  font-size: 15px;
+  color: var(--ink-dim);
+  max-width: 440px;
+  line-height: 1.75;
+}
+.dept-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.dept-pill {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: var(--bg-card);
+  color: var(--ink-dim);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.dept-pill.active { border-color: var(--gold-bright); background: var(--gold-bg); color: var(--gold-mid); }
+.dept-pill:hover:not(.active) { border-color: var(--border-med); color: var(--ink); }
+.p3-export-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 20px;
+  background: var(--bg-nav);
+  border-radius: 10px;
+  margin-top: 20px;
+}
+.p3-export-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94A3B8;
+  flex: 1;
+  min-width: 200px;
+}
+.p3-export-label span { color: #FFFFFF; }
+
+/* ─── PHASE 5 ─── */
+.p5-toolbar {
+  display: flex; gap: 12px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 20px;
+}
+.p5-toolbar select, .p5-toolbar input {
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--text);
+  font-size: 14px;
+}
+.p5-toolbar select { min-width: 180px; }
+.p5-toolbar input { flex: 1; min-width: 200px; }
+.p5-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 20px;
+}
+.p5-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex; flex-direction: column; gap: 12px;
+  transition: box-shadow .2s;
+}
+.p5-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+.p5-card-head {
+  display: flex; justify-content: space-between; align-items: flex-start;
+}
+.p5-card-title {
+  font-weight: 600; font-size: 15px; color: var(--text);
+}
+.p5-card-dept {
+  font-size: 11px; padding: 4px 10px; border-radius: 6px;
+  background: var(--accent); color: #fff;
+}
+.p5-card-meta {
+  display: flex; gap: 16px; font-size: 12px; color: var(--muted);
+}
+.p5-steps {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 6px;
+  font-size: 13px; color: var(--text);
+}
+.p5-steps li { display: flex; align-items: flex-start; gap: 8px; }
+.p5-step-icon { flex-shrink: 0; width: 20px; text-align: center; }
+.p5-card-actions {
+  display: flex; gap: 8px; margin-top: auto; padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.p5-card-actions button {
+  flex: 1; padding: 8px 12px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text);
+  cursor: pointer; transition: background .15s;
+}
+.p5-card-actions button:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.p5-empty {
+  text-align: center; padding: 60px 20px; color: var(--muted);
+}
+#p5-custom-form {
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  padding: 20px; margin-bottom: 24px;
+}
+#p5-custom-form h4 { margin: 0 0 12px; font-size: 15px; }
+#p5-custom-form textarea {
+  width: 100%; min-height: 80px; padding: 10px;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 14px;
+  resize: vertical;
+}
+#p5-custom-form .form-row { display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; }
+#p5-custom-form select, #p5-custom-form input[type="text"] {
+  padding: 10px 14px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--bg); color: var(--text); font-size: 14px;
+  flex: 1; min-width: 140px;
+}
+
+/* ═══ PHASE 6 CSS ═══ */
+.vp-card {
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+.vp-card:hover { border-color: var(--accent); }
+.vp-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 20px 22px;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.vp-role-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+.vp-role-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.vp-dept-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #fff;
+  white-space: nowrap;
+}
+.vp-voice-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.vp-status-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.vp-status-ready {
+  background: #DCFCE7;
+  color: #16A34A;
+  border: 1px solid #86EFAC;
+}
+.vp-status-pending {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+.vp-body {
+  border-top: 1px solid var(--border);
+  padding: 20px 22px;
+}
+.vp-section {
+  margin-bottom: 20px;
+}
+.vp-section:last-child { margin-bottom: 0; }
+.vp-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.vp-section-label.trigger-label { color: #D97706; }
+.vp-section-label.command-label { color: #2563EB; }
+.vp-section-label.workflow-label { color: #16A34A; }
+.vp-section-label.data-label { color: var(--muted); }
+.vp-section-label.config-label { color: var(--muted); }
+.vp-section-label.arch-label { color: var(--muted); }
+.vp-item {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 5px;
+}
+.vp-item-marker {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  font-family: 'JetBrains Mono', monospace;
+}
+.vp-trigger-marker {
+  background: #FEF3C7;
+  color: #D97706;
+  border: 1px solid #FCD34D;
+}
+.vp-command-marker {
+  background: #DBEAFE;
+  color: #2563EB;
+  border: 1px solid #93C5FD;
+}
+.vp-workflow-marker {
+  background: #DCFCE7;
+  color: #16A34A;
+  border: 1px solid #86EFAC;
+}
+.vp-config-block {
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+.vp-arch-diagram {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: wrap;
+  padding: 16px;
+  background: var(--bg);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  justify-content: center;
+}
+.vp-arch-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 14px;
+  background: var(--card);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  min-width: 110px;
+  text-align: center;
+}
+.vp-arch-node-icon { font-size: 20px; }
+.vp-arch-node-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text);
+}
+.vp-arch-node-sub {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 500;
+  line-height: 1.4;
+}
+.vp-arch-arrow {
+  font-size: 18px;
+  color: #D97706;
+  font-weight: 700;
+  padding: 0 8px;
+  flex-shrink: 0;
+}
+.vp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 50vh;
+  text-align: center;
+  gap: 16px;
+}
+.p6-info-bar {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  background: #1E293B;
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+.p6-info-stack {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.p6-stack-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 140px;
+}
+.p6-stack-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #64748B;
+}
+.p6-stack-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: #E2E8F0;
+  line-height: 1.4;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="t-logo">Company <span>OS&trade;</span></div>
+    <div class="t-badge">INTELLIGENT VENTURE ENGINE</div>
+  </div>
+  <div class="topbar-right">
+    <div class="t-venture-name">Venture: <span id="topbar-venture-name">Not Started</span></div>
+    <button class="t-btn t-btn-ghost" onclick="toggleTheme()" id="theme-btn">&#9728; Light</button>
+    <button class="t-btn t-btn-gold" onclick="navigateTo('p1')">+ New Venture</button>
+  </div>
+</div>
+
+<!-- ═══════════════ SIDE NAV ═══════════════ -->
+<nav class="sidenav">
+  <div class="nav-section-label">Company OS&trade; Sequence</div>
+
+  <div class="nav-item active" onclick="navigateTo('p1')">
+    <div class="nav-icon">1</div>
+    <div class="nav-text">
+      <div class="nav-title">Venture Brief</div>
+      <div class="nav-sub">Company foundation</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-item" onclick="navigateTo('p2')">
+    <div class="nav-icon">2</div>
+    <div class="nav-text">
+      <div class="nav-title">Deliverable Map</div>
+      <div class="nav-sub">Master output library</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-item" onclick="navigateTo('p3')">
+    <div class="nav-icon">3</div>
+    <div class="nav-text">
+      <div class="nav-title">AI/Human Layer</div>
+      <div class="nav-sub">Assignment + cost delta</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-item" onclick="navigateTo('p4')">
+    <div class="nav-icon">4</div>
+    <div class="nav-text">
+      <div class="nav-title">Org Architecture</div>
+      <div class="nav-sub">Roles from deliverables</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-item" onclick="navigateTo('p5')">
+    <div class="nav-icon">5</div>
+    <div class="nav-text">
+      <div class="nav-title">SOP Generator</div>
+      <div class="nav-sub">Workflows on demand</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-item" onclick="navigateTo('p6')">
+    <div class="nav-icon">6</div>
+    <div class="nav-text">
+      <div class="nav-title">Voice Partner</div>
+      <div class="nav-sub">AI role specifications</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-divider"></div>
+  <div class="nav-section-label">Outputs</div>
+
+  <div class="nav-item locked" onclick="navigateTo('bp')">
+    <div class="nav-icon">&#10022;</div>
+    <div class="nav-text">
+      <div class="nav-title">Business Plan</div>
+      <div class="nav-sub">VC-ready compilation</div>
+    </div>
+    <div class="nav-status status-live">Live</div>
+  </div>
+
+  <div class="nav-bottom">
+    <div class="nav-progress-label">OS Completion</div>
+    <div class="nav-progress-bar">
+      <div class="nav-progress-fill" id="progress-fill" style="width:0%"></div>
+    </div>
+    <div class="nav-progress-pct" id="progress-pct">0% Complete</div>
+  </div>
+</nav>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main-content">
+
+  <!-- ═══ PHASE 1: VENTURE BRIEF ═══ -->
+  <div class="phase-page active" id="page-p1">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 1 of 6 &middot; Foundation</div>
+        <div class="ph-title">Venture Brief</div>
+        <div class="ph-desc">
+          Your company's identity, mission, and AI-first architecture live here.<br><br>
+          Every downstream output &mdash; the Deliverable Map, AI/Human Assignment Layer, Org Architecture, SOP Library, and final Business Plan &mdash; is derived entirely from what you define in this brief.<br><br>
+          <strong>Fill it once. Every tool in the Company OS&trade; sequence uses it automatically.</strong>
+        </div>
+      </div>
+      <div class="ph-right">
+        <button class="btn btn-ghost btn-sm" onclick="loadPhase1Demo()">&#9889; Demo Data</button>
+        <button class="btn btn-gold btn-sm" onclick="saveVentureBrief()">Save &amp; Continue &rarr;</button>
+      </div>
+    </div>
+
+    <div class="roi-bar" id="p1-metrics" style="display:none">
+      <div class="roi-card"><div class="roi-val" id="m-revenue">&mdash;</div><div class="roi-label">Revenue Target</div></div>
+      <div class="roi-card"><div class="roi-val" id="m-human">&mdash;</div><div class="roi-label">Human FTEs</div></div>
+      <div class="roi-card"><div class="roi-val" id="m-ai">&mdash;</div><div class="roi-label">AI Equiv. FTEs</div></div>
+      <div class="roi-card"><div class="roi-val" id="m-ratio">&mdash;</div><div class="roi-label">AI/Human Ratio</div></div>
+    </div>
+
+    <!-- Company Identity -->
+    <div class="card">
+      <div class="card-title"><div class="card-title-icon">&#127970;</div>Company Identity</div>
+      <div class="form-grid">
+        <div class="field">
+          <label class="f-label">Company Name <span class="req">*</span></label>
+          <input type="text" id="v-name" placeholder="e.g. ClearPath AI" oninput="updateVentureName()">
+        </div>
+        <div class="field">
+          <label class="f-label">Industry <span class="req">*</span></label>
+          <select id="v-industry">
+            <option value="">Select industry...</option>
+            <option>Healthcare / MedTech</option><option>Fintech / Financial Services</option>
+            <option>B2B SaaS</option><option>Legal Tech</option><option>HR Tech</option>
+            <option>Sales &amp; Revenue Ops</option><option>Supply Chain / Logistics</option>
+            <option>Real Estate / PropTech</option><option>Education / EdTech</option>
+            <option>Professional Services</option><option>Manufacturing</option>
+            <option>Defense / Gov Contracting</option><option>Retail / eCommerce</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Company Stage <span class="req">*</span></label>
+          <select id="v-stage">
+            <option value="">Select stage...</option>
+            <option>Pre-Seed / Idea Stage</option><option>Seed / Pre-Revenue</option>
+            <option>Seed / Early Revenue</option><option>Series A</option><option>Series B+</option>
+            <option>Bootstrapped / Profitable</option><option>Established / Scaling</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="f-label">Business Model</label>
+          <select id="v-model">
+            <option value="">Select model...</option>
+            <option>B2B SaaS (Subscription)</option><option>B2B Services / Consulting</option>
+            <option>B2C SaaS</option><option>Marketplace</option><option>Transaction / Usage-Based</option>
+            <option>Hybrid (SaaS + Services)</option><option>Product + Licensing</option>
+          </select>
+        </div>
+        <div class="field full">
+          <label class="f-label">Primary Value Proposition <span class="req">*</span></label>
+          <textarea id="v-value" rows="3" placeholder="What specific problem do you solve, for whom, and what measurable outcome do customers achieve?"></textarea>
+        </div>
+        <div class="field full">
+          <label class="f-label">Target Customer (ICP)</label>
+          <input type="text" id="v-customer" placeholder="e.g. Mid-market hospital systems, 250-2,000 beds, CFO / VP Revenue Cycle as economic buyer">
+        </div>
+      </div>
+    </div>
+
+    <!-- Scale & Architecture -->
+    <div class="card">
+      <div class="card-title"><div class="card-title-icon">&#128200;</div>Scale &amp; AI Architecture</div>
+      <div class="form-grid">
+        <div class="field">
+          <label class="f-label">3-Year Revenue Target</label>
+          <input type="text" id="v-revenue" placeholder="e.g. $50M ARR" oninput="updateMetrics()">
+        </div>
+        <div class="field">
+          <label class="f-label">Average Contract Value</label>
+          <input type="text" id="v-acv" placeholder="e.g. $180,000 / year">
+        </div>
+        <div class="field">
+          <label class="f-label">Human Headcount &mdash; Year 1</label>
+          <input type="number" id="v-headcount" placeholder="e.g. 28" min="1" oninput="updateMetrics()">
+        </div>
+        <div class="field">
+          <label class="f-label">AI Equivalent FTEs &mdash; Year 1</label>
+          <input type="number" id="v-ai-fte" placeholder="e.g. 140" min="0" oninput="updateMetrics()">
+        </div>
+        <div class="field">
+          <label class="f-label">Capital Sought</label>
+          <input type="text" id="v-capital" placeholder="e.g. $8M Seed Round">
+        </div>
+        <div class="field">
+          <label class="f-label">Geographic Focus</label>
+          <input type="text" id="v-geo" placeholder="e.g. US (Y1-Y2) -> Canada + UK (Y3)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Team & AI Stack -->
+    <div class="card">
+      <div class="card-title"><div class="card-title-icon">&#129504;</div>Team &amp; Technology</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label class="f-label">Founding Team</label>
+          <textarea id="v-team" rows="2" placeholder="Key founders - domain expertise, notable wins, why this team wins this market"></textarea>
+        </div>
+        <div class="field full">
+          <label class="f-label">Primary AI Stack</label>
+          <input type="text" id="v-ai-stack" placeholder="e.g. Claude API, ElevenLabs, Deepgram, custom fine-tuned models">
+        </div>
+        <div class="field">
+          <label class="f-label">AI-Owned Functions (Top 3-5)</label>
+          <textarea id="v-ai-functions" rows="3" placeholder="List the functions fully owned and executed by AI..."></textarea>
+        </div>
+        <div class="field">
+          <label class="f-label">Human-Owned Functions (Top 3-5)</label>
+          <textarea id="v-human-functions" rows="3" placeholder="List the functions requiring human judgment or authority..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Moat & Context -->
+    <div class="card">
+      <div class="card-title"><div class="card-title-icon">&#127984;</div>Moat &amp; Context</div>
+      <div class="form-grid">
+        <div class="field full">
+          <label class="f-label">Competitive Moat</label>
+          <textarea id="v-moat" rows="3" placeholder="What makes this defensible? Proprietary data, network effects, switching costs, regulatory barriers, IP..."></textarea>
+        </div>
+        <div class="field full">
+          <label class="f-label">Traction &amp; Additional Context</label>
+          <textarea id="v-context" rows="2" placeholder="Current traction, LOIs, partnerships, grants, anything a VC or enterprise buyer needs to know..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;margin-top:4px;">
+      <button class="btn btn-primary btn-lg" onclick="saveVentureBrief()" style="flex:1">Save Venture Brief &amp; Continue to Deliverable Map &rarr;</button>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE 2: DELIVERABLE MAP ═══ -->
+  <div class="phase-page" id="page-p2">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 2 of 6 &middot; The Core Asset</div>
+        <div class="ph-title">Master Deliverable Map</div>
+        <div class="ph-desc">
+          Every output your company must produce &mdash; organized by department, assigned to AI or human, and ready to drive every downstream decision.<br><br>
+          AI generates the full map from your Venture Brief. You review, adjust, approve. This becomes the <strong>single source of truth</strong> for your org architecture, SOP library, and business plan.<br><br>
+          This is the document that replaces the org chart.
+        </div>
+      </div>
+      <div class="ph-right">
+        <button class="btn btn-outline btn-sm" onclick="navigateTo('p1')">&larr; Edit Brief</button>
+        <button class="btn btn-gold btn-sm" onclick="navigateTo('p3')">Continue to AI/Human Layer &rarr;</button>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <strong>How the Deliverable Map works:</strong>
+      Select the departments relevant to your venture, then click Generate. Claude builds your complete deliverable library &mdash; every output, report, process, and communication your company must produce.<br><br>
+      Each deliverable is pre-assigned as <strong>AI-Owned</strong>, <strong>Human-Owned</strong>, or <strong>Fractional+AI</strong> based on your Venture Brief inputs and industry context. You can edit any row, add custom deliverables, or reassign ownership.<br><br>
+      This map automatically feeds your Org Architecture, SOP Generator, and Business Plan &mdash; you will never re-enter this information again.
+    </div>
+
+    <!-- Department selector -->
+    <div class="card">
+      <div class="card-title"><div class="card-title-icon">&#128450;</div>Select Departments (choose all that apply)</div>
+      <div class="dept-grid" id="dept-grid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <!-- Generate controls -->
+    <div class="gen-actions">
+      <button class="btn btn-primary" id="btn-gen-map" onclick="generateDeliverableMap()">
+        &#10022; Generate Deliverable Map
+      </button>
+      <button class="btn btn-ghost" onclick="selectAllDepts()">Select All Departments</button>
+      <span id="dept-count-label" style="font-size:13px;font-weight:600;color:var(--ink-dim);"></span>
+    </div>
+
+    <!-- Loading -->
+    <div class="gen-loading" id="map-loading">
+      <div class="gen-ring"></div>
+      <div class="gen-label" id="map-loading-label">Generating Master Deliverable Map...</div>
+    </div>
+
+    <!-- Output -->
+    <div id="map-output-area"></div>
+  </div>
+
+  <!-- ═══ PHASE 3: AI/HUMAN LAYER ═══ -->
+  <div class="phase-page" id="page-p3">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 3 of 6 &middot; Cost Architecture</div>
+        <div class="ph-title">AI / Human Assignment Layer</div>
+        <div class="ph-desc">
+          Every deliverable from your map gets a precise owner assignment and a live cost delta. The system calculates your AI-first annual cost versus what a traditional staffing model would cost &mdash; per line item, in real time. This is where the math becomes undeniable.
+        </div>
+      </div>
+      <div class="ph-right" id="p3-header-actions" style="display:none">
+        <button class="btn btn-ghost btn-sm" onclick="p3CopyModel()">&#128203; Copy Cost Model</button>
+        <button class="btn btn-gold btn-sm" onclick="p3InjectToBP()">&#10022; Inject to Business Plan</button>
+      </div>
+    </div>
+
+    <div id="p3-no-data">
+      <div class="p3-empty-wrap">
+        <div class="p3-empty-icon">&#9878;&#65039;</div>
+        <div class="p3-empty-title">No Deliverable Map Found</div>
+        <div class="p3-empty-desc">
+          Complete Phase 2 first to generate your deliverables &mdash; or load demo data to see Phase 3 in full operation right now.
+        </div>
+        <div style="display:flex;gap:12px;margin-top:12px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-primary" onclick="navigateTo('p2')">&larr; Back to Phase 2</button>
+          <button class="btn btn-gold" onclick="p3LoadDemo()">&#9889; Load Demo Data</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="p3-content" style="display:none">
+      <div class="roi-bar">
+        <div class="roi-card" style="border-color:var(--border);">
+          <div class="roi-val" id="p3-trad-total" style="color:var(--ink-dim);">&mdash;</div>
+          <div class="roi-label">Traditional Annual Cost</div>
+        </div>
+        <div class="roi-card" style="border-color:var(--gold-bright);background:var(--gold-bg);">
+          <div class="roi-val" id="p3-ai-total" style="color:var(--gold-mid);">&mdash;</div>
+          <div class="roi-label">AI-First Annual Cost</div>
+        </div>
+        <div class="roi-card kpi-savings">
+          <div class="roi-val" id="p3-savings-total">&mdash;</div>
+          <div class="roi-label">Annual Savings</div>
+        </div>
+        <div class="roi-card kpi-leverage">
+          <div class="roi-val" id="p3-leverage-ratio">&mdash;</div>
+          <div class="roi-label">AI Leverage Ratio</div>
+        </div>
+      </div>
+
+      <div class="p3-controls">
+        <span class="p3-controls-label">Savings Mode</span>
+        <div class="p3-toggle-group">
+          <button class="p3-toggle-btn active" id="p3-cons-btn" onclick="p3SetMode('conservative')">Conservative (60%)</button>
+          <button class="p3-toggle-btn" id="p3-agg-btn" onclick="p3SetMode('aggressive')">Aggressive (95%)</button>
+        </div>
+        <div style="width:1px;height:24px;background:var(--border);margin:0 4px;"></div>
+        <span id="p3-count-label" style="font-size:13px;font-weight:600;color:var(--ink-dim);"></span>
+        <div style="margin-left:auto;">
+          <button class="btn btn-ghost btn-sm" onclick="p3FilterAll()">All Depts</button>
+        </div>
+      </div>
+
+      <div class="info-box" id="p3-compliance-info" style="display:none;">
+        <strong>&#9888; Industry Compliance Flags Active</strong>
+        Certain deliverables in your industry require human sign-off even when assigned AI-Owned. Flagged rows show a &#9888; Review badge. Hover to see the specific compliance risk.
+      </div>
+
+      <div class="dept-filters" id="p3-dept-pills"></div>
+
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:0;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--bg-input);">
+          <div style="font-size:15px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:10px;">
+            <div class="card-title-icon" style="width:26px;height:26px;font-size:12px;">&#9878;&#65039;</div>
+            Deliverable Assignment &amp; Cost Model
+          </div>
+          <span style="font-size:12px;font-weight:600;color:var(--ink-muted);font-family:'JetBrains Mono',monospace;" id="p3-row-count"></span>
+        </div>
+        <div class="assign-table-wrap">
+          <table class="assign-table">
+            <thead>
+              <tr>
+                <th style="min-width:230px;">Deliverable</th>
+                <th>Department</th>
+                <th>Type &middot; Frequency</th>
+                <th style="min-width:175px;">Assignment</th>
+                <th>Compliance</th>
+                <th style="min-width:100px;">Trad. Cost/yr</th>
+                <th style="min-width:100px;">AI-First/yr</th>
+                <th style="min-width:95px;">Savings/yr</th>
+              </tr>
+            </thead>
+            <tbody id="p3-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="p3-export-bar">
+        <div class="p3-export-label">&#10022; Phase 3 complete &mdash; <span id="p3-export-summary">cost architecture locked and ready to inject.</span></div>
+        <button class="btn btn-ghost btn-sm" style="border-color:rgba(255,255,255,0.2);color:#CBD5E1;" onclick="p3CopyModel()">&#128203; Copy Cost Model</button>
+        <button class="btn btn-gold btn-sm" onclick="p3InjectToBP()">&#10022; Inject to Business Plan</button>
+        <button class="btn btn-gold btn-sm" onclick="navigateTo('p4')">Continue to Phase 4 &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE 4: ORG ARCHITECTURE ═══ -->
+  <div class="phase-page" id="page-p4">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 4 of 6 &middot; Org Design</div>
+        <div class="ph-title">Org Architecture &amp; Job Descriptions</div>
+        <div class="ph-desc">
+          The org chart derived from deliverables &mdash; not the other way around.<br><br>
+          Every role is built from the cluster of human-owned and fractional deliverables in Phase 3. Every job description contains zero vague language &mdash; only what you produce, by when, measured how.<br><br>
+          <strong>This is the end of the job description as the most dysfunctional document in business.</strong>
+        </div>
+      </div>
+      <div class="ph-right" id="p4-header-actions" style="display:none">
+        <button class="btn btn-ghost btn-sm" onclick="p4CopyAllJDs()">&#128203; Copy All JDs</button>
+        <button class="btn btn-gold btn-sm" onclick="navigateTo('p5')">Continue to Phase 5 &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Empty state -->
+    <div id="p4-no-data">
+      <div class="coming-soon-wrapper">
+        <div class="cs-icon">&#127959;&#65039;</div>
+        <div class="cs-title">Complete Phase 3 First</div>
+        <div class="cs-desc">
+          Phase 4 reads your human-owned and fractional deliverable assignments from Phase 3 and clusters them into roles.<br><br>
+          Run Phase 3 to assign deliverable owners &mdash; or load demo data to see Phase 4 in full operation right now.
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-primary" onclick="navigateTo('p3')">&larr; Back to Phase 3</button>
+          <button class="btn btn-gold" onclick="p4LoadDemo()">&#9889; Load Demo Data</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div id="p4-content" style="display:none">
+
+      <!-- KPI bar -->
+      <div class="roi-bar">
+        <div class="roi-card" style="border-color:var(--gold-bright);background:var(--gold-bg);">
+          <div class="roi-val" id="p4-role-count" style="color:var(--gold-mid);">&mdash;</div>
+          <div class="roi-label">Roles Defined</div>
+        </div>
+        <div class="roi-card">
+          <div class="roi-val" id="p4-avg-del">&mdash;</div>
+          <div class="roi-label">Avg Deliverables / Role</div>
+        </div>
+        <div class="roi-card kpi-savings">
+          <div class="roi-val" id="p4-ai-depts">&mdash;</div>
+          <div class="roi-label">Fully AI-Run Depts</div>
+        </div>
+        <div class="roi-card kpi-leverage">
+          <div class="roi-val" id="p4-jd-ready">0</div>
+          <div class="roi-label">JDs Generated</div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="p4-gen-all-btn" onclick="p4GenerateAllJDs()">&#10022; Generate All Job Descriptions</button>
+        <button class="btn btn-ghost btn-sm" onclick="p4ToggleOrgChart()">&#127959; Org Chart View</button>
+        <span id="p4-gen-status" style="font-size:13px;font-weight:600;color:var(--ink-dim);"></span>
+      </div>
+
+      <!-- Org chart (hidden by default) -->
+      <div id="p4-orgchart" style="display:none;margin-bottom:20px;">
+        <div class="card">
+          <div class="card-title"><div class="card-title-icon">&#127959;&#65039;</div>Reporting Structure</div>
+          <div id="p4-orgchart-inner" style="overflow-x:auto;padding:8px 0;text-align:center;"></div>
+        </div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div class="gen-loading" id="p4-loading">
+        <div class="gen-ring"></div>
+        <div class="gen-label" id="p4-loading-label">Generating job descriptions from deliverable clusters...</div>
+      </div>
+
+      <!-- Role cards -->
+      <div id="p4-roles-grid"></div>
+
+      <!-- Export bar -->
+      <div class="p3-export-bar" id="p4-export-bar" style="display:none">
+        <div class="p3-export-label">&#10022; Phase 4 complete &mdash; <span id="p4-export-summary">org architecture locked.</span></div>
+        <button class="btn btn-ghost btn-sm" style="border-color:rgba(255,255,255,0.2);color:#CBD5E1;" onclick="p4CopyAllJDs()">&#128203; Copy All JDs</button>
+        <button class="btn btn-gold btn-sm" onclick="navigateTo('p5')">Continue to Phase 5 &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE 5: SOP GENERATOR ═══ -->
+  <div class="phase-page" id="page-p5">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 5 of 6 &middot; Operational Playbook</div>
+        <div class="ph-title">SOP &amp; Workflow Generator</div>
+        <div class="ph-desc">Thousands of repeatable processes on demand. The top 20 highest-value SOPs are generated first.</div>
+      </div>
+      <div class="ph-right" id="p5-header-actions" style="display:none;">
+        <button class="btn btn-outline" onclick="p5ExportAll()">Export All</button>
+        <button class="btn btn-primary" onclick="p5LoadDemo()">Load Demo</button>
+      </div>
+    </div>
+
+    <!-- No Data State -->
+    <div id="p5-no-data" class="coming-soon-wrapper">
+      <div class="cs-icon">&#128203;</div>
+      <div class="cs-title">No Deliverable Map Found</div>
+      <div class="cs-desc">
+        Complete Phase 2 to generate your Deliverable Map, then return here to generate SOPs.<br><br>
+        Or click the button below to load demo data.
+      </div>
+      <button class="btn btn-primary" onclick="p5LoadDemo()" style="margin-top:20px;">Load Demo Data</button>
+    </div>
+
+    <!-- Main Content -->
+    <div id="p5-content" style="display:none;">
+      <!-- Custom SOP Generator -->
+      <div id="p5-custom-form">
+        <h4>Generate Custom SOP</h4>
+        <textarea id="p5-custom-desc" placeholder="Describe the process you want documented (e.g., 'Monthly payroll processing for a 50-person team')"></textarea>
+        <div class="form-row">
+          <select id="p5-custom-dept">
+            <option value="">Select Department</option>
+            <option value="Executive">Executive</option>
+            <option value="Sales">Sales</option>
+            <option value="Marketing">Marketing</option>
+            <option value="Finance">Finance</option>
+            <option value="Legal">Legal</option>
+            <option value="HR">HR</option>
+            <option value="Product">Product</option>
+            <option value="Engineering">Engineering</option>
+            <option value="Customer Success">Customer Success</option>
+            <option value="Operations">Operations</option>
+          </select>
+          <input type="text" id="p5-custom-deliverable" placeholder="Related Deliverable (optional)">
+          <button class="btn btn-primary" onclick="p5GenerateCustomSop()">Generate SOP</button>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="p5-toolbar">
+        <select id="p5-filter-dept" onchange="renderP5Sops()">
+          <option value="">All Departments</option>
+        </select>
+        <input type="text" id="p5-search" placeholder="Search SOPs..." oninput="renderP5Sops()">
+        <span id="p5-count" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+
+      <!-- SOP Grid -->
+      <div class="p5-grid" id="p5-grid"></div>
+    </div>
+  </div>
+
+  <!-- ═══ PHASE 6: VOICE PARTNER ═══ -->
+  <div class="phase-page" id="page-p6">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Phase 6 of 6 · The Unfair Advantage</div>
+        <div class="ph-title">AI Voice Partner Integration</div>
+        <div class="ph-desc">
+          Every human role defined in Phase 4 gets a dedicated AI Voice Partner spec — implementation-ready, not conceptual.<br><br>
+          Proactive interruption triggers. Voice command library. Executable workflow map. Data access + Claude API configuration. <strong>Everything a developer needs to build it. Everything a founder needs to fund it.</strong>
+        </div>
+      </div>
+      <div class="ph-right" id="p6-header-actions" style="display:none">
+        <button class="btn btn-outline" onclick="p6CopyAll()">📋 Copy All Specs</button>
+        <button class="btn btn-primary" onclick="navigateTo('bp')">✦ Build Business Plan →</button>
+      </div>
+    </div>
+
+    <!-- Empty state — shown when no Phase 4 roles exist -->
+    <div id="p6-no-roles">
+      <div class="vp-empty-state">
+        <div style="font-size:52px;opacity:0.35;">🎙️</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:700;color:var(--text);">Complete Phase 4 First</div>
+        <div style="font-size:15px;color:var(--muted);max-width:440px;line-height:1.75;">
+          Phase 6 generates a Voice Partner spec for every human role defined in Phase 4. Run Phase 4 to define your org architecture — or load demo specs to see Phase 6 in action now.
+        </div>
+        <div style="display:flex;gap:12px;margin-top:8px;flex-wrap:wrap;justify-content:center;">
+          <button class="btn btn-outline" onclick="navigateTo('p4')">← Back to Phase 4</button>
+          <button class="btn btn-primary" onclick="p6LoadDemo()">⚡ Load Demo Specs</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main content -->
+    <div id="p6-content" style="display:none">
+
+      <!-- KPI bar -->
+      <div class="roi-bar">
+        <div class="roi-card" style="border-color:#D97706;background:#FEF3C7;">
+          <div class="roi-val" id="p6-spec-count" style="color:#D97706;">—</div>
+          <div class="roi-label">Roles Specced</div>
+        </div>
+        <div class="roi-card">
+          <div class="roi-val">3</div>
+          <div class="roi-label">AI Stack Components</div>
+        </div>
+        <div class="roi-card">
+          <div class="roi-val" id="p6-trigger-count">—</div>
+          <div class="roi-label">Proactive Triggers Defined</div>
+        </div>
+        <div class="roi-card">
+          <div class="roi-val">24/7</div>
+          <div class="roi-label">Voice Partner Availability</div>
+        </div>
+      </div>
+
+      <!-- Implementation stack bar -->
+      <div class="p6-info-bar">
+        <div class="p6-info-stack">
+          <div class="p6-stack-item">
+            <div class="p6-stack-label">Reasoning Engine</div>
+            <div class="p6-stack-value">Claude API<br>claude-sonnet-4-5</div>
+          </div>
+          <div class="p6-stack-item">
+            <div class="p6-stack-label">Voice Synthesis</div>
+            <div class="p6-stack-value">ElevenLabs API<br>Adam or Rachel profile</div>
+          </div>
+          <div class="p6-stack-item">
+            <div class="p6-stack-label">Speech Recognition</div>
+            <div class="p6-stack-value">Deepgram Nova-2<br>&lt;300ms latency</div>
+          </div>
+          <div class="p6-stack-item">
+            <div class="p6-stack-label">Data Access Layer</div>
+            <div class="p6-stack-value">MCP Server Integration<br>Real-time company fabric</div>
+          </div>
+          <div class="p6-stack-item">
+            <div class="p6-stack-label">Transport</div>
+            <div class="p6-stack-value">WebSocket<br>Bi-directional streaming</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="btn btn-primary" id="p6-gen-all-btn" onclick="p6GenerateAll()">✦ Generate All Voice Partner Specs</button>
+        <span id="p6-gen-status" style="font-size:13px;font-weight:600;color:var(--muted);"></span>
+      </div>
+
+      <!-- Loading -->
+      <div class="gen-loading" id="p6-loading">
+        <div class="gen-ring"></div>
+        <div class="gen-label" id="p6-loading-label">Generating voice partner specifications...</div>
+      </div>
+
+      <!-- Spec cards -->
+      <div id="p6-specs-grid"></div>
+
+      <!-- Export bar -->
+      <div class="p3-export-bar" id="p6-export-bar" style="display:none">
+        <div class="p3-export-label">✦ Company OS™ complete — <span id="p6-export-summary">all 6 phases locked. Voice partner specs ready for implementation.</span></div>
+        <button class="btn btn-outline" style="border-color:rgba(255,255,255,0.2);color:#CBD5E1;" onclick="p6CopyAll()">📋 Copy All Specs</button>
+        <button class="btn btn-primary" onclick="navigateTo('bp')">✦ Build Business Plan →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BUSINESS PLAN OUTPUT ═══ -->
+  <div class="phase-page" id="page-bp">
+    <div class="phase-header">
+      <div class="ph-left">
+        <div class="ph-eyebrow">Final Output &middot; VC-Ready</div>
+        <div class="ph-title">AI-First Business Plan</div>
+        <div class="ph-desc">The full compiled plan &mdash; Deliverable Chart, AI/Human Assignment Map, Cost-Per-Deliverable ROI. Two editions: VC and Enterprise.</div>
+      </div>
+      <div class="ph-right">
+        <button class="btn btn-ghost btn-sm" onclick="window.open('company-os-v2.html','_blank')">Open Full Generator &rarr;</button>
+      </div>
+    </div>
+    <div class="coming-soon-wrapper">
+      <div class="cs-icon">&#10022;</div>
+      <div class="cs-title">Business Plan Generator</div>
+      <div class="cs-desc">
+        The full compiled plan &mdash; Deliverable Chart replacing the org chart, AI/Human Assignment Map replacing the staffing plan, and Cost-Per-Deliverable ROI replacing the cost center model.<br><br>
+        Once you complete Phases 1-3, the plan auto-compiles from your data. The standalone Business Plan Generator is available now &mdash; it runs on the same Claude-powered engine and accepts your Venture Brief data directly.<br><br>
+        Two editions: <strong>VC / Investor</strong> (capital efficiency, IRR framing, moat analysis) and <strong>Enterprise Client</strong> (operational outcomes, 90-day time-to-value, workforce transformation).
+      </div>
+      <div style="margin-top:20px;display:flex;gap:12px;">
+        <button class="btn btn-gold btn-lg" onclick="window.open('company-os-v2.html','_blank')">Open Business Plan Generator &rarr;</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── STATE ─── */
+const state = {
+  theme: 'light',
+  currentPage: 'p1',
+  venture: {},
+  selectedDepts: new Set(),
+  mapGenerated: false,
+  deliverableMap: [],
+  phase3: null,
+  phase4Roles: [],
+  phase5Sops: [],
+  phase6Specs: [],
+  progress: 0,
+  apiKey: localStorage.getItem('anthropic_api_key') || ''
+};
+
+// Prompt for API key if not set
+function ensureApiKey() {
+  if (!state.apiKey) {
+    const key = prompt('Enter your Anthropic API key:');
+    if (key) {
+      state.apiKey = key;
+      localStorage.setItem('anthropic_api_key', key);
+      return true;
+    }
+    toast('API key required for AI features', true);
+    return false;
+  }
+  return true;
+}
+
+/* ─── DEPARTMENTS ─── */
+const DEPARTMENTS = [
+  { id: 'exec',    icon: '👑', name: 'Executive / C-Suite',       count: 18, aiPct: 55 },
+  { id: 'sales',   icon: '💼', name: 'Sales & Revenue',           count: 22, aiPct: 68 },
+  { id: 'mktg',    icon: '📣', name: 'Marketing',                 count: 20, aiPct: 72 },
+  { id: 'finance', icon: '💰', name: 'Finance & Accounting',      count: 19, aiPct: 74 },
+  { id: 'legal',   icon: '⚖️', name: 'Legal & Compliance',        count: 16, aiPct: 62 },
+  { id: 'hr',      icon: '👥', name: 'Human Resources',           count: 17, aiPct: 65 },
+  { id: 'ops',     icon: '⚙️', name: 'Operations',                count: 21, aiPct: 70 },
+  { id: 'product', icon: '🎯', name: 'Product Management',        count: 18, aiPct: 60 },
+  { id: 'eng',     icon: '💻', name: 'Engineering & Tech',        count: 20, aiPct: 58 },
+  { id: 'cs',      icon: '🤝', name: 'Customer Success',          count: 16, aiPct: 73 },
+  { id: 'it',      icon: '🔧', name: 'IT & Infrastructure',       count: 15, aiPct: 67 },
+  { id: 'rd',      icon: '🔬', name: 'Research & Development',    count: 14, aiPct: 56 },
+];
+
+/* ─── THEME ─── */
+function toggleTheme() {
+  state.theme = state.theme === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.getElementById('theme-btn').innerHTML = state.theme === 'light' ? '&#9728; Light' : '&#127769; Dark';
+}
+
+/* ─── TOAST ─── */
+function toast(msg, isError) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (isError ? ' error' : '');
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+/* ─── NAVIGATION ─── */
+function navigateTo(pageId) {
+  document.querySelectorAll('.phase-page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + pageId);
+  if (page) page.classList.add('active');
+  state.currentPage = pageId;
+  // Highlight nav
+  const navItems = document.querySelectorAll('.nav-item');
+  const map = { p1:0, p2:1, p3:2, p4:3, p5:4, p6:5, bp:6 };
+  if (map[pageId] !== undefined) navItems[map[pageId]]?.classList.add('active');
+  if (pageId === 'p3') initPhase3();
+  if (pageId === 'p4') initPhase4();
+  if (pageId === 'p5') initPhase5();
+  if (pageId === 'p6') initPhase6();
+}
+
+/* ─── VENTURE BRIEF ─── */
+function updateVentureName() {
+  const name = document.getElementById('v-name').value.trim();
+  document.getElementById('topbar-venture-name').textContent = name || 'Not Started';
+}
+
+function updateMetrics() {
+  const rev = document.getElementById('v-revenue').value.trim();
+  const h = parseInt(document.getElementById('v-headcount').value) || 0;
+  const ai = parseInt(document.getElementById('v-ai-fte').value) || 0;
+  if (rev || h || ai) {
+    document.getElementById('p1-metrics').style.display = 'grid';
+    document.getElementById('m-revenue').textContent = rev ? rev.split(' ')[0] : '—';
+    document.getElementById('m-human').textContent = h || '—';
+    document.getElementById('m-ai').textContent = ai || '—';
+    document.getElementById('m-ratio').textContent = (h && ai) ? (ai/h).toFixed(1)+'x' : '—';
+  }
+}
+
+const g = id => document.getElementById(id)?.value?.trim() || '';
+
+function saveVentureBrief() {
+  const name = g('v-name');
+  if (!name) { toast('Company name is required', true); return; }
+  state.venture = {
+    name, industry: g('v-industry'), stage: g('v-stage'), model: g('v-model'),
+    value: g('v-value'), customer: g('v-customer'), revenue: g('v-revenue'),
+    acv: g('v-acv'), headcount: g('v-headcount'), aiFte: g('v-ai-fte'),
+    capital: g('v-capital'), geo: g('v-geo'), team: g('v-team'),
+    aiStack: g('v-ai-stack'), aiFunctions: g('v-ai-functions'),
+    humanFunctions: g('v-human-functions'), moat: g('v-moat'), context: g('v-context')
+  };
+  updateProgress(16);
+  toast('Venture Brief saved — ' + name);
+  navigateTo('p2');
+}
+
+function loadPhase1Demo() {
+  const d = {
+    'v-name': 'ClearPath AI', 'v-industry': 'Healthcare / MedTech',
+    'v-stage': 'Seed / Early Revenue', 'v-model': 'B2B SaaS (Subscription)',
+    'v-value': 'ClearPath AI eliminates revenue leakage in hospital billing by deploying an AI-first Revenue Cycle Management system that autonomously handles claims processing, denial prediction, coding audit, and compliance monitoring — reducing billing costs by 73% and recovering 18–27% more revenue per patient encounter.',
+    'v-customer': 'Mid-to-large hospital systems, 250–2,000 beds; regional health networks and specialty surgical centers',
+    'v-revenue': '$50M ARR by Month 36', 'v-acv': '$180,000 / year',
+    'v-headcount': '28', 'v-ai-fte': '140',
+    'v-capital': '$8M Seed Round', 'v-geo': 'United States (Y1–Y2) → Canada + UK (Y3)',
+    'v-team': 'CEO: Former CFO of 12-hospital regional system ($2.4B annual revenue). CTO: Former ML Lead at Epic, 14 NLP patents. COO: Former VP Operations at Flatiron, scaled $40M → $320M ARR.',
+    'v-ai-stack': 'Claude API, custom healthcare NLP (22M labeled claims), ElevenLabs, Deepgram',
+    'v-ai-functions': '1. Claims intake, scrubbing & submission\n2. Denial root-cause analysis & appeal drafting\n3. ICD/CPT coding audit\n4. Real-time compliance monitoring\n5. Revenue integrity reporting',
+    'v-human-functions': '1. Client relationship management\n2. Regulatory sign-off on complex disputes\n3. Hospital onboarding & change management\n4. AI model governance\n5. Sales & partnerships',
+    'v-moat': '22M labeled claims dataset (largest private dataset), network effects per new hospital, deep Epic/Cerner EHR integration (12-month switching barrier), CMS compliance engine with 7-year training data.',
+    'v-context': 'First client: Piedmont Health System (6 hospitals, $890M revenue). LOI with 3 additional systems. CMS Innovation Center partnership in discussion.'
+  };
+  Object.entries(d).forEach(([id, val]) => { const el = document.getElementById(id); if(el) el.value = val; });
+  updateVentureName();
+  updateMetrics();
+  toast('Demo data loaded — ClearPath AI');
+}
+
+/* ─── DEPARTMENT GRID ─── */
+function buildDeptGrid() {
+  const grid = document.getElementById('dept-grid');
+  grid.innerHTML = DEPARTMENTS.map(d => `
+    <div class="dept-card" id="dc-${d.id}" onclick="toggleDept('${d.id}')">
+      <div class="dept-check">&#10003;</div>
+      <div class="dept-icon">${d.icon}</div>
+      <div class="dept-name">${d.name}</div>
+      <div class="dept-count">${d.count} deliverables · ${d.aiPct}% AI-owned</div>
+      <div class="dept-bar"><div class="dept-bar-fill" style="width:${d.aiPct}%"></div></div>
+    </div>
+  `).join('');
+}
+
+function toggleDept(id) {
+  if (state.selectedDepts.has(id)) { state.selectedDepts.delete(id); }
+  else { state.selectedDepts.add(id); }
+  document.getElementById('dc-' + id)?.classList.toggle('selected', state.selectedDepts.has(id));
+  updateDeptCountLabel();
+}
+
+function selectAllDepts() {
+  DEPARTMENTS.forEach(d => {
+    state.selectedDepts.add(d.id);
+    document.getElementById('dc-' + d.id)?.classList.add('selected');
+  });
+  updateDeptCountLabel();
+}
+
+function updateDeptCountLabel() {
+  const n = state.selectedDepts.size;
+  document.getElementById('dept-count-label').textContent = n > 0 ? `${n} department${n>1?'s':''} selected` : '';
+}
+
+/* ─── GENERATE DELIVERABLE MAP ─── */
+async function generateDeliverableMap() {
+  if (state.selectedDepts.size === 0) { toast('Select at least one department', true); return; }
+
+  const deptNames = DEPARTMENTS.filter(d => state.selectedDepts.has(d.id)).map(d => d.name);
+  const venture = state.venture.name ? state.venture : { name: 'Your Company', industry: 'Technology', stage: 'Early Stage' };
+
+  document.getElementById('map-loading').classList.add('active');
+  document.getElementById('btn-gen-map').disabled = true;
+  document.getElementById('map-output-area').innerHTML = '';
+  document.getElementById('map-loading-label').textContent = `Generating deliverable map for ${deptNames.length} departments...`;
+
+  const systemPrompt = `You are a world-class organizational design expert for Repeatable AI's Company OS™ platform. Your output feeds the Master Deliverable Map engine.
+
+For each department provided, generate a precise deliverable table. Use EXACTLY this markdown table format:
+
+## [Department Name]
+
+| Deliverable | Type | Frequency | Owner | Complexity | Downstream |
+|---|---|---|---|---|---|
+| [specific name] | [Document/Report/Process/Communication/Analysis/Decision] | [Daily/Weekly/Monthly/Quarterly/Annual/Ad Hoc] | [AI-Owned/Human-Owned/Fractional+AI] | [Low/Medium/High] | [receiving dept] |
+
+Rules:
+- Minimum 12 deliverables per department
+- Be SPECIFIC: not "Report" but "Weekly Pipeline Velocity Report by Sales Stage"
+- AI-Owned should be 60-70% across all departments
+- Owner must be exactly one of: AI-Owned, Human-Owned, Fractional+AI
+- After ALL department tables, add a ## SUMMARY section with a single table: Department | Total | AI-Owned | Human-Owned | Fractional+AI | AI%
+- NO prose. Tables only. Clean markdown only.`;
+
+  const userPrompt = `Generate the Master Deliverable Map for ${venture.name || 'this company'} (${venture.industry || 'Technology'}, ${venture.stage || 'Early Stage'}).
+
+Departments to map:
+${deptNames.map((n,i) => `${i+1}. ${n}`).join('\n')}
+
+Company context:
+- Value proposition: ${venture.value || 'AI-first enterprise software'}
+- AI stack: ${venture.aiStack || 'Claude API and modern AI tools'}
+- AI-owned functions: ${venture.aiFunctions || 'automation, reporting, analysis'}
+- Human-owned functions: ${venture.humanFunctions || 'strategy, relationships, judgment'}
+
+Generate all ${deptNames.length} department tables now, then the SUMMARY table.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 6000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+    const result = await res.json();
+    document.getElementById('map-loading').classList.remove('active');
+    document.getElementById('btn-gen-map').disabled = false;
+
+    if (result.error) {
+      toast('API Error: ' + result.error.message, true);
+      return;
+    }
+    renderDeliverableMap(result.content?.[0]?.text || '');
+  } catch(err) {
+    document.getElementById('map-loading').classList.remove('active');
+    document.getElementById('btn-gen-map').disabled = false;
+    toast('Connection error: ' + err.message, true);
+    console.error(err);
+  }
+}
+
+function renderDeliverableMap(md) {
+  // Parse sections
+  const sections = md.split(/^## /m).filter(s => s.trim());
+  let html = '';
+  let totalDeliverables = 0;
+  state.deliverableMap = [];
+
+  sections.forEach(section => {
+    const lines = section.trim().split('\n');
+    const title = lines[0].trim();
+    const rest = lines.slice(1).join('\n').trim();
+
+    // Parse table
+    const tableMatch = rest.match(/\|(.+)\|\s*\n\|[-| :]+\|\s*\n((?:\|.+\|\s*\n?)+)/);
+    if (!tableMatch && title === 'SUMMARY') {
+      // Summary section special rendering
+      html += `<div class="card" style="margin-top:24px;border-color:var(--gold-bright);">
+        <div class="card-title" style="font-size:16px;"><div class="card-title-icon">&#128200;</div>Deliverable Map Summary</div>
+        ${buildTableHtml(rest, true)}
+      </div>`;
+      return;
+    }
+
+    const dept = DEPARTMENTS.find(d => title.toLowerCase().includes(d.name.toLowerCase().split('/')[0].trim()));
+    const icon = dept?.icon || '📁';
+
+    const tableHtml = tableMatch ? buildTableHtml(rest) : '<p style="color:var(--ink-dim);font-size:13px;">No deliverables generated.</p>';
+
+    // Count deliverables
+    const rowCount = (rest.match(/^\|[^-]/gm) || []).length - 1;
+    if (rowCount > 0) totalDeliverables += rowCount;
+
+    if (tableMatch && title !== 'SUMMARY') {
+      const headers = tableMatch[1].split('|').map(h => h.trim()).filter(Boolean);
+      const rows = tableMatch[2].trim().split('\n').map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+      const iName  = headers.findIndex(h => h.toLowerCase().includes('deliverable'));
+      const iType  = headers.findIndex(h => h.toLowerCase().includes('type'));
+      const iFreq  = headers.findIndex(h => h.toLowerCase().includes('freq'));
+      const iOwner = headers.findIndex(h => h.toLowerCase().includes('owner'));
+      rows.forEach(row => {
+        if (!row.length) return;
+        const raw = row[iOwner >= 0 ? iOwner : 3] || 'AI-Owned';
+        const owner = raw.includes('Human') ? 'Human-Owned' : raw.includes('Frac') ? 'Fractional+AI' : 'AI-Owned';
+        state.deliverableMap.push({
+          dept: title.replace(/\s*\/.*$/, '').trim(),
+          name: row[iName >= 0 ? iName : 0] || '',
+          type: row[iType >= 0 ? iType : 1] || '',
+          frequency: row[iFreq >= 0 ? iFreq : 2] || '',
+          owner: owner,
+          assignedOwner: owner,
+          tradCost: undefined,
+          aiCost: undefined,
+        });
+      });
+    }
+
+    html += `
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-title" style="font-size:15px;margin-bottom:12px;">
+          <div class="card-title-icon">${icon}</div>
+          ${title}
+          <span style="margin-left:auto;font-size:11px;font-weight:600;color:var(--ink-dim);background:var(--bg-input);padding:3px 10px;border-radius:10px;border:1px solid var(--border);">${rowCount > 0 ? rowCount + ' deliverables' : ''}</span>
+        </div>
+        <div class="deliverable-table-wrap">${tableHtml}</div>
+      </div>`;
+  });
+
+  // Add total banner
+  const banner = `<div style="background:var(--gold-bg);border:2px solid var(--gold-bright);border-radius:10px;padding:16px 20px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;">
+    <div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold-mid);margin-bottom:4px;">Master Deliverable Map Generated</div>
+      <div style="font-size:15px;font-weight:700;color:var(--ink);">${totalDeliverables}+ deliverables mapped across ${state.selectedDepts.size} departments</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-gold btn-sm" onclick="navigateTo('p3')">Continue to AI/Human Layer &rarr;</button>
+    </div>
+  </div>`;
+
+  document.getElementById('map-output-area').innerHTML = banner + html;
+  updateProgress(33);
+  toast('Deliverable Map generated — ' + totalDeliverables + ' deliverables');
+}
+
+function buildTableHtml(md, isSummary) {
+  const tableMatch = md.match(/\|(.+)\|\s*\n\|[-| :]+\|\s*\n((?:\|.+\|\s*\n?)+)/);
+  if (!tableMatch) return '';
+  const headers = tableMatch[1].split('|').map(h => h.trim()).filter(Boolean);
+  const rows = tableMatch[2].trim().split('\n').map(r => r.split('|').map(c => c.trim()).filter(Boolean));
+
+  let t = '<table class="deliverable-table"><thead><tr>';
+  headers.forEach(h => t += `<th>${h}</th>`);
+  t += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    t += '<tr>';
+    row.forEach((cell, ci) => {
+      const lo = cell.toLowerCase();
+      let cellHtml = cell;
+      if (lo === 'ai-owned' || lo === 'ai owned') cellHtml = '<span class="owner-badge owner-ai">&#9889; AI-Owned</span>';
+      else if (lo === 'human-owned' || lo === 'human owned') cellHtml = '<span class="owner-badge owner-human">&#128100; Human</span>';
+      else if (lo.includes('fractional')) cellHtml = '<span class="owner-badge owner-frac">&#9878; Frac+AI</span>';
+      t += `<td>${cellHtml}</td>`;
+    });
+    t += '</tr>';
+  });
+  t += '</tbody></table>';
+  return t;
+}
+
+/* ─── PROGRESS ─── */
+function updateProgress(pct) {
+  state.progress = pct;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '% Complete';
+}
+
+/* ═══ PHASE 3 ENGINE ═══ */
+const P3_COSTS = {
+  conservative: {
+    'AI-Owned':      { ai: 2400,   trad: 97500  },
+    'Human-Owned':   { ai: 180000, trad: 180000 },
+    'Fractional+AI': { ai: 24000,  trad: 97500  },
+  },
+  aggressive: {
+    'AI-Owned':      { ai: 800,    trad: 97500  },
+    'Human-Owned':   { ai: 45000,  trad: 45000  },
+    'Fractional+AI': { ai: 8000,   trad: 97500  },
+  }
+};
+
+const P3_COMPLIANCE = {
+  'Healthcare / MedTech': ['claim','coding','compliance','regulatory','clinical','hipaa','billing','prior auth','audit','credentialing'],
+  'Fintech / Financial Services': ['audit','regulatory','fiduciary','compliance','filing','sec','tax','financial statement','risk assessment','aml','kyc'],
+  'Legal Tech': ['contract','filing','brief','motion','legal opinion','regulatory','compliance','litigation'],
+  'Defense / Gov Contracting': ['classified','itar','security clearance','contract','government','federal','compliance'],
+};
+
+let p3Mode = 'conservative';
+let p3ActiveDept = 'all';
+
+function formatDollar(n) {
+  const abs = Math.abs(n);
+  const prefix = n < 0 ? '-' : '';
+  if (abs >= 1000000) return prefix + '$' + (abs/1000000).toFixed(1) + 'M';
+  if (abs >= 1000)    return prefix + '$' + Math.round(abs/1000) + 'K';
+  return prefix + '$' + Math.round(abs);
+}
+
+function p3CheckCompliance(name, industry) {
+  const kws = P3_COMPLIANCE[industry];
+  if (!kws || !name) return false;
+  const lc = name.toLowerCase();
+  return kws.some(k => lc.includes(k));
+}
+
+function initPhase3() {
+  const map = state.deliverableMap;
+  if (!map || !map.length) {
+    document.getElementById('p3-no-data').style.display = '';
+    document.getElementById('p3-content').style.display = 'none';
+    document.getElementById('p3-header-actions').style.display = 'none';
+    return;
+  }
+  document.getElementById('p3-no-data').style.display = 'none';
+  document.getElementById('p3-content').style.display = '';
+  document.getElementById('p3-header-actions').style.display = '';
+  map.forEach(d => {
+    if (d.tradCost === undefined) {
+      const c = P3_COSTS[p3Mode][d.assignedOwner] || P3_COSTS[p3Mode]['AI-Owned'];
+      d.tradCost = c.trad;
+      d.aiCost   = c.ai;
+    }
+  });
+  const depts = [...new Set(map.map(d => d.dept).filter(Boolean))];
+  const el = document.getElementById('p3-dept-pills');
+  el.innerHTML = '<span class="dept-pill active" onclick="p3FilterDept(\'all\',this)">All Departments</span>' +
+    depts.map(d => `<span class="dept-pill" onclick="p3FilterDept('${d.replace(/'/g,"\\'")}',this)">${d}</span>`).join('');
+  const industry = (state.venture && state.venture.industry) || '';
+  document.getElementById('p3-compliance-info').style.display = P3_COMPLIANCE[industry] ? '' : 'none';
+  renderP3Table();
+  updateProgress(50);
+}
+
+function renderP3Table() {
+  const map = state.deliverableMap;
+  const industry = (state.venture && state.venture.industry) || '';
+  let html = '';
+  let count = 0;
+  map.forEach((d, idx) => {
+    if (p3ActiveDept !== 'all' && d.dept !== p3ActiveDept) return;
+    count++;
+    const ao = d.assignedOwner || 'AI-Owned';
+    const flag = ao === 'AI-Owned' && p3CheckCompliance(d.name, industry);
+    const bAI    = 'three-way-btn' + (ao === 'AI-Owned'      ? ' active-ai'    : '');
+    const bHuman = 'three-way-btn' + (ao === 'Human-Owned'   ? ' active-human' : '');
+    const bFrac  = 'three-way-btn' + (ao === 'Fractional+AI' ? ' active-frac'  : '');
+    const sav    = (d.tradCost||0) - (d.aiCost||0);
+    const savCls = sav >= 0 ? 'savings-positive' : 'savings-negative';
+    const flagHtml = flag
+      ? `<span class="compliance-flag">&#9888; Review<span class="cf-tooltip">Likely requires human sign-off in ${industry}.</span></span>`
+      : `<span style="color:var(--ink-muted);font-size:12px;">&mdash;</span>`;
+    const deptShort = (d.dept||'').replace('Management','Mgmt').replace('Engineering','Eng').replace('Operations','Ops');
+    html += `<tr>
+      <td style="font-weight:600;color:var(--ink);font-size:14px;line-height:1.45;">${d.name||'&mdash;'}</td>
+      <td><span style="font-size:11px;background:var(--bg-input);padding:2px 9px;border-radius:10px;border:1px solid var(--border);color:var(--ink-dim);white-space:nowrap;font-weight:600;">${deptShort}</span></td>
+      <td style="font-size:12px;color:var(--ink-dim);white-space:nowrap;">${d.type||'&mdash;'}<br><span style="font-size:11px;color:var(--ink-muted);">${d.frequency||''}</span></td>
+      <td><div class="three-way">
+        <button class="${bAI}"    onclick="p3SetOwner(${idx},'AI-Owned')">&#9889; AI</button>
+        <button class="${bHuman}" onclick="p3SetOwner(${idx},'Human-Owned')">&#128100; Human</button>
+        <button class="${bFrac}"  onclick="p3SetOwner(${idx},'Fractional+AI')">&#9878; Frac</button>
+      </div></td>
+      <td>${flagHtml}</td>
+      <td><input class="cost-input" type="number" value="${d.tradCost||0}" onchange="p3UpdateCost(${idx},'trad',this.value)" step="1000" min="0"></td>
+      <td><input class="cost-input" type="number" value="${d.aiCost||0}"   onchange="p3UpdateCost(${idx},'ai',this.value)"   step="100"  min="0"></td>
+      <td><span class="${savCls}" id="p3-sav-${idx}">${formatDollar(sav)}</span></td>
+    </tr>`;
+  });
+  document.getElementById('p3-tbody').innerHTML = html || '<tr><td colspan="8" style="text-align:center;padding:32px;color:var(--ink-muted);">No deliverables match this filter.</td></tr>';
+  document.getElementById('p3-row-count').textContent = count + ' deliverables';
+  document.getElementById('p3-count-label').textContent = count + ' deliverables shown';
+  p3RecalcTotals();
+}
+
+function p3SetOwner(idx, owner) {
+  state.deliverableMap[idx].assignedOwner = owner;
+  const c = P3_COSTS[p3Mode][owner] || P3_COSTS[p3Mode]['AI-Owned'];
+  state.deliverableMap[idx].tradCost = c.trad;
+  state.deliverableMap[idx].aiCost   = c.ai;
+  renderP3Table();
+}
+
+function p3UpdateCost(idx, type, val) {
+  const v = parseInt(val) || 0;
+  if (type === 'trad') state.deliverableMap[idx].tradCost = v;
+  else                 state.deliverableMap[idx].aiCost   = v;
+  const d = state.deliverableMap[idx];
+  const sav = (d.tradCost||0) - (d.aiCost||0);
+  const el = document.getElementById('p3-sav-' + idx);
+  if (el) { el.textContent = formatDollar(sav); el.className = sav >= 0 ? 'savings-positive' : 'savings-negative'; }
+  p3RecalcTotals();
+}
+
+function p3RecalcTotals() {
+  let trad = 0, ai = 0;
+  state.deliverableMap.forEach(d => { trad += d.tradCost||0; ai += d.aiCost||0; });
+  const sav = trad - ai;
+  const lev = ai > 0 ? (trad/ai).toFixed(1) : '∞';
+  document.getElementById('p3-trad-total').textContent    = formatDollar(trad);
+  document.getElementById('p3-ai-total').textContent      = formatDollar(ai);
+  document.getElementById('p3-savings-total').textContent = formatDollar(sav);
+  document.getElementById('p3-leverage-ratio').textContent = isFinite(parseFloat(lev)) ? lev + 'x' : '∞';
+  const pct = trad > 0 ? Math.round((sav/trad)*100) : 0;
+  const expEl = document.getElementById('p3-export-summary');
+  if (expEl) expEl.textContent = formatDollar(sav) + ' saved annually · ' + lev + 'x AI leverage · ' + pct + '% cost reduction vs traditional.';
+  state.phase3 = { tradTotal: trad, aiTotal: ai, savings: sav, leverage: lev, pct };
+}
+
+function p3SetMode(mode) {
+  p3Mode = mode;
+  document.getElementById('p3-cons-btn').className = 'p3-toggle-btn' + (mode==='conservative' ? ' active' : '');
+  document.getElementById('p3-agg-btn').className  = 'p3-toggle-btn' + (mode==='aggressive'   ? ' active' : '');
+  state.deliverableMap.forEach(d => {
+    const c = P3_COSTS[mode][d.assignedOwner] || P3_COSTS[mode]['AI-Owned'];
+    d.tradCost = c.trad; d.aiCost = c.ai;
+  });
+  renderP3Table();
+}
+
+function p3FilterDept(dept, el) {
+  p3ActiveDept = dept;
+  document.querySelectorAll('.dept-pill').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderP3Table();
+}
+
+function p3FilterAll() {
+  p3ActiveDept = 'all';
+  const pills = document.querySelectorAll('.dept-pill');
+  pills.forEach(p => p.classList.remove('active'));
+  if (pills[0]) pills[0].classList.add('active');
+  renderP3Table();
+}
+
+function p3CopyModel() {
+  const s = state.phase3;
+  const map = state.deliverableMap;
+  if (!s || !map || !map.length) { toast('No cost model to copy', true); return; }
+  const name = (state.venture && state.venture.name) || 'Company OS™';
+  let text = '════════════════════════════════════════\n';
+  text += 'AI/HUMAN COST ARCHITECTURE — ' + name + '\n';
+  text += 'Mode: ' + p3Mode.toUpperCase() + ' · ' + new Date().toLocaleDateString() + '\n';
+  text += '════════════════════════════════════════\n\n';
+  text += 'Traditional Annual Cost:  ' + formatDollar(s.tradTotal) + '\n';
+  text += 'AI-First Annual Cost:     ' + formatDollar(s.aiTotal) + '\n';
+  text += 'Annual Savings:           ' + formatDollar(s.savings) + '\n';
+  text += 'Cost Reduction:           ' + s.pct + '%\n';
+  text += 'AI Leverage Ratio:        ' + s.leverage + 'x\n\n';
+  text += '────────────────────────────────────────\n';
+  text += 'DELIVERABLE BREAKDOWN\n';
+  text += '────────────────────────────────────────\n';
+  text += 'Deliverable'.padEnd(40) + 'Owner'.padEnd(16) + 'Trad'.padStart(10) + 'AI'.padStart(10) + 'Savings'.padStart(10) + '\n';
+  text += '─'.repeat(86) + '\n';
+  map.forEach(d => {
+    text += (d.name||'—').substring(0,38).padEnd(40) + (d.assignedOwner||'').padEnd(16) + formatDollar(d.tradCost).padStart(10) + formatDollar(d.aiCost).padStart(10) + formatDollar((d.tradCost||0)-(d.aiCost||0)).padStart(10) + '\n';
+  });
+  navigator.clipboard.writeText(text)
+    .then(() => toast('Cost model copied — ' + map.length + ' deliverables'))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p3InjectToBP() {
+  const s = state.phase3;
+  if (!s) { toast('Run cost model first', true); return; }
+  const params = new URLSearchParams({
+    from: 'phase3',
+    name: (state.venture && state.venture.name) || '',
+    trad: s.tradTotal, ai: s.aiTotal, savings: s.savings,
+    leverage: s.leverage, pct: s.pct, mode: p3Mode, count: state.deliverableMap.length,
+  });
+  window.open('company-os-v2.html?' + params.toString(), '_blank');
+  toast('Cost data injected — Business Plan Generator opening');
+}
+
+function p3LoadDemo() {
+  state.deliverableMap = [
+    {dept:'Executive',        name:'Weekly AI Operations Dashboard',          type:'Report',   frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Executive',        name:'Board Performance Summary',               type:'Report',   frequency:'Monthly',   owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+    {dept:'Executive',        name:'Competitive Intelligence Briefing',       type:'Analysis', frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Executive',        name:'Strategic Roadmap & OKR Alignment',       type:'Document', frequency:'Quarterly', owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Sales',            name:'Daily Pipeline Velocity Report',          type:'Report',   frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Sales',            name:'Lead Scoring & Priority Queue',           type:'Process',  frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Sales',            name:'Enterprise Deal Strategy Memo',           type:'Document', frequency:'Ad Hoc',    owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Sales',            name:'Win/Loss Analysis & Coaching Report',     type:'Analysis', frequency:'Monthly',   owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Marketing',        name:'Multi-Channel Campaign Performance',      type:'Report',   frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Marketing',        name:'SEO Content Production Pipeline',         type:'Process',  frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Marketing',        name:'Brand Strategy & Positioning Document',   type:'Document', frequency:'Quarterly', owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Finance',          name:'Month-End Financial Close Package',       type:'Report',   frequency:'Monthly',   owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+    {dept:'Finance',          name:'AP/AR Reconciliation Workflow',           type:'Process',  frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Finance',          name:'Cash Flow Forecasting Model',             type:'Analysis', frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Finance',          name:'Tax Filing & Regulatory Compliance',      type:'Document', frequency:'Annual',    owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Legal',            name:'Contract Review & Redline Summary',       type:'Document', frequency:'Ad Hoc',    owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+    {dept:'Legal',            name:'Compliance Monitoring Dashboard',         type:'Report',   frequency:'Monthly',   owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Legal',            name:'Regulatory Filing Preparation',           type:'Document', frequency:'Quarterly', owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'HR',               name:'Candidate Screening & Ranking Report',    type:'Report',   frequency:'Ad Hoc',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'HR',               name:'Employee Sentiment Analysis',             type:'Analysis', frequency:'Monthly',   owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'HR',               name:'Performance Review Package',              type:'Document', frequency:'Quarterly', owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+    {dept:'Operations',       name:'Operational Efficiency Report',           type:'Report',   frequency:'Weekly',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Operations',       name:'Vendor Scorecard & Optimization',         type:'Analysis', frequency:'Monthly',   owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Product',          name:'Feature Prioritization Matrix',           type:'Analysis', frequency:'Weekly',    owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+    {dept:'Product',          name:'User Research Synthesis Report',          type:'Report',   frequency:'Monthly',   owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Product',          name:'Product Roadmap & Release Notes',         type:'Document', frequency:'Monthly',   owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Engineering',      name:'Code Review & Quality Audit Report',      type:'Process',  frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Engineering',      name:'System Performance Dashboard',            type:'Report',   frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Engineering',      name:'Architecture Decision Record',            type:'Document', frequency:'Ad Hoc',    owner:'Human-Owned',   assignedOwner:'Human-Owned'},
+    {dept:'Customer Success', name:'Churn Risk Scoring & Early Alert',        type:'Report',   frequency:'Daily',     owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Customer Success', name:'Renewal & Expansion Opportunity Playbook',type:'Process',  frequency:'Ad Hoc',    owner:'AI-Owned',      assignedOwner:'AI-Owned'},
+    {dept:'Customer Success', name:'QBR Preparation & Executive Summary',     type:'Document', frequency:'Quarterly', owner:'Fractional+AI', assignedOwner:'Fractional+AI'},
+  ];
+  state.deliverableMap.forEach(d => {
+    const c = P3_COSTS[p3Mode][d.assignedOwner] || P3_COSTS[p3Mode]['AI-Owned'];
+    d.tradCost = c.trad; d.aiCost = c.ai;
+  });
+  document.getElementById('p3-no-data').style.display = 'none';
+  document.getElementById('p3-content').style.display = '';
+  document.getElementById('p3-header-actions').style.display = '';
+  const industry = (state.venture && state.venture.industry) || '';
+  document.getElementById('p3-compliance-info').style.display = P3_COMPLIANCE[industry] ? '' : 'none';
+  const depts = [...new Set(state.deliverableMap.map(d => d.dept))];
+  const el = document.getElementById('p3-dept-pills');
+  el.innerHTML = '<span class="dept-pill active" onclick="p3FilterDept(\'all\',this)">All Departments</span>' +
+    depts.map(d => `<span class="dept-pill" onclick="p3FilterDept('${d.replace(/'/g,"\\'")}',this)">${d}</span>`).join('');
+  renderP3Table();
+  updateProgress(50);
+  toast('Demo loaded — ' + state.deliverableMap.length + ' deliverables across ' + depts.length + ' departments');
+}
+
+/* ─── INIT ─── */
+buildDeptGrid();
+updateDeptCountLabel();
+
+/* ═══════════════════════════════════════════════
+   PHASE 4: ORG ARCHITECTURE & JOB DESCRIPTIONS
+═══════════════════════════════════════════════ */
+
+const P4_SALARY = {
+  'Executive':        '$180,000 – $350,000',
+  'Sales':            '$90,000 – $180,000',
+  'Marketing':        '$85,000 – $145,000',
+  'Finance':          '$95,000 – $175,000',
+  'Legal':            '$120,000 – $220,000',
+  'HR':               '$75,000 – $135,000',
+  'Operations':       '$80,000 – $140,000',
+  'Product':          '$130,000 – $210,000',
+  'Engineering':      '$140,000 – $240,000',
+  'Customer Success': '$70,000 – $120,000',
+  'IT':               '$90,000 – $160,000',
+  'Research':         '$110,000 – $190,000',
+};
+
+const P4_REPORTS_TO = {
+  'Executive':        'Board of Directors',
+  'Sales':            'CEO / Chief Revenue Officer',
+  'Marketing':        'CEO / Chief Revenue Officer',
+  'Finance':          'CEO / CFO',
+  'Legal':            'CEO / General Counsel',
+  'HR':               'CEO / Chief People Officer',
+  'Operations':       'CEO / COO',
+  'Product':          'CEO / Chief Product Officer',
+  'Engineering':      'CTO / VP Engineering',
+  'Customer Success': 'CRO / VP Customer Success',
+  'IT':               'CTO / VP Engineering',
+  'Research':         'CEO / CTO',
+};
+
+function initPhase4() {
+  const map = state.deliverableMap || [];
+  const humanDels = map.filter(d =>
+    d.assignedOwner === 'Human-Owned' || d.assignedOwner === 'Fractional+AI'
+  );
+
+  if (!humanDels.length) {
+    document.getElementById('p4-no-data').style.display = '';
+    document.getElementById('p4-content').style.display = 'none';
+    document.getElementById('p4-header-actions').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('p4-no-data').style.display = 'none';
+  document.getElementById('p4-content').style.display = '';
+  document.getElementById('p4-header-actions').style.display = '';
+
+  if (!state.phase4Roles || !state.phase4Roles.length) {
+    const clusters = {};
+    humanDels.forEach(d => {
+      const dept = d.dept || 'General';
+      if (!clusters[dept]) clusters[dept] = [];
+      clusters[dept].push(d);
+    });
+    state.phase4Roles = Object.entries(clusters).map(([dept, dels]) => ({
+      dept,
+      deliverables: dels,
+      roleTitle:   dept + ' Lead',
+      reportingTo: P4_REPORTS_TO[dept] || 'CEO',
+      salaryBand:  P4_SALARY[dept]     || '$80,000 – $160,000',
+      jdGenerated: false,
+      jdText: '',
+    }));
+  }
+
+  const allDepts   = [...new Set(map.map(d => d.dept))];
+  const humanDepts = [...new Set(humanDels.map(d => d.dept))];
+  const aiOnlyDepts = allDepts.filter(d => !humanDepts.includes(d));
+  const avgDel = (humanDels.length / Math.max(state.phase4Roles.length, 1)).toFixed(1);
+
+  document.getElementById('p4-role-count').textContent = state.phase4Roles.length;
+  document.getElementById('p4-avg-del').textContent    = avgDel;
+  document.getElementById('p4-ai-depts').textContent   = aiOnlyDepts.length;
+  p4UpdateJDCount();
+  renderP4Roles();
+  updateProgress(67);
+}
+
+function p4UpdateJDCount() {
+  const ready = (state.phase4Roles || []).filter(r => r.jdGenerated).length;
+  document.getElementById('p4-jd-ready').textContent = ready;
+  const total = (state.phase4Roles || []).length;
+  if (ready === total && total > 0) {
+    document.getElementById('p4-export-bar').style.display = '';
+    const sumEl = document.getElementById('p4-export-summary');
+    if (sumEl) sumEl.textContent = total + ' roles · ' + total + ' JDs ready to post.';
+  }
+}
+
+function renderP4Roles() {
+  const grid = document.getElementById('p4-roles-grid');
+  if (!state.phase4Roles || !state.phase4Roles.length) { grid.innerHTML = ''; return; }
+
+  grid.innerHTML = state.phase4Roles.map((role, idx) => {
+    const delItems = role.deliverables.map(d =>
+      `<div style="display:flex;align-items:baseline;gap:8px;font-size:14px;color:var(--ink-3);line-height:1.6;">
+        <span style="color:var(--gold-bright);font-weight:700;flex-shrink:0;">&rarr;</span>
+        <span>${d.name}<span style="font-size:11px;color:var(--ink-muted);margin-left:6px;">${d.frequency || ''}</span></span>
+       </div>`
+    ).join('');
+
+    const jdSection = role.jdGenerated
+      ? `<div style="background:var(--bg-input);border:1.5px solid var(--border);border-radius:8px;padding:20px;margin-top:16px;">
+           <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--gold-mid);margin-bottom:12px;">Generated Job Description</div>
+           <pre style="font-family:'DM Sans',sans-serif;font-size:14px;color:var(--ink-3);white-space:pre-wrap;line-height:1.8;margin:0;">${role.jdText}</pre>
+         </div>` : '';
+
+    const jdBtn = role.jdGenerated
+      ? `<span style="font-size:11px;font-weight:700;color:var(--green);padding:4px 12px;background:var(--green-bg);border-radius:10px;border:1px solid var(--green-border);">&#10003; JD Ready</span>`
+      : `<button class="btn btn-outline btn-sm" id="p4-gen-btn-${idx}" onclick="p4GenerateOneJD(${idx})">&#10022; Generate JD</button>`;
+
+    return `
+      <div class="card" style="margin-bottom:16px;" id="p4-card-${idx}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px;">
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--ink);line-height:1.3;">${role.roleTitle}</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:7px;flex-wrap:wrap;">
+              <span style="font-size:11px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);padding:2px 10px;border-radius:10px;font-weight:700;">${role.dept}</span>
+              <span style="font-size:12px;color:var(--ink-dim);font-weight:500;">Reports to: ${role.reportingTo}</span>
+              <span style="font-size:12px;color:var(--green);font-weight:700;">&#128176; ${role.salaryBand}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-shrink:0;flex-wrap:wrap;">
+            ${jdBtn}
+            <button class="btn btn-ghost btn-sm" onclick="p4CopyJD(${idx})">&#128203; Copy</button>
+          </div>
+        </div>
+        <div style="margin-bottom:4px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.07em;text-transform:uppercase;color:var(--ink-dim);margin-bottom:10px;">
+            Accountable Deliverables
+            <span style="font-size:10px;background:var(--bg-input);padding:2px 8px;border-radius:8px;border:1px solid var(--border);margin-left:6px;color:var(--ink-muted);font-weight:600;">${role.deliverables.length}</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;">${delItems}</div>
+        </div>
+        ${jdSection}
+      </div>`;
+  }).join('');
+
+  renderP4OrgChart();
+}
+
+function renderP4OrgChart() {
+  const inner = document.getElementById('p4-orgchart-inner');
+  if (!inner || !state.phase4Roles || !state.phase4Roles.length) return;
+  const roleNodes = state.phase4Roles.map(r =>
+    `<div style="display:inline-flex;flex-direction:column;align-items:center;gap:0;margin:0 8px;">
+       <div style="width:2px;height:18px;background:var(--border-med);"></div>
+       <div style="background:var(--gold-bg);border:1.5px solid var(--gold-border);color:var(--gold-mid);padding:9px 14px;border-radius:8px;font-weight:700;font-size:12px;white-space:nowrap;text-align:center;min-width:120px;line-height:1.4;">
+         ${r.roleTitle}<br>
+         <span style="font-size:10px;font-weight:500;color:var(--ink-dim);">${r.dept}</span>
+       </div>
+     </div>`
+  ).join('');
+  inner.innerHTML = `
+    <div style="display:inline-flex;flex-direction:column;align-items:center;gap:0;">
+      <div style="background:var(--bg-nav);color:#fff;padding:10px 24px;border-radius:8px;font-weight:700;font-size:14px;letter-spacing:0.02em;">CEO</div>
+      <div style="width:2px;height:20px;background:var(--border-med);"></div>
+      <div style="display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-start;gap:4px;">${roleNodes}</div>
+    </div>`;
+}
+
+function p4ToggleOrgChart() {
+  const el = document.getElementById('p4-orgchart');
+  el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+async function p4GenerateAllJDs() {
+  if (!state.phase4Roles || !state.phase4Roles.length) {
+    toast('No roles to generate — complete Phase 3 first', true); return;
+  }
+  const btn = document.getElementById('p4-gen-all-btn');
+  btn.disabled = true;
+  document.getElementById('p4-loading').classList.add('active');
+  const statusEl = document.getElementById('p4-gen-status');
+
+  for (let i = 0; i < state.phase4Roles.length; i++) {
+    document.getElementById('p4-loading-label').textContent =
+      'Generating JD ' + (i + 1) + ' of ' + state.phase4Roles.length + ': ' + state.phase4Roles[i].dept + '...';
+    statusEl.textContent = (i + 1) + ' / ' + state.phase4Roles.length + ' complete';
+    await p4GenerateOneJD(i);
+  }
+
+  document.getElementById('p4-loading').classList.remove('active');
+  btn.disabled = false;
+  statusEl.textContent = '&#10003; All ' + state.phase4Roles.length + ' JDs generated';
+  renderP4Roles();
+  p4UpdateJDCount();
+  updateProgress(67);
+  toast('&#10003; ' + state.phase4Roles.length + ' job descriptions generated');
+}
+
+async function p4GenerateOneJD(idx) {
+  const role    = state.phase4Roles[idx];
+  const venture = state.venture || {};
+  const btn     = document.getElementById('p4-gen-btn-' + idx);
+  if (btn) btn.disabled = true;
+
+  const delList = role.deliverables
+    .map((d, i) => `${i + 1}. ${d.name} | ${d.type || 'Deliverable'} | ${d.frequency || 'Ongoing'}`)
+    .join('\n');
+
+  const prompt = `You are an organizational design expert for an AI-first company.
+
+Company: ${venture.name || 'Company'} | Industry: ${venture.industry || 'Technology'} | Stage: ${venture.stage || 'Early Stage'}
+AI functions handled by AI: ${venture.aiFunctions || 'automation, reporting, analysis, first-draft generation'}
+
+Generate a complete job description for this role. Rules:
+— Zero use of "responsible for", "will help with", "assist with", "support", or vague language
+— Every line states what the person PRODUCES, by WHEN, measured HOW
+— Derive a specific role title from the actual deliverables — not a generic "Manager of X"
+— Write for a high-performer who respects clarity
+
+ROLE CLUSTER:
+Department: ${role.dept}
+Reports To: ${role.reportingTo}
+Salary Band: ${role.salaryBand}
+
+DELIVERABLES THIS HUMAN OWNS:
+${delList}
+
+OUTPUT FORMAT — use exactly these headers:
+
+ROLE TITLE: [specific title derived from deliverables]
+DEPARTMENT: ${role.dept}
+REPORTS TO: ${role.reportingTo}
+SALARY BAND: ${role.salaryBand}
+
+THE POSITION IN ONE SENTENCE:
+[What you produce. What changes because you exist. Max 30 words.]
+
+YOU ARE ACCOUNTABLE FOR PRODUCING:
+[Number each deliverable. Name it. State frequency. State the quality bar. No passive verbs.]
+
+SUCCESS IN YOUR FIRST 90 DAYS LOOKS LIKE:
+1. [Specific measurable outcome with number and deadline]
+2. [Specific measurable outcome with number and deadline]
+3. [Specific measurable outcome with number and deadline]
+
+WHAT YOUR AI PARTNER HANDLES FOR YOU:
+— [Specific task AI does, freeing you for judgment]
+— [Specific task AI does, freeing you for judgment]
+— [Specific task AI does, freeing you for judgment]
+
+WHAT REQUIRES YOUR IRREPLACEABLE JUDGMENT:
+— [Human decision only you can make]
+— [Human decision only you can make]
+— [Human decision only you can make]
+
+WHAT WE DON'T CARE ABOUT:
+— [Credential or experience irrelevant to your outputs]
+— [Credential or experience irrelevant to your outputs]`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      toast('API error on ' + role.dept + ': ' + data.error.message, true);
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const text   = data.content?.[0]?.text || '';
+    const match  = text.match(/ROLE TITLE:\s*(.+)/);
+    if (match) state.phase4Roles[idx].roleTitle = match[1].trim();
+    state.phase4Roles[idx].jdText      = text;
+    state.phase4Roles[idx].jdGenerated = true;
+    renderP4Roles();
+    p4UpdateJDCount();
+  } catch (e) {
+    toast('Connection error generating JD for ' + role.dept, true);
+    if (btn) btn.disabled = false;
+  }
+}
+
+function p4CopyJD(idx) {
+  const role = state.phase4Roles[idx];
+  const text = role.jdGenerated
+    ? role.jdText
+    : 'ROLE: ' + role.roleTitle + '\nDEPT: ' + role.dept +
+      '\n\nDeliverables:\n' + role.deliverables.map(d => '• ' + d.name).join('\n');
+  navigator.clipboard.writeText(text)
+    .then(() => toast('JD copied — ' + role.roleTitle))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p4CopyAllJDs() {
+  if (!state.phase4Roles || !state.phase4Roles.length) { toast('No JDs to copy', true); return; }
+  const sep    = '\n\n' + '═'.repeat(60) + '\n\n';
+  const name   = (state.venture && state.venture.name) || 'Company OS™';
+  const header = 'ORG ARCHITECTURE & JOB DESCRIPTIONS\n' + name +
+                 '\nGenerated by Company OS™ · Repeatable AI\n' +
+                 new Date().toLocaleDateString() + '\n\n' + '═'.repeat(60);
+  const body   = state.phase4Roles
+    .map(r => r.jdGenerated ? r.jdText : r.roleTitle + '\n' + r.deliverables.map(d => '• ' + d.name).join('\n'))
+    .join(sep);
+  navigator.clipboard.writeText(header + sep + body)
+    .then(() => toast('All ' + state.phase4Roles.length + ' JDs copied to clipboard'))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p4LoadDemo() {
+  state.deliverableMap = [
+    { dept:'Executive',        name:'Strategic Roadmap & OKR Alignment',         type:'Document',  frequency:'Quarterly', assignedOwner:'Human-Owned',   tradCost:180000, aiCost:180000 },
+    { dept:'Executive',        name:'Board-Ready Performance Summary',            type:'Report',    frequency:'Monthly',   assignedOwner:'Fractional+AI', tradCost:97500,  aiCost:24000  },
+    { dept:'Executive',        name:'Investor Relations Communications',          type:'Document',  frequency:'Quarterly', assignedOwner:'Human-Owned',   tradCost:140000, aiCost:140000 },
+    { dept:'Sales',            name:'Enterprise Deal Strategy Memo',              type:'Document',  frequency:'Ad Hoc',    assignedOwner:'Human-Owned',   tradCost:120000, aiCost:120000 },
+    { dept:'Sales',            name:'Key Account Relationship Management',        type:'Process',   frequency:'Ongoing',   assignedOwner:'Human-Owned',   tradCost:95000,  aiCost:95000  },
+    { dept:'Finance',          name:'Month-End Financial Close Package',          type:'Report',    frequency:'Monthly',   assignedOwner:'Fractional+AI', tradCost:97500,  aiCost:24000  },
+    { dept:'Finance',          name:'Tax Filing & Regulatory Compliance',         type:'Document',  frequency:'Annual',    assignedOwner:'Human-Owned',   tradCost:175000, aiCost:175000 },
+    { dept:'Finance',          name:'Audit Committee Reporting',                  type:'Report',    frequency:'Quarterly', assignedOwner:'Human-Owned',   tradCost:160000, aiCost:160000 },
+    { dept:'Legal',            name:'Contract Review & Approval Sign-off',        type:'Document',  frequency:'Ad Hoc',    assignedOwner:'Fractional+AI', tradCost:97500,  aiCost:24000  },
+    { dept:'Legal',            name:'Regulatory Filing & Submission',             type:'Document',  frequency:'Quarterly', assignedOwner:'Human-Owned',   tradCost:220000, aiCost:220000 },
+    { dept:'HR',               name:'Performance Review Decisions',               type:'Document',  frequency:'Quarterly', assignedOwner:'Human-Owned',   tradCost:90000,  aiCost:90000  },
+    { dept:'HR',               name:'Culture & Team Effectiveness Assessment',    type:'Analysis',  frequency:'Bi-annual', assignedOwner:'Fractional+AI', tradCost:97500,  aiCost:24000  },
+    { dept:'Product',          name:'Product Strategy & Roadmap Decisions',       type:'Document',  frequency:'Monthly',   assignedOwner:'Human-Owned',   tradCost:210000, aiCost:210000 },
+    { dept:'Product',          name:'Stakeholder Alignment & Feature Trade-offs', type:'Process',   frequency:'Weekly',    assignedOwner:'Human-Owned',   tradCost:180000, aiCost:180000 },
+    { dept:'Engineering',      name:'Architecture Decision Record',               type:'Document',  frequency:'Ad Hoc',    assignedOwner:'Human-Owned',   tradCost:200000, aiCost:200000 },
+    { dept:'Engineering',      name:'Engineering Team Leadership & Mentorship',   type:'Process',   frequency:'Ongoing',   assignedOwner:'Human-Owned',   tradCost:240000, aiCost:240000 },
+    { dept:'Customer Success', name:'Executive Sponsor Relationship Management',  type:'Process',   frequency:'Ongoing',   assignedOwner:'Human-Owned',   tradCost:120000, aiCost:120000 },
+    { dept:'Customer Success', name:'QBR Facilitation & Renewal Negotiation',     type:'Process',   frequency:'Quarterly', assignedOwner:'Fractional+AI', tradCost:97500,  aiCost:24000  },
+  ];
+  state.phase4Roles = [];
+  document.getElementById('p4-no-data').style.display = 'none';
+  document.getElementById('p4-content').style.display = '';
+  document.getElementById('p4-header-actions').style.display = '';
+  initPhase4();
+  toast('Demo loaded — 18 human deliverables across 7 departments');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PHASE 5: SOP & WORKFLOW GENERATOR
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const SEED_SOPS = [
+  { id: 1,  dept: 'Executive',        title: 'Strategic Planning Session Facilitation',  deliverable: 'Strategic Roadmap', steps: ['🤖 AI compiles market data & competitor analysis','🤖 AI generates SWOT framework draft','👤 Leadership reviews & validates assumptions','👤 CEO finalizes strategic priorities','🤖 AI formats final roadmap document'], failureMode: 'Misaligned strategy', valueProtected: 250000 },
+  { id: 2,  dept: 'Executive',        title: 'Board Meeting Preparation',                deliverable: 'Board Summary',      steps: ['🤖 AI aggregates KPIs from all departments','🤖 AI drafts executive summary','👤 CFO validates financial figures','👤 CEO reviews narrative','🤖 AI generates presentation deck'], failureMode: 'Incomplete board package', valueProtected: 180000 },
+  { id: 3,  dept: 'Sales',            title: 'Enterprise Deal Qualification',            deliverable: 'Deal Strategy Memo', steps: ['🤖 AI scores lead against ICP criteria','🤖 AI pulls company intel & financials','👤 AE validates budget authority','👤 Sales Director approves pursuit','🤖 AI creates deal strategy doc'], failureMode: 'Pursuing unqualified deals', valueProtected: 320000 },
+  { id: 4,  dept: 'Sales',            title: 'Proposal Generation & Approval',           deliverable: 'Sales Proposal',     steps: ['🤖 AI generates proposal from template','🤖 AI calculates custom pricing','👤 AE customizes value proposition','👤 Manager approves discount level','🤖 AI formats final PDF'], failureMode: 'Pricing errors', valueProtected: 150000 },
+  { id: 5,  dept: 'Marketing',        title: 'Content Calendar Planning',                deliverable: 'Content Calendar',   steps: ['🤖 AI analyzes trending topics','🤖 AI drafts 30-day content plan','👤 Content lead reviews brand alignment','👤 CMO approves themes','🤖 AI schedules in CMS'], failureMode: 'Off-brand content', valueProtected: 85000 },
+  { id: 6,  dept: 'Marketing',        title: 'Campaign Launch Checklist',                deliverable: 'Campaign Assets',    steps: ['🤖 AI generates asset checklist','🤖 AI validates tracking pixels','👤 Designer approves creative','👤 Marketing Ops confirms integrations','🤖 AI triggers launch sequence'], failureMode: 'Broken tracking', valueProtected: 120000 },
+  { id: 7,  dept: 'Finance',          title: 'Month-End Close Process',                  deliverable: 'Financial Close',    steps: ['🤖 AI reconciles account balances','🤖 AI flags discrepancies > $1000','👤 Controller investigates flags','👤 CFO signs off on statements','🤖 AI archives to compliance folder'], failureMode: 'Material misstatement', valueProtected: 400000 },
+  { id: 8,  dept: 'Finance',          title: 'Expense Report Processing',                deliverable: 'Expense Reports',    steps: ['🤖 AI extracts receipt data via OCR','🤖 AI validates against policy','👤 Manager approves exceptions','🤖 AI submits to payroll','🤖 AI sends confirmation'], failureMode: 'Policy violations', valueProtected: 45000 },
+  { id: 9,  dept: 'Legal',            title: 'Contract Review Workflow',                 deliverable: 'Contract Review',    steps: ['🤖 AI extracts key terms & risks','🤖 AI compares to standard terms','👤 Legal reviews flagged clauses','👤 General Counsel approves deviations','🤖 AI generates redline'], failureMode: 'Unfavorable terms accepted', valueProtected: 280000 },
+  { id: 10, dept: 'Legal',            title: 'NDA Processing',                           deliverable: 'NDA Execution',      steps: ['🤖 AI selects appropriate NDA template','🤖 AI populates party details','👤 Legal validates jurisdiction','🤖 AI routes for signature','🤖 AI files executed copy'], failureMode: 'IP exposure', valueProtected: 200000 },
+  { id: 11, dept: 'HR',               title: 'New Hire Onboarding',                      deliverable: 'Onboarding Package', steps: ['🤖 AI generates personalized welcome kit','🤖 AI provisions system accounts','👤 Manager customizes 30-day plan','👤 HR validates compliance docs','🤖 AI schedules orientation'], failureMode: 'Compliance gaps', valueProtected: 65000 },
+  { id: 12, dept: 'HR',               title: 'Performance Review Cycle',                 deliverable: 'Performance Reviews', steps: ['🤖 AI compiles 360 feedback','🤖 AI generates review draft','👤 Manager writes narrative','👤 HR calibrates ratings','🤖 AI distributes & archives'], failureMode: 'Biased evaluations', valueProtected: 90000 },
+  { id: 13, dept: 'Product',          title: 'Feature Prioritization',                   deliverable: 'Product Roadmap',    steps: ['🤖 AI scores features by RICE','🤖 AI maps to strategic themes','👤 PM validates customer impact','👤 CPO approves roadmap slot','🤖 AI updates roadmap tool'], failureMode: 'Wrong priorities', valueProtected: 350000 },
+  { id: 14, dept: 'Product',          title: 'User Research Synthesis',                  deliverable: 'Research Report',    steps: ['🤖 AI transcribes interviews','🤖 AI identifies themes & patterns','👤 Researcher validates insights','👤 PM prioritizes findings','🤖 AI generates report'], failureMode: 'Missed insights', valueProtected: 120000 },
+  { id: 15, dept: 'Engineering',      title: 'Code Review Process',                      deliverable: 'Code Quality',       steps: ['🤖 AI runs static analysis','🤖 AI generates review checklist','👤 Senior dev reviews logic','👤 Tech lead approves merge','🤖 AI triggers CI/CD'], failureMode: 'Bugs in production', valueProtected: 180000 },
+  { id: 16, dept: 'Engineering',      title: 'Incident Response',                        deliverable: 'Incident Report',    steps: ['🤖 AI correlates alerts & logs','🤖 AI suggests root cause','👤 On-call validates diagnosis','👤 Engineering lead approves fix','🤖 AI generates postmortem'], failureMode: 'Extended downtime', valueProtected: 500000 },
+  { id: 17, dept: 'Customer Success', title: 'QBR Preparation',                          deliverable: 'QBR Deck',           steps: ['🤖 AI pulls usage metrics','🤖 AI generates success highlights','👤 CSM adds relationship context','👤 CS Director reviews','🤖 AI formats presentation'], failureMode: 'Churn risk missed', valueProtected: 220000 },
+  { id: 18, dept: 'Customer Success', title: 'Renewal Risk Assessment',                  deliverable: 'Risk Report',        steps: ['🤖 AI calculates health score','🤖 AI flags at-risk accounts','👤 CSM validates sentiment','👤 CS lead assigns intervention','🤖 AI tracks outcomes'], failureMode: 'Unexpected churn', valueProtected: 380000 },
+  { id: 19, dept: 'Operations',       title: 'Vendor Onboarding',                        deliverable: 'Vendor Setup',       steps: ['🤖 AI collects vendor info','🤖 AI runs compliance checks','👤 Procurement validates terms','👤 Finance approves payment setup','🤖 AI creates vendor record'], failureMode: 'Compliance violations', valueProtected: 95000 },
+  { id: 20, dept: 'Operations',       title: 'Inventory Reconciliation',                 deliverable: 'Inventory Report',   steps: ['🤖 AI compares system vs physical','🤖 AI flags variances > 2%','👤 Ops manager investigates','👤 Controller approves adjustments','🤖 AI updates records'], failureMode: 'Inventory shrinkage', valueProtected: 150000 },
+];
+
+function initPhase5() {
+  const map = state.deliverableMap || [];
+  if (map.length === 0) {
+    document.getElementById('p5-no-data').style.display = '';
+    document.getElementById('p5-content').style.display = 'none';
+    document.getElementById('p5-header-actions').style.display = 'none';
+    return;
+  }
+  document.getElementById('p5-no-data').style.display = 'none';
+  document.getElementById('p5-content').style.display = '';
+  document.getElementById('p5-header-actions').style.display = '';
+
+  // Seed SOPs if empty
+  if (state.phase5Sops.length === 0) {
+    state.phase5Sops = JSON.parse(JSON.stringify(SEED_SOPS));
+  }
+
+  // Populate department filter
+  const depts = [...new Set(state.phase5Sops.map(s => s.dept))].sort();
+  const sel = document.getElementById('p5-filter-dept');
+  sel.innerHTML = '<option value="">All Departments</option>' +
+    depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+  renderP5Sops();
+}
+
+function renderP5Sops() {
+  const filterDept = document.getElementById('p5-filter-dept').value;
+  const search = document.getElementById('p5-search').value.toLowerCase();
+
+  let sops = state.phase5Sops.filter(s => {
+    if (filterDept && s.dept !== filterDept) return false;
+    if (search && !s.title.toLowerCase().includes(search) && !s.dept.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('p5-count').textContent = `${sops.length} SOP${sops.length !== 1 ? 's' : ''}`;
+
+  const grid = document.getElementById('p5-grid');
+  if (sops.length === 0) {
+    grid.innerHTML = '<div class="p5-empty">No SOPs match your filters.</div>';
+    return;
+  }
+
+  grid.innerHTML = sops.map(s => `
+    <div class="p5-card" data-id="${s.id}">
+      <div class="p5-card-head">
+        <div class="p5-card-title">${s.title}</div>
+        <div class="p5-card-dept">${s.dept}</div>
+      </div>
+      <div class="p5-card-meta">
+        <span>📋 ${s.deliverable}</span>
+        <span>💰 $${(s.valueProtected/1000).toFixed(0)}K protected</span>
+      </div>
+      <ul class="p5-steps">
+        ${s.steps.map(step => `<li><span class="p5-step-icon">${step.slice(0,2)}</span>${step.slice(2)}</li>`).join('')}
+      </ul>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">
+        ⚠️ Failure mode: ${s.failureMode}
+      </div>
+      <div class="p5-card-actions">
+        <button onclick="p5CopySop(${s.id})">Copy</button>
+        <button onclick="p5RegenerateSop(${s.id})">Regenerate</button>
+        <button onclick="p5DeleteSop(${s.id})">Delete</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function p5GenerateCustomSop() {
+  const desc = document.getElementById('p5-custom-desc').value.trim();
+  const dept = document.getElementById('p5-custom-dept').value;
+  const deliverable = document.getElementById('p5-custom-deliverable').value.trim() || 'Custom Process';
+
+  if (!desc) { toast('Please describe the process', true); return; }
+  if (!dept) { toast('Please select a department', true); return; }
+
+  const prompt = `Generate a Standard Operating Procedure (SOP) for the following process:
+
+Department: ${dept}
+Related Deliverable: ${deliverable}
+Process Description: ${desc}
+
+Return a JSON object with this exact structure:
+{
+  "title": "Short title for the SOP",
+  "steps": ["🤖 AI step description", "👤 Human step description", ...],
+  "failureMode": "What happens if this process fails",
+  "valueProtected": 50000
+}
+
+Use 🤖 prefix for AI-automated steps and 👤 prefix for human decision points. Include 4-6 steps total. Return ONLY valid JSON, no markdown.`;
+
+  toast('Generating custom SOP...');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error('API request failed');
+
+    const data = await response.json();
+    const text = data.content[0].text;
+    const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
+
+    const newSop = {
+      id: Date.now(),
+      dept: dept,
+      title: json.title,
+      deliverable: deliverable,
+      steps: json.steps,
+      failureMode: json.failureMode,
+      valueProtected: json.valueProtected || 50000
+    };
+
+    state.phase5Sops.unshift(newSop);
+    document.getElementById('p5-custom-desc').value = '';
+    document.getElementById('p5-custom-deliverable').value = '';
+    renderP5Sops();
+    toast('Custom SOP generated successfully');
+
+  } catch (err) {
+    console.error(err);
+    toast('Failed to generate SOP: ' + err.message, true);
+  }
+}
+
+async function p5RegenerateSop(id) {
+  const sop = state.phase5Sops.find(s => s.id === id);
+  if (!sop) return;
+
+  const prompt = `Regenerate this SOP with fresh steps:
+
+Title: ${sop.title}
+Department: ${sop.dept}
+Deliverable: ${sop.deliverable}
+
+Return a JSON object with this exact structure:
+{
+  "steps": ["🤖 AI step description", "👤 Human step description", ...],
+  "failureMode": "What happens if this process fails",
+  "valueProtected": 50000
+}
+
+Use 🤖 prefix for AI-automated steps and 👤 prefix for human decision points. Include 4-6 steps total. Return ONLY valid JSON, no markdown.`;
+
+  toast('Regenerating SOP...');
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!response.ok) throw new Error('API request failed');
+
+    const data = await response.json();
+    const text = data.content[0].text;
+    const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
+
+    sop.steps = json.steps;
+    sop.failureMode = json.failureMode;
+    sop.valueProtected = json.valueProtected || sop.valueProtected;
+
+    renderP5Sops();
+    toast('SOP regenerated');
+
+  } catch (err) {
+    console.error(err);
+    toast('Failed to regenerate SOP: ' + err.message, true);
+  }
+}
+
+function p5CopySop(id) {
+  const sop = state.phase5Sops.find(s => s.id === id);
+  if (!sop) return;
+
+  const text = `SOP: ${sop.title}
+Department: ${sop.dept}
+Deliverable: ${sop.deliverable}
+Value Protected: $${sop.valueProtected.toLocaleString()}
+
+STEPS:
+${sop.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+FAILURE MODE: ${sop.failureMode}`;
+
+  navigator.clipboard.writeText(text)
+    .then(() => toast('SOP copied to clipboard'))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p5DeleteSop(id) {
+  state.phase5Sops = state.phase5Sops.filter(s => s.id !== id);
+  renderP5Sops();
+  toast('SOP deleted');
+}
+
+function p5ExportAll() {
+  const sep = '\n\n' + '═'.repeat(60) + '\n\n';
+  const content = state.phase5Sops.map(sop => `SOP: ${sop.title}
+Department: ${sop.dept}
+Deliverable: ${sop.deliverable}
+Value Protected: $${sop.valueProtected.toLocaleString()}
+
+STEPS:
+${sop.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')}
+
+FAILURE MODE: ${sop.failureMode}`).join(sep);
+
+  navigator.clipboard.writeText(content)
+    .then(() => toast(`${state.phase5Sops.length} SOPs copied to clipboard`))
+    .catch(() => toast('Export failed', true));
+}
+
+function p5LoadDemo() {
+  // Load demo deliverable map if needed
+  if (!state.deliverableMap || state.deliverableMap.length === 0) {
+    state.deliverableMap = [
+      { dept:'Executive',        name:'Strategic Roadmap',    type:'Document', frequency:'Quarterly', assignedOwner:'Human-Owned', tradCost:180000, aiCost:180000 },
+      { dept:'Sales',            name:'Deal Strategy Memo',   type:'Document', frequency:'Ad Hoc',    assignedOwner:'Human-Owned', tradCost:120000, aiCost:120000 },
+      { dept:'Finance',          name:'Financial Close',      type:'Report',   frequency:'Monthly',   assignedOwner:'Fractional+AI', tradCost:97500, aiCost:24000 },
+      { dept:'Legal',            name:'Contract Review',      type:'Document', frequency:'Ad Hoc',    assignedOwner:'Fractional+AI', tradCost:97500, aiCost:24000 },
+      { dept:'HR',               name:'Onboarding Package',   type:'Process',  frequency:'Per Hire',  assignedOwner:'AI-Owned', tradCost:45000, aiCost:8000 },
+      { dept:'Product',          name:'Product Roadmap',      type:'Document', frequency:'Monthly',   assignedOwner:'Human-Owned', tradCost:210000, aiCost:210000 },
+      { dept:'Engineering',      name:'Code Quality',         type:'Process',  frequency:'Ongoing',   assignedOwner:'AI-Owned', tradCost:150000, aiCost:25000 },
+      { dept:'Customer Success', name:'QBR Deck',             type:'Document', frequency:'Quarterly', assignedOwner:'Fractional+AI', tradCost:97500, aiCost:24000 },
+    ];
+  }
+
+  // Reset SOPs to seed
+  state.phase5Sops = JSON.parse(JSON.stringify(SEED_SOPS));
+
+  document.getElementById('p5-no-data').style.display = 'none';
+  document.getElementById('p5-content').style.display = '';
+  document.getElementById('p5-header-actions').style.display = '';
+
+  // Populate department filter
+  const depts = [...new Set(state.phase5Sops.map(s => s.dept))].sort();
+  const sel = document.getElementById('p5-filter-dept');
+  sel.innerHTML = '<option value="">All Departments</option>' +
+    depts.map(d => `<option value="${d}">${d}</option>`).join('');
+
+  renderP5Sops();
+  toast('Demo loaded — 20 seed SOPs across 10 departments');
+}
+
+/* ═══════════════════════════════════════════════
+   PHASE 6: AI VOICE PARTNER SPEC ENGINE
+═══════════════════════════════════════════════ */
+
+const P6_VOICE_PROFILES = {
+  'Executive':        { voice: 'Adam', tone: 'authoritative and concise', personality: 'strategic advisor who thinks three moves ahead' },
+  'Sales':            { voice: 'Adam', tone: 'confident and data-driven', personality: 'quota-crushing closer who never misses a signal' },
+  'Marketing':        { voice: 'Rachel', tone: 'creative and analytical', personality: 'brand guardian and performance optimizer' },
+  'Finance':          { voice: 'Adam', tone: 'precise and risk-aware', personality: 'CFO-level analyst who never misses a variance' },
+  'Legal':            { voice: 'Adam', tone: 'measured and exacting', personality: 'outside counsel who reviews everything before it leaves' },
+  'HR':               { voice: 'Rachel', tone: 'warm and data-informed', personality: 'people intelligence partner with full org context' },
+  'Operations':       { voice: 'Adam', tone: 'systematic and efficient', personality: 'COO-level optimizer who tracks every metric' },
+  'Product':          { voice: 'Rachel', tone: 'curious and user-focused', personality: 'chief customer officer who speaks in outcomes' },
+  'Engineering':      { voice: 'Adam', tone: 'technical and direct', personality: 'senior engineer who catches what code reviews miss' },
+  'Customer Success': { voice: 'Rachel', tone: 'relationship-focused and proactive', personality: 'account intelligence partner who never lets a customer slip' },
+  'IT':               { voice: 'Adam', tone: 'systematic and security-aware', personality: 'infrastructure watchdog with zero tolerance for downtime' },
+  'Research':         { voice: 'Rachel', tone: 'analytical and exploratory', personality: 'research partner who synthesizes signal from noise' },
+};
+
+function initPhase6() {
+  const roles = state.phase4Roles || [];
+
+  if (!roles.length) {
+    document.getElementById('p6-no-roles').style.display = '';
+    document.getElementById('p6-content').style.display = 'none';
+    document.getElementById('p6-header-actions').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('p6-no-roles').style.display = 'none';
+  document.getElementById('p6-content').style.display = '';
+  document.getElementById('p6-header-actions').style.display = '';
+
+  // Init specs array if empty
+  if (!state.phase6Specs || !state.phase6Specs.length) {
+    state.phase6Specs = roles.map(r => ({
+      roleTitle:   r.roleTitle,
+      dept:        r.dept,
+      deliverables: r.deliverables || [],
+      voiceProfile: P6_VOICE_PROFILES[r.dept] || P6_VOICE_PROFILES['Operations'],
+      generated:   false,
+      specText:    '',
+      triggers:    [],
+      commands:    [],
+      workflows:   [],
+      dataAccess:  [],
+      config:      '',
+    }));
+  }
+
+  document.getElementById('p6-spec-count').textContent = state.phase6Specs.length;
+  p6UpdateTriggerCount();
+  renderP6Specs();
+  updateProgress(100);
+}
+
+function p6UpdateTriggerCount() {
+  const total = state.phase6Specs.reduce((sum, s) => sum + (s.triggers.length || 0), 0);
+  const el = document.getElementById('p6-trigger-count');
+  if (el) el.textContent = total || '—';
+}
+
+function renderP6Specs() {
+  const grid = document.getElementById('p6-specs-grid');
+  if (!state.phase6Specs || !state.phase6Specs.length) { grid.innerHTML = ''; return; }
+
+  grid.innerHTML = state.phase6Specs.map((spec, idx) => {
+    const profile = spec.voiceProfile || {};
+
+    const pendingCard = `
+      <div class="vp-card" id="p6-card-${idx}">
+        <div class="vp-card-header">
+          <div>
+            <div class="vp-role-title">${spec.roleTitle}</div>
+            <div class="vp-role-meta">
+              <span class="vp-dept-badge">${spec.dept}</span>
+              <span class="vp-voice-badge">🎙️ Voice: ${profile.voice || 'Adam'}</span>
+              <span class="vp-status-badge vp-status-pending">⏳ Spec Pending</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" id="p6-gen-btn-${idx}" onclick="p6GenerateOne(${idx})">✦ Generate Spec</button>
+            <button class="btn btn-outline btn-sm" onclick="p6CopyOne(${idx})">📋 Copy</button>
+          </div>
+        </div>
+        <div style="padding:0 22px 16px;font-size:13px;color:var(--muted);font-style:italic;line-height:1.6;">
+          ${spec.deliverables.length} accountable deliverables · ${profile.personality || 'AI partner'}
+        </div>
+      </div>`;
+
+    const readyCard = `
+      <div class="vp-card" id="p6-card-${idx}">
+        <div class="vp-card-header">
+          <div>
+            <div class="vp-role-title">${spec.roleTitle}</div>
+            <div class="vp-role-meta">
+              <span class="vp-dept-badge">${spec.dept}</span>
+              <span class="vp-voice-badge">🎙️ ${profile.voice || 'Adam'} · ${profile.tone || 'professional'}</span>
+              <span class="vp-status-badge vp-status-ready">✓ Spec Ready</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="p6CopyOne(${idx})">📋 Copy Spec</button>
+          </div>
+        </div>
+        <div class="vp-body">
+
+          ${spec.triggers.length ? `
+          <div class="vp-section">
+            <div class="vp-section-label trigger-label">⚡ Proactive Interruption Triggers — AI speaks without being asked</div>
+            ${spec.triggers.map(t => `
+              <div class="vp-item">
+                <span class="vp-item-marker vp-trigger-marker">TRIGGER</span>
+                <span>${t}</span>
+              </div>`).join('')}
+          </div>` : ''}
+
+          ${spec.commands.length ? `
+          <div class="vp-section">
+            <div class="vp-section-label command-label">🎤 Voice Command Library — what you say to activate workflows</div>
+            ${spec.commands.map(c => `
+              <div class="vp-item">
+                <span class="vp-item-marker vp-command-marker">SAY</span>
+                <span>${c}</span>
+              </div>`).join('')}
+          </div>` : ''}
+
+          ${spec.workflows.length ? `
+          <div class="vp-section">
+            <div class="vp-section-label workflow-label">⚙️ Executable Workflows — what AI does after you speak</div>
+            ${spec.workflows.map(w => `
+              <div class="vp-item">
+                <span class="vp-item-marker vp-workflow-marker">EXECUTE</span>
+                <span>${w}</span>
+              </div>`).join('')}
+          </div>` : ''}
+
+          ${spec.dataAccess.length ? `
+          <div class="vp-section">
+            <div class="vp-section-label data-label">🗄️ Data Access Requirements — what the AI must be able to read and write</div>
+            ${spec.dataAccess.map(d => `
+              <div class="vp-item">
+                <span style="color:#D97706;font-weight:700;flex-shrink:0;">→</span>
+                <span style="font-size:14px;color:var(--text);line-height:1.7;">${d}</span>
+              </div>`).join('')}
+          </div>` : ''}
+
+          ${spec.config ? `
+          <div class="vp-section">
+            <div class="vp-section-label config-label">🔧 ElevenLabs + Deepgram Configuration</div>
+            <div class="vp-config-block">${spec.config}</div>
+          </div>` : ''}
+
+          <div class="vp-section">
+            <div class="vp-section-label arch-label">🏗️ Implementation Architecture</div>
+            <div class="vp-arch-diagram">
+              <div class="vp-arch-node">
+                <div class="vp-arch-node-icon">🎤</div>
+                <div class="vp-arch-node-name">Deepgram</div>
+                <div class="vp-arch-node-sub">Nova-2 STT<br>&lt;300ms</div>
+              </div>
+              <div class="vp-arch-arrow">→</div>
+              <div class="vp-arch-node" style="border-color:#D97706;background:#FEF3C7;">
+                <div class="vp-arch-node-icon">✦</div>
+                <div class="vp-arch-node-name">Claude API</div>
+                <div class="vp-arch-node-sub">Reasoning<br>+ Execution</div>
+              </div>
+              <div class="vp-arch-arrow">→</div>
+              <div class="vp-arch-node">
+                <div class="vp-arch-node-icon">🗄️</div>
+                <div class="vp-arch-node-name">MCP Server</div>
+                <div class="vp-arch-node-sub">Company data<br>fabric access</div>
+              </div>
+              <div class="vp-arch-arrow">→</div>
+              <div class="vp-arch-node">
+                <div class="vp-arch-node-icon">🔊</div>
+                <div class="vp-arch-node-name">ElevenLabs</div>
+                <div class="vp-arch-node-sub">${profile.voice || 'Adam'} voice<br>TTS streaming</div>
+              </div>
+              <div class="vp-arch-arrow">→</div>
+              <div class="vp-arch-node" style="border-color:#16A34A;background:#DCFCE7;">
+                <div class="vp-arch-node-icon">👤</div>
+                <div class="vp-arch-node-name">${spec.roleTitle.split(' ').slice(-1)[0]}</div>
+                <div class="vp-arch-node-sub">${spec.dept}<br>hears response</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>`;
+
+    return spec.generated ? readyCard : pendingCard;
+  }).join('');
+}
+
+async function p6GenerateAll() {
+  if (!state.phase6Specs || !state.phase6Specs.length) {
+    toast('No roles found — complete Phase 4 first', true); return;
+  }
+  const btn = document.getElementById('p6-gen-all-btn');
+  btn.disabled = true;
+  document.getElementById('p6-loading').classList.add('active');
+  const statusEl = document.getElementById('p6-gen-status');
+
+  for (let i = 0; i < state.phase6Specs.length; i++) {
+    document.getElementById('p6-loading-label').textContent =
+      'Generating spec ' + (i + 1) + ' of ' + state.phase6Specs.length + ': ' + state.phase6Specs[i].roleTitle + '...';
+    statusEl.textContent = (i + 1) + ' / ' + state.phase6Specs.length + ' complete';
+    await p6GenerateOne(i);
+  }
+
+  document.getElementById('p6-loading').classList.remove('active');
+  btn.disabled = false;
+  statusEl.textContent = '✓ All ' + state.phase6Specs.length + ' specs generated';
+  renderP6Specs();
+  p6UpdateTriggerCount();
+
+  const exportBar = document.getElementById('p6-export-bar');
+  if (exportBar) exportBar.style.display = '';
+  const sumEl = document.getElementById('p6-export-summary');
+  if (sumEl) sumEl.textContent = state.phase6Specs.length + ' roles specced · all 6 phases complete — ready to build.';
+
+  updateProgress(100);
+  toast('✓ ' + state.phase6Specs.length + ' voice partner specs generated — Company OS™ complete');
+}
+
+async function p6GenerateOne(idx) {
+  const spec    = state.phase6Specs[idx];
+  const venture = state.venture || {};
+  const profile = spec.voiceProfile || {};
+  const btn     = document.getElementById('p6-gen-btn-' + idx);
+  if (btn) btn.disabled = true;
+
+  const delList = (spec.deliverables || [])
+    .map((d, i) => `${i + 1}. ${d.name} (${d.frequency || 'ongoing'})`)
+    .join('\n');
+
+  const prompt = `You are an AI implementation architect specializing in enterprise voice AI systems.
+
+Company: ${venture.name || 'Company'} | Industry: ${venture.industry || 'Technology'} | Stage: ${venture.stage || 'Early Stage'}
+AI stack: ${venture.aiStack || 'Claude API, custom integrations'}
+
+Design a complete AI Voice Partner specification for this human role.
+
+ROLE: ${spec.roleTitle}
+DEPARTMENT: ${spec.dept}
+VOICE PROFILE: ${profile.voice || 'Adam'} · ${profile.tone || 'professional'} · ${profile.personality || 'AI partner'}
+
+DELIVERABLES THIS HUMAN OWNS:
+${delList}
+
+Rules:
+— Proactive triggers must be specific events or thresholds, not vague "when needed"
+— Voice commands must be natural spoken phrases, not menus or keywords
+— Executable workflows must describe exactly what the AI does step by step after the command
+— Data access must name specific systems (CRM, ERP, HRIS, etc.) not generic "data sources"
+— ElevenLabs config must include specific stability, similarity, and style settings
+
+Respond ONLY with valid JSON, no other text, no markdown fences:
+{
+  "triggers": [
+    "5 specific proactive interruption triggers — events that cause AI to speak without being asked"
+  ],
+  "commands": [
+    "6 natural voice commands the human speaks to activate specific workflows"
+  ],
+  "workflows": [
+    "6 executable workflow descriptions — what AI does step by step after each command"
+  ],
+  "dataAccess": [
+    "5 specific data sources AI must read or write, with system names and type"
+  ],
+  "config": "ElevenLabs voice_id: [voice_id]\\nStability: 0.71\\nSimilarity boost: 0.85\\nStyle: 0.20\\nSpeaker boost: true\\nDeepgram model: nova-2\\nDeepgram language: en-US\\nDeepgram endpointing: 300ms\\nWebSocket keepalive: 30s\\nMax response tokens: 400\\nSystem prompt persona: [2 sentences describing this voice partner's personality and constraints]"
+}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': state.apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5-20250514',
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      toast('API error on ' + spec.roleTitle + ': ' + data.error.message, true);
+      if (btn) btn.disabled = false;
+      return;
+    }
+    const raw   = data.content?.[0]?.text || '{}';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    state.phase6Specs[idx].triggers   = parsed.triggers   || [];
+    state.phase6Specs[idx].commands   = parsed.commands   || [];
+    state.phase6Specs[idx].workflows  = parsed.workflows  || [];
+    state.phase6Specs[idx].dataAccess = parsed.dataAccess || [];
+    state.phase6Specs[idx].config     = parsed.config     || '';
+    state.phase6Specs[idx].generated  = true;
+
+    renderP6Specs();
+    p6UpdateTriggerCount();
+  } catch (e) {
+    toast('Failed to parse spec for ' + spec.roleTitle + '. Try again.', true);
+    if (btn) btn.disabled = false;
+  }
+}
+
+function p6CopyOne(idx) {
+  const spec = state.phase6Specs[idx];
+  let text = '═'.repeat(60) + '\n';
+  text += 'AI VOICE PARTNER SPEC\n';
+  text += 'Role: ' + spec.roleTitle + ' · Dept: ' + spec.dept + '\n';
+  text += 'Voice: ' + (spec.voiceProfile.voice || 'Adam') + ' · ' + (spec.voiceProfile.tone || 'professional') + '\n';
+  text += '═'.repeat(60) + '\n\n';
+  if (spec.generated) {
+    text += 'PROACTIVE TRIGGERS:\n';
+    spec.triggers.forEach((t, i) => { text += (i+1) + '. ' + t + '\n'; });
+    text += '\nVOICE COMMANDS:\n';
+    spec.commands.forEach((c, i) => { text += (i+1) + '. ' + c + '\n'; });
+    text += '\nEXECUTABLE WORKFLOWS:\n';
+    spec.workflows.forEach((w, i) => { text += (i+1) + '. ' + w + '\n'; });
+    text += '\nDATA ACCESS REQUIREMENTS:\n';
+    spec.dataAccess.forEach((d, i) => { text += (i+1) + '. ' + d + '\n'; });
+    text += '\nCONFIGURATION:\n' + spec.config;
+  } else {
+    text += 'Spec not yet generated. Click "✦ Generate Spec" to produce this specification.';
+  }
+  navigator.clipboard.writeText(text)
+    .then(() => toast('✓ Spec copied — ' + spec.roleTitle))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p6CopyAll() {
+  if (!state.phase6Specs || !state.phase6Specs.length) { toast('No specs to copy', true); return; }
+  const sep  = '\n\n' + '═'.repeat(60) + '\n\n';
+  const name = (state.venture && state.venture.name) || 'Company OS™';
+  const header = 'AI VOICE PARTNER IMPLEMENTATION BRIEF\n' + name + '\nGenerated by Company OS™ · Repeatable AI\n' +
+    state.phase6Specs.filter(s => s.generated).length + ' of ' + state.phase6Specs.length + ' specs complete · ' +
+    new Date().toLocaleDateString() +
+    '\n\nIMPLEMENTATION STACK:\n' +
+    '• Claude API (claude-sonnet-4-5) — reasoning and workflow execution\n' +
+    '• ElevenLabs — voice synthesis (Adam / Rachel profiles)\n' +
+    '• Deepgram Nova-2 — speech-to-text (<300ms latency)\n' +
+    '• MCP Server — company data fabric access\n' +
+    '• WebSocket — bi-directional real-time transport';
+
+  const body = state.phase6Specs.map(spec => {
+    let t = 'ROLE: ' + spec.roleTitle + ' · ' + spec.dept + '\n';
+    t += 'Voice: ' + (spec.voiceProfile.voice || 'Adam') + '\n\n';
+    if (spec.generated) {
+      t += 'TRIGGERS:\n' + spec.triggers.map((x,i) => (i+1)+'. '+x).join('\n');
+      t += '\n\nCOMMANDS:\n' + spec.commands.map((x,i) => (i+1)+'. '+x).join('\n');
+      t += '\n\nWORKFLOWS:\n' + spec.workflows.map((x,i) => (i+1)+'. '+x).join('\n');
+      t += '\n\nDATA ACCESS:\n' + spec.dataAccess.map((x,i) => (i+1)+'. '+x).join('\n');
+      t += '\n\nCONFIG:\n' + spec.config;
+    } else {
+      t += '[ Spec not yet generated ]';
+    }
+    return t;
+  }).join(sep);
+
+  navigator.clipboard.writeText(header + sep + body)
+    .then(() => toast('✓ Full implementation brief copied — ' + state.phase6Specs.length + ' roles'))
+    .catch(() => toast('Copy failed', true));
+}
+
+function p6LoadDemo() {
+  // Seed Phase 4 roles with demo data so Phase 6 has something to work from
+  if (!state.phase4Roles || !state.phase4Roles.length) {
+    state.phase4Roles = [
+      {
+        roleTitle: 'VP Revenue & Growth',
+        dept: 'Sales',
+        reportingTo: 'CEO',
+        salaryBand: '$165,000 – $240,000',
+        deliverables: [
+          { name: 'Weekly Pipeline Velocity Report', frequency: 'Weekly' },
+          { name: 'Enterprise Deal Strategy Memos', frequency: 'Ad Hoc' },
+          { name: 'Quarterly Revenue Forecast', frequency: 'Quarterly' },
+          { name: 'Win/Loss Analysis Report', frequency: 'Monthly' },
+        ],
+        jdGenerated: false,
+        jdText: '',
+      },
+      {
+        roleTitle: 'Head of Finance & Compliance',
+        dept: 'Finance',
+        reportingTo: 'CEO / CFO',
+        salaryBand: '$145,000 – $210,000',
+        deliverables: [
+          { name: 'Month-End Financial Close Package', frequency: 'Monthly' },
+          { name: 'Tax Filing & Regulatory Compliance', frequency: 'Annual' },
+          { name: 'Cash Flow Forecast (13-Week)', frequency: 'Weekly' },
+          { name: 'Audit Committee Reporting', frequency: 'Quarterly' },
+        ],
+        jdGenerated: false,
+        jdText: '',
+      },
+      {
+        roleTitle: 'Chief of Staff / General Counsel',
+        dept: 'Legal',
+        reportingTo: 'CEO',
+        salaryBand: '$180,000 – $260,000',
+        deliverables: [
+          { name: 'Contract Review & Approval Sign-off', frequency: 'Ad Hoc' },
+          { name: 'Regulatory Filing & Submission', frequency: 'Quarterly' },
+          { name: 'Strategic Roadmap & OKR Alignment', frequency: 'Quarterly' },
+        ],
+        jdGenerated: false,
+        jdText: '',
+      },
+    ];
+  }
+
+  // Reset specs so they rebuild from roles
+  state.phase6Specs = [];
+
+  document.getElementById('p6-no-roles').style.display = 'none';
+  document.getElementById('p6-content').style.display = '';
+  document.getElementById('p6-header-actions').style.display = '';
+
+  initPhase6();
+  toast('✓ Demo loaded — 3 roles ready for voice partner spec generation');
+}
+
+/* ─── PARENT FRAME COMMUNICATION ─── */
+// Listen for venture context from parent React app
+window.addEventListener('message', function(event) {
+  if (event.data && event.data.type === 'LOAD_VENTURE_CONTEXT') {
+    const data = event.data.data;
+    if (data) {
+      // Map the idea data to venture brief form fields
+      const mappings = {
+        'v-name': data.name || '',
+        'v-industry': mapIndustry(data.industry || ''),
+        'v-stage': mapStage(data.stage || ''),
+        'v-value': data.value || '',
+        'v-customer': data.customer || '',
+        'v-context': data.content || '',
+      };
+
+      // Fill in the form fields
+      Object.entries(mappings).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el && val) el.value = val;
+      });
+
+      // Update UI
+      updateVentureName();
+      toast('✓ Venture context loaded: ' + (data.name || 'Unknown'));
+    }
+  }
+});
+
+// Industry mapping helper
+function mapIndustry(industry) {
+  if (!industry) return '';
+  const lc = industry.toLowerCase();
+  if (lc.includes('health') || lc.includes('med')) return 'Healthcare / MedTech';
+  if (lc.includes('fintech') || lc.includes('finance') || lc.includes('financial')) return 'Fintech / Financial Services';
+  if (lc.includes('saas') || lc.includes('software')) return 'B2B SaaS';
+  if (lc.includes('ai') || lc.includes('machine learning')) return 'AI / Machine Learning';
+  if (lc.includes('hr') || lc.includes('human resource')) return 'HR Tech';
+  if (lc.includes('sales')) return 'Sales & Revenue Ops';
+  if (lc.includes('supply') || lc.includes('logistics')) return 'Supply Chain / Logistics';
+  if (lc.includes('real estate') || lc.includes('proptech')) return 'Real Estate / PropTech';
+  if (lc.includes('education') || lc.includes('edtech')) return 'Education / EdTech';
+  if (lc.includes('professional')) return 'Professional Services';
+  if (lc.includes('manufacturing')) return 'Manufacturing';
+  if (lc.includes('defense') || lc.includes('government')) return 'Defense / Gov Contracting';
+  if (lc.includes('retail') || lc.includes('commerce')) return 'Retail / eCommerce';
+  return industry;
+}
+
+// Stage mapping helper
+function mapStage(stage) {
+  if (!stage) return '';
+  const lc = stage.toLowerCase();
+  if (lc.includes('idea') || lc.includes('concept') || lc.includes('pre-seed')) return 'Pre-Seed / Idea Stage';
+  if (lc.includes('seed') && !lc.includes('early')) return 'Seed / Pre-Revenue';
+  if (lc.includes('seed') && lc.includes('early')) return 'Seed / Early Revenue';
+  if (lc.includes('series a')) return 'Series A';
+  if (lc.includes('series b') || lc.includes('growth')) return 'Series B+';
+  if (lc.includes('bootstrap') || lc.includes('profitable')) return 'Bootstrapped / Profitable';
+  if (lc.includes('established') || lc.includes('scaling')) return 'Established / Scaling';
+  return stage;
+}
+
+// Initialize on DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+  buildDeptGrid();
+  // Check for URL params for direct loading
+  const urlParams = new URLSearchParams(window.location.search);
+  const ventureName = urlParams.get('venture');
+  if (ventureName) {
+    document.getElementById('v-name').value = ventureName;
+    updateVentureName();
+  }
+});
+</script>
+</body>
+</html>
