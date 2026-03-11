@@ -1418,7 +1418,7 @@ textarea { min-height: 80px; line-height: 1.55; }
         </div>
         <div class="field">
           <label class="f-label">Industry <span class="req">*</span></label>
-          <select id="v-industry">
+          <select id="v-industry" onchange="handleIndustryChange()">
             <option value="">Select industry...</option>
             <option>Healthcare / MedTech</option><option>Fintech / Financial Services</option>
             <option>B2B SaaS</option><option>Legal Tech</option><option>HR Tech</option>
@@ -1427,6 +1427,7 @@ textarea { min-height: 80px; line-height: 1.55; }
             <option>Professional Services</option><option>Manufacturing</option>
             <option>Defense / Gov Contracting</option><option>Retail / eCommerce</option><option>Other</option>
           </select>
+          <input type="text" id="v-industry-other" placeholder="Enter your industry..." style="display: none; margin-top: 8px;">
         </div>
         <div class="field">
           <label class="f-label">Company Stage <span class="req">*</span></label>
@@ -1991,22 +1992,11 @@ const state = {
   phase4Roles: [],
   phase5Sops: [],
   phase6Specs: [],
-  progress: 0,
-  apiKey: localStorage.getItem('anthropic_api_key') || ''
+  progress: 0
 };
 
-// Prompt for API key if not set
+// API key no longer needed - using backend API
 function ensureApiKey() {
-  if (!state.apiKey) {
-    const key = prompt('Enter your Anthropic API key:');
-    if (key) {
-      state.apiKey = key;
-      localStorage.setItem('anthropic_api_key', key);
-      return true;
-    }
-    toast('API key required for AI features', true);
-    return false;
-  }
   return true;
 }
 
@@ -2114,11 +2104,34 @@ function updateMetrics() {
 
 const g = id => document.getElementById(id)?.value?.trim() || '';
 
+function handleIndustryChange() {
+  const select = document.getElementById('v-industry');
+  const otherInput = document.getElementById('v-industry-other');
+  if (select.value === 'Other') {
+    otherInput.style.display = 'block';
+    otherInput.focus();
+  } else {
+    otherInput.style.display = 'none';
+    otherInput.value = '';
+  }
+}
+
+function getIndustryValue() {
+  const select = document.getElementById('v-industry');
+  const otherInput = document.getElementById('v-industry-other');
+  if (select.value === 'Other' && otherInput.value.trim()) {
+    return otherInput.value.trim();
+  }
+  return select.value;
+}
+
 function saveVentureBrief() {
   const name = g('v-name');
   if (!name) { toast('Company name is required', true); return; }
+  const industry = getIndustryValue();
+  if (!industry) { toast('Industry is required', true); return; }
   state.venture = {
-    name, industry: g('v-industry'), stage: g('v-stage'), model: g('v-model'),
+    name, industry: industry, stage: g('v-stage'), model: g('v-model'),
     value: g('v-value'), customer: g('v-customer'), revenue: g('v-revenue'),
     acv: g('v-acv'), headcount: g('v-headcount'), aiFte: g('v-ai-fte'),
     capital: g('v-capital'), geo: g('v-geo'), team: g('v-team'),
@@ -2188,6 +2201,7 @@ function updateDeptCountLabel() {
 
 /* ─── GENERATE DELIVERABLE MAP ─── */
 async function generateDeliverableMap() {
+  if (!ensureApiKey()) return;
   if (state.selectedDepts.size === 0) { toast('Select at least one department', true); return; }
 
   const deptNames = DEPARTMENTS.filter(d => state.selectedDepts.has(d.id)).map(d => d.name);
@@ -2230,30 +2244,24 @@ Company context:
 Generate all ${deptNames.length} department tables now, then the SUMMARY table.`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/ai/company-os/completion', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 6000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
+        systemPrompt: systemPrompt,
+        userPrompt: userPrompt,
+        maxTokens: 6000
       })
     });
     const result = await res.json();
     document.getElementById('map-loading').classList.remove('active');
     document.getElementById('btn-gen-map').disabled = false;
 
-    if (result.error) {
-      toast('API Error: ' + result.error.message, true);
+    if (result.error || !res.ok) {
+      toast('API Error: ' + (result.error || result.message || 'Unknown error'), true);
       return;
     }
-    renderDeliverableMap(result.content?.[0]?.text || '');
+    renderDeliverableMap(result.content || '');
   } catch(err) {
     document.getElementById('map-loading').classList.remove('active');
     document.getElementById('btn-gen-map').disabled = false;
@@ -2812,6 +2820,7 @@ function p4ToggleOrgChart() {
 }
 
 async function p4GenerateAllJDs() {
+  if (!ensureApiKey()) return;
   if (!state.phase4Roles || !state.phase4Roles.length) {
     toast('No roles to generate — complete Phase 3 first', true); return;
   }
@@ -2837,6 +2846,7 @@ async function p4GenerateAllJDs() {
 }
 
 async function p4GenerateOneJD(idx) {
+  if (!ensureApiKey()) return;
   const role    = state.phase4Roles[idx];
   const venture = state.venture || {};
   const btn     = document.getElementById('p4-gen-btn-' + idx);
@@ -2898,27 +2908,22 @@ WHAT WE DON'T CARE ABOUT:
 — [Credential or experience irrelevant to your outputs]`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/ai/company-os/completion', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }]
+        systemPrompt: 'You are an expert HR consultant and organizational designer.',
+        userPrompt: prompt,
+        maxTokens: 1200
       })
     });
     const data = await res.json();
-    if (data.error) {
-      toast('API error on ' + role.dept + ': ' + data.error.message, true);
+    if (data.error || !res.ok) {
+      toast('API error on ' + role.dept + ': ' + (data.error || data.message || 'Unknown error'), true);
       if (btn) btn.disabled = false;
       return;
     }
-    const text   = data.content?.[0]?.text || '';
+    const text = data.content || '';
     const match  = text.match(/ROLE TITLE:\s*(.+)/);
     if (match) state.phase4Roles[idx].roleTitle = match[1].trim();
     state.phase4Roles[idx].jdText      = text;
@@ -3083,6 +3088,7 @@ function renderP5Sops() {
 }
 
 async function p5GenerateCustomSop() {
+  if (!ensureApiKey()) return;
   const desc = document.getElementById('p5-custom-desc').value.trim();
   const dept = document.getElementById('p5-custom-dept').value;
   const deliverable = document.getElementById('p5-custom-deliverable').value.trim() || 'Custom Process';
@@ -3109,25 +3115,20 @@ Use 🤖 prefix for AI-automated steps and 👤 prefix for human decision points
   toast('Generating custom SOP...');
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/ai/company-os/completion', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
+        systemPrompt: 'You are an expert in process design and standard operating procedures.',
+        userPrompt: prompt,
+        maxTokens: 1024
       })
     });
 
     if (!response.ok) throw new Error('API request failed');
 
     const data = await response.json();
-    const text = data.content[0].text;
+    const text = data.content;
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
 
     const newSop = {
@@ -3153,6 +3154,7 @@ Use 🤖 prefix for AI-automated steps and 👤 prefix for human decision points
 }
 
 async function p5RegenerateSop(id) {
+  if (!ensureApiKey()) return;
   const sop = state.phase5Sops.find(s => s.id === id);
   if (!sop) return;
 
@@ -3174,25 +3176,20 @@ Use 🤖 prefix for AI-automated steps and 👤 prefix for human decision points
   toast('Regenerating SOP...');
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('/api/ai/company-os/completion', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: prompt }]
+        systemPrompt: 'You are an expert in process design and standard operating procedures.',
+        userPrompt: prompt,
+        maxTokens: 1024
       })
     });
 
     if (!response.ok) throw new Error('API request failed');
 
     const data = await response.json();
-    const text = data.content[0].text;
+    const text = data.content;
     const json = JSON.parse(text.replace(/```json\n?|\n?```/g, '').trim());
 
     sop.steps = json.steps;
@@ -3478,6 +3475,7 @@ function renderP6Specs() {
 }
 
 async function p6GenerateAll() {
+  if (!ensureApiKey()) return;
   if (!state.phase6Specs || !state.phase6Specs.length) {
     toast('No roles found — complete Phase 4 first', true); return;
   }
@@ -3509,6 +3507,7 @@ async function p6GenerateAll() {
 }
 
 async function p6GenerateOne(idx) {
+  if (!ensureApiKey()) return;
   const spec    = state.phase6Specs[idx];
   const venture = state.venture || {};
   const profile = spec.voiceProfile || {};
@@ -3558,27 +3557,22 @@ Respond ONLY with valid JSON, no other text, no markdown fences:
 }`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/ai/company-os/completion', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': state.apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5-20250514',
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: prompt }]
+        systemPrompt: 'You are an expert in AI voice assistant design and workflow automation.',
+        userPrompt: prompt,
+        maxTokens: 1200
       })
     });
     const data = await res.json();
-    if (data.error) {
-      toast('API error on ' + spec.roleTitle + ': ' + data.error.message, true);
+    if (data.error || !res.ok) {
+      toast('API error on ' + spec.roleTitle + ': ' + (data.error || data.message || 'Unknown error'), true);
       if (btn) btn.disabled = false;
       return;
     }
-    const raw   = data.content?.[0]?.text || '{}';
+    const raw = data.content || '{}';
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -3746,22 +3740,42 @@ window.addEventListener('message', function(event) {
 
 // Industry mapping helper
 function mapIndustry(industry) {
-  if (!industry) return '';
+  if (!industry) return { value: '', isOther: false, customValue: '' };
   const lc = industry.toLowerCase();
-  if (lc.includes('health') || lc.includes('med')) return 'Healthcare / MedTech';
-  if (lc.includes('fintech') || lc.includes('finance') || lc.includes('financial')) return 'Fintech / Financial Services';
-  if (lc.includes('saas') || lc.includes('software')) return 'B2B SaaS';
-  if (lc.includes('ai') || lc.includes('machine learning')) return 'AI / Machine Learning';
-  if (lc.includes('hr') || lc.includes('human resource')) return 'HR Tech';
-  if (lc.includes('sales')) return 'Sales & Revenue Ops';
-  if (lc.includes('supply') || lc.includes('logistics')) return 'Supply Chain / Logistics';
-  if (lc.includes('real estate') || lc.includes('proptech')) return 'Real Estate / PropTech';
-  if (lc.includes('education') || lc.includes('edtech')) return 'Education / EdTech';
-  if (lc.includes('professional')) return 'Professional Services';
-  if (lc.includes('manufacturing')) return 'Manufacturing';
-  if (lc.includes('defense') || lc.includes('government')) return 'Defense / Gov Contracting';
-  if (lc.includes('retail') || lc.includes('commerce')) return 'Retail / eCommerce';
-  return industry;
+
+  // Valid dropdown options
+  const validOptions = [
+    'Healthcare / MedTech', 'Fintech / Financial Services', 'B2B SaaS',
+    'Legal Tech', 'HR Tech', 'Sales & Revenue Ops', 'Supply Chain / Logistics',
+    'Real Estate / PropTech', 'Education / EdTech', 'Professional Services',
+    'Manufacturing', 'Defense / Gov Contracting', 'Retail / eCommerce'
+  ];
+
+  let mapped = '';
+  if (lc.includes('health') || lc.includes('med')) mapped = 'Healthcare / MedTech';
+  else if (lc.includes('fintech') || lc.includes('finance') || lc.includes('financial')) mapped = 'Fintech / Financial Services';
+  else if (lc.includes('saas') || lc.includes('software')) mapped = 'B2B SaaS';
+  else if (lc.includes('legal')) mapped = 'Legal Tech';
+  else if (lc.includes('hr') || lc.includes('human resource')) mapped = 'HR Tech';
+  else if (lc.includes('sales')) mapped = 'Sales & Revenue Ops';
+  else if (lc.includes('supply') || lc.includes('logistics')) mapped = 'Supply Chain / Logistics';
+  else if (lc.includes('real estate') || lc.includes('proptech')) mapped = 'Real Estate / PropTech';
+  else if (lc.includes('education') || lc.includes('edtech')) mapped = 'Education / EdTech';
+  else if (lc.includes('professional')) mapped = 'Professional Services';
+  else if (lc.includes('manufacturing')) mapped = 'Manufacturing';
+  else if (lc.includes('defense') || lc.includes('government')) mapped = 'Defense / Gov Contracting';
+  else if (lc.includes('retail') || lc.includes('commerce')) mapped = 'Retail / eCommerce';
+
+  if (mapped && validOptions.includes(mapped)) {
+    return { value: mapped, isOther: false, customValue: '' };
+  }
+
+  // If we have an industry value but couldn't map it, use "Other"
+  if (industry.trim()) {
+    return { value: 'Other', isOther: true, customValue: industry };
+  }
+
+  return { value: '', isOther: false, customValue: '' };
 }
 
 // Stage mapping helper
@@ -3815,7 +3829,8 @@ function loadVentureContext(data) {
   const scores = data.scores || {};
 
   // === CORE MAPPINGS ===
-  const mappedIndustry = mapIndustry(data.industry || '');
+  const industryResult = mapIndustry(data.industry || '');
+  const mappedIndustry = industryResult.value;
   const mappedStage = mapStage(data.businessType || data.stage || '');
   const mappedModel = mapBusinessModel(data.businessType || '');
 
@@ -3911,10 +3926,20 @@ function loadVentureContext(data) {
     }
   });
 
-  // Store complete state for later phases
+  // Handle "Other" industry case - show input and fill custom value
+  if (industryResult.isOther && industryResult.customValue) {
+    const otherInput = document.getElementById('v-industry-other');
+    if (otherInput) {
+      otherInput.value = industryResult.customValue;
+      otherInput.style.display = 'block';
+    }
+  }
+
+  // Store complete state for later phases (use custom industry value if "Other")
+  const finalIndustry = industryResult.isOther ? industryResult.customValue : mappedIndustry;
   state.venture = {
     name: data.name || '',
-    industry: mappedIndustry,
+    industry: finalIndustry,
     stage: mappedStage,
     model: mappedModel,
     value: data.value || '',
