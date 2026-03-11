@@ -5113,6 +5113,31 @@ export async function registerRoutes(app: Express): Promise<{ server: Server; se
     }
   });
 
+  // Generic Company OS AI completion endpoint
+  app.post('/api/ai/company-os/completion', async (req, res) => {
+    try {
+      const completionSchema = z.object({
+        systemPrompt: z.string().min(1),
+        userPrompt: z.string().min(1),
+        maxTokens: z.number().optional().default(4000),
+      });
+
+      const { systemPrompt, userPrompt, maxTokens } = completionSchema.parse(req.body);
+
+      console.log('[CompanyOS] Starting AI completion, prompt length:', userPrompt.length);
+
+      const response = await aiService.generateCompanyOSCompletion(systemPrompt, userPrompt, maxTokens);
+
+      res.json({ content: response });
+    } catch (error: any) {
+      console.error('[CompanyOS] AI completion error:', error?.message || error);
+      res.status(500).json({
+        message: 'Failed to generate AI completion',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
   // Get Validation Scripts for an idea
   app.get('/api/ideas/:ideaId/scripts', isAuthenticated, async (req: any, res) => {
     try {

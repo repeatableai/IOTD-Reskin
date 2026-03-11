@@ -4705,6 +4705,35 @@ Generate the complete 10-section market sizing document now. Write with authorit
       yield { type: 'error', data: error?.message || 'Unknown error' };
     }
   }
+
+  /**
+   * Generic Company OS AI completion
+   * Used by the Company OS iframe for generating deliverable maps, JDs, SOPs, etc.
+   */
+  async generateCompanyOSCompletion(systemPrompt: string, userPrompt: string, maxTokens: number = 4000): Promise<string> {
+    try {
+      console.log('[CompanyOS] Generating completion with Anthropic...');
+
+      const response = await getAnthropic().messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      });
+
+      const textContent = response.content[0]?.type === 'text' ? response.content[0].text : '';
+
+      if (!textContent) {
+        throw new Error('Empty response from AI');
+      }
+
+      console.log('[CompanyOS] Successfully generated completion, length:', textContent.length);
+      return textContent;
+    } catch (error: any) {
+      console.error('[CompanyOS] AI completion error:', error?.message || error);
+      throw error;
+    }
+  }
 }
 
 // ── Landing Page Prompt Template ──────────────────────────────────
