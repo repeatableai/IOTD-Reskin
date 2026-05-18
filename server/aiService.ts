@@ -4739,9 +4739,7 @@ Generate the complete 10-section market sizing document now. Write with authorit
 // ── Landing Page Prompt Template ──────────────────────────────────
 const LANDING_PAGE_PROMPT_TEMPLATE = `# Landing Page Generation Prompt
 
-You are an expert landing page designer and conversion copywriter working at a Fortune 500-caliber design agency. Using the BUSINESS_CONTEXT below, generate a complete, high-converting landing page specification that can be built in any modern web framework (React, Next.js, HTML/CSS, etc.).
-
-Design this to the standard of a Stripe, Salesforce, or HubSpot landing page — polished, trust-building, and conversion-optimized from top to bottom.
+Paste this into Claude Design, Lovable, Replit, or any AI code tool to generate a complete, premium landing page.
 
 ---
 
@@ -4751,149 +4749,174 @@ Design this to the standard of a Stripe, Salesforce, or HubSpot landing page —
 
 ---
 
-## YOUR TASK
+## CONVERSION EQUATION — MANDATORY COPYWRITING FRAMEWORK
 
-Generate a **complete landing page** with the following sections. For each section, provide:
-1. **Copy** — exact headlines, subheadlines, body text, and CTAs
-2. **Layout notes** — how the section should be structured visually
-3. **Design direction** — colors, imagery suggestions, spacing guidance
+ALL copy on this page MUST follow the Conversion Equation in strict order. This is not optional. The equation produces predictable, reliable conversion — like a chemical formula, the inputs in the right order produce the output.
+
+### (1) INTERRUPT — Problem in the audience's own words
+THIS IS THE HERO HEADLINE, the subject line, the first thing anyone reads.
+- State the audience's problem as a question, in the language they would use talking to a friend — not corporate-speak
+- Source phrasing from how real people complain: forums, reviews, social threads, community discussions
+- NO company name here. NO solution here. Only the problem, articulated so precisely the reader thinks "That's exactly how it feels to ME"
+- If feasible, state as a question
+
+### (2) ENGAGE — Present-tense world with the problem gone
+THIS IS THE HERO SUBHEADLINE, the first lines after the headline.
+- "Imagine..." / "What if..." / "Picture a Monday where..."
+- Describe the after-state in sensory, present-tense detail
+- Make the audience feel the relief before any solution is named
+- NO company name here
+
+### (3) EDUCATE — First and only introduction of the company
+THIS IS THE PROOF/FEATURES/SOCIAL PROOF ZONE — everything below the fold.
+- First mention of the company name happens here
+- Outcome-based expression — never features-and-benefits lists
+- Use lead-ins like: "Business leaders in [role] who faced [problem] solved it with [Company], who did [the specific thing that drove the outcome]"
+- Storytelling: "We discovered..." "We saw that business leaders like you were hitting the same walls..." "So we decided to solve it..."
+- Case studies, third-party validation, real outcomes
+
+### (4) IRRESISTIBLE OFFER — So high-value and risk-free they feel foolish saying no
+THIS IS THE PRICING/CTA ZONE.
+- Remove perceived risk of saying yes
+- Shapes: disproportionate-value lead magnet, outcome-promised working session, ironclad zero-risk guarantee, risk reversal with high consequence for seller and prevailing benefit to buyer, pay-for-performance, free full application, "state retail — pay what you think it's worth"
+- The company name may appear sparingly here
+
+### COMPANY-NAME RULE (NON-NEGOTIABLE)
+The company name appears ONLY in EDUCATE and sparingly in IRRESISTIBLE OFFER. It MUST NOT appear in INTERRUPT or ENGAGE. Breaking this rule destroys the emotional journey — the moment the company name surfaces, defenses activate and the equation fails.
+
+### SOCIAL IDENTIFICATION
+After INTERRUPT & ENGAGE, weave in phrases like:
+- "If you're the kind of [job title] who..."
+- "This is not for everyone..."
+- "This is only for [elite player description]..."
+- "Are you the kind of [title] that... then..."
+
+### COPY RULES
+- NO absolute claims: never use "the only," "guaranteed," "never fails." Absolutes trigger subconscious rejection. Use conditional, present-tense, sensory language instead. "Adjusters who completed the program reduced handle time" — not "adjusters always reduce handle time."
+- Stack cognitive biases toward compounding emotion: FOMO, scarcity, loss aversion, social proof, reciprocity, authority, curiosity gap, anchoring, framing effect
+- Create expectation, cliffhanger sentences, drive dopamine. Do NOT be obvious
+- Reader draws their own conclusion and acts. NEVER tell them what to do — lead them to the irresistible offer
+- When speaking as the company: "We discovered..." "We struggled ourselves..." "We saw that business leaders like you were suffering..." — not declarative claims
+
+### 12 COGNITIVE BIASES TO WEAVE INTO COPY
+1. Reciprocity — Give disproportionate value first; obligation creates the yes
+2. Commitment & Consistency — Secure a small public yes; people act consistently with claimed identity
+3. Social Proof — Show peer-identical buyers who already chose; similarity drives imitation
+4. Authority — Credentialed, titled, visibly expert sources are followed disproportionately
+5. Liking — Mirror the reader's language, values, and aesthetic
+6. Scarcity — Limited availability raises perceived value and accelerates decision
+7. Unity — Shared identity ("we-ness") beats liking; the persuader becomes one of us
+8. Loss Aversion — Losses hurt ~2x more than equivalent gains; frame the cost of inaction
+9. Anchoring — The first number shapes every judgment after it; set the reference frame
+10. Availability Heuristic — Vivid, concrete examples beat abstract statistics
+11. Framing Effect — Same facts, different frame, opposite decision; match frame to reader's worldview
+12. Curiosity Gap — A defined gap between what they know and want to know compels closure
 
 ---
 
-### SECTIONS TO GENERATE
+## PAGE SECTIONS TO BUILD
 
-#### 1. ANNOUNCEMENT BAR
-- Sticky top banner (one line) with a timely hook — product launch, limited offer, upcoming webinar, or industry milestone
-- Dismissible (X button)
-- Link text + destination (e.g., "Register now →")
+Build the FULL website in one go — all sections below in a single, cohesive premium style. Design to the standard of Stripe, Linear, or Notion — polished, trust-building, conversion-optimized.
 
-#### 2. HEADER / NAVIGATION
-- Logo placement (left-aligned)
-- Primary nav links (4-6 items): Product, Features, Pricing, Resources, About — tailor to this business
-- Right-side utility: "Login" link + primary CTA button (e.g., "Get Started", "Book a Demo")
-- Sticky on scroll behavior
-- Mobile: hamburger menu with same links + CTA
+### 1. HERO SECTION (INTERRUPT + ENGAGE)
+- **Headline**: The INTERRUPT — audience's problem as a question, in their own words. Max 10 words. No company name
+- **Subheadline**: The ENGAGE — present-tense sensory description of life with the problem gone. 1-2 sentences. No company name
+- **Primary CTA button** (text + destination)
+- **Secondary CTA** (e.g., "Watch Demo", "See How It Works")
+- **Hero visual**: Full-width background — design for autoplay muted looping video or high-impact image. Use object-fit: cover, add subtle dark gradient overlay so text stays readable
+- **Trust bar below hero**: Logo strip of notable customer types or "as seen in" press logos (5-6 placeholders)
+- **Social identification line**: "If you're the kind of [title] who..." — placed just below the subheadline or above the CTA
 
-#### 3. HERO SECTION
-- Headline (max 10 words, benefit-driven, speaks to the core pain)
-- Subheadline (1-2 sentences expanding on the value proposition)
-- Primary CTA button (text + where it leads)
-- Secondary CTA (e.g., "Watch Demo", "See Pricing", "Talk to Sales")
-- Hero visual direction (product screenshot, illustration, or short video/animation)
-- Trust bar below hero: logo strip of notable customers or "as seen in" press logos (5-6 logos)
-
-#### 4. PROBLEM / PAIN SECTION
-- Section headline that calls out the pain
+### 2. PROBLEM / PAIN SECTION (deepens INTERRUPT)
+- Section headline that calls out the pain — no company name yet
 - 3-4 pain points as short, punchy cards with icons
-- Optional: "before/after" or "old way vs. new way" framing
+- "Before/after" or "old way vs. new way" framing
 - Emotional resonance — make the reader feel understood
 - Supporting statistic or industry data point that validates the pain
+- Curiosity gap: hint at a solution without naming it yet
 
-#### 5. SOLUTION SECTION
-- Section headline introducing the product as the answer
-- Product description (2-3 sentences)
-- Key differentiator callout (bold or highlighted)
-- Visual: product screenshot, annotated UI mockup, or demo GIF direction
-
-#### 6. FEATURES / HOW IT WORKS
-- Section headline
-- 3-5 features, each with:
-  - Feature name
-  - One-line description
+### 3. SOLUTION + FEATURES SECTION (EDUCATE — company name enters here)
+- Section headline introducing the company/product as the answer — FIRST mention of the company name
+- Storytelling lead-in: "We discovered..." / "We saw that [audience] were hitting the same walls..."
+- Product description (2-3 sentences, outcome-based, not feature-based)
+- 3-5 features framed as outcomes, each with:
+  - Outcome-driven name (what it achieves, not what it is)
+  - One-line description focused on the result for the user
   - Icon suggestion
-- Alternative layout: "3-step process" if it fits better
-- Optional: tabbed or toggle interface showing different feature views
+- Visual: product screenshot, annotated UI, or demo direction
 
-#### 7. SOCIAL PROOF & TESTIMONIALS
+### 4. SOCIAL PROOF & TESTIMONIALS (EDUCATE continued)
 - Section headline
-- 2-3 testimonial blocks with name, title, company, headshot direction, and quote
-- Metrics bar (e.g., "10,000+ users", "4.9/5 rating", "99.9% uptime")
-- Logo strip of customer/partner types (if not already in hero)
+- 2-3 testimonial blocks with name, title, company, and quote — written as peer stories, not endorsements
+- Metrics bar (concrete numbers, no absolutes — "teams who adopted reduced X by Y%")
+- Optional logo strip of customer/partner types
 
-#### 8. CASE STUDY / ROI SPOTLIGHT
-- Section headline (e.g., "See the Results")
-- 1-2 mini case studies: company name, challenge, result with specific metrics (%, $, time saved)
-- Pull-quote from each case study
-- "Read Full Case Study →" link
+### 5. CASE STUDY / ROI SPOTLIGHT (EDUCATE continued)
+- Section headline (e.g., "What Happened When...")
+- 1-2 mini case studies: company context, challenge, specific measurable result
+- Pull-quote from each
+- "Read Full Story" link
 - Layout: side-by-side cards or alternating image/text rows
 
-#### 9. TRUST & SECURITY SECTION
-- Section headline (e.g., "Enterprise-Grade Security" or "Built for Trust")
-- Compliance badges: SOC 2 Type II, GDPR, ISO 27001, HIPAA — whichever apply to this business
-- Security features: encryption, SSO/SAML, role-based access, audit logs
-- Uptime SLA or reliability metric
-- Layout: badge icons in a row + 2-3 short bullet points
-
-#### 10. INTEGRATION / ECOSYSTEM SECTION
-- Section headline (e.g., "Works With Your Stack" or "Connects to Everything")
-- Grid of 8-12 integration partner logos (suggest real tools relevant to this market)
-- 1-2 sentences on API/webhook/native integration capabilities
-- CTA: "See All Integrations →"
-
-#### 11. PRICING SECTION
-- Section headline
+### 6. PRICING SECTION (IRRESISTIBLE OFFER)
+- Section headline — frame as an offer, not a price list
 - Pricing cards (2-4 tiers) with:
   - Tier name, price, billing frequency
   - Feature list per tier (checkmarks)
   - Highlighted "Most Popular" tier
   - CTA per card
 - Toggle: monthly/annual with annual discount badge
-- Money-back guarantee or risk-reversal copy below cards
-- "Need a custom plan? Talk to Sales →" link
+- Risk reversal copy: money-back guarantee, free trial, pay-for-performance — whatever makes saying yes feel zero-risk
+- Anchoring: show the high-value reference point first, then reveal the actual price
+- "Need a custom plan? Let's talk" link
 
-#### 12. COMPARISON TABLE (optional but recommended)
-- "Why [Product] vs. Alternatives" headline
-- Feature comparison grid: your product vs. 2-3 competitor categories (e.g., "Manual Process", "Legacy Tools", "Point Solutions")
-- Checkmarks/X marks for each feature row
-- Bottom CTA reinforcing the winner
-
-#### 13. RESOURCES / CONTENT SECTION
-- Section headline (e.g., "Learn More" or "Resources")
-- 3 content cards: blog post, whitepaper/guide, webinar or video
-- Each card: thumbnail, title, short description, "Read More →"
-- Positions the brand as a thought leader
-
-#### 14. FAQ SECTION
-- 5-7 frequently asked questions with answers
-- Questions should address common objections: pricing, setup time, data security, migration, support
-- Answers should reinforce value and reduce friction
+### 7. FAQ SECTION (objection handling)
+- 5-7 questions that address real objections: pricing, setup time, data security, migration, support
+- Answers reinforce value, reduce friction, and use social proof where possible
 - Expandable accordion layout
+- Tone: conversational, not defensive
 
-#### 15. FINAL CTA SECTION
-- Compelling closing headline (different from hero — summarize the transformation)
-- Short supporting paragraph (1-2 sentences)
+### 8. FINAL CTA SECTION (IRRESISTIBLE OFFER reinforced)
+- Compelling closing headline — different from hero, summarize the transformation
+- Short supporting paragraph (1-2 sentences) — loss aversion framing: what they lose by NOT acting
 - Primary CTA button (repeat from hero)
 - Secondary CTA (e.g., "Schedule a Call", "Download Free Guide")
 - Supporting microcopy (e.g., "No credit card required", "Free 14-day trial", "Setup in under 5 minutes")
 - Background: subtle gradient or brand color block to visually separate
 
-#### 16. FOOTER
+### 9. FOOTER
 - 4-column layout:
   - Column 1: Logo + brief company description (1-2 sentences) + social media icons
-  - Column 2: Product links (Features, Pricing, Integrations, Changelog, Status)
-  - Column 3: Company links (About, Careers, Press, Contact, Partners)
-  - Column 4: Resources (Blog, Documentation, Help Center, Community, API Reference)
-- Bottom bar: copyright, Privacy Policy, Terms of Service, Cookie Preferences, Accessibility
-- Optional: language/region selector
+  - Column 2: Product links (Features, Pricing, Integrations, Changelog)
+  - Column 3: Company links (About, Careers, Press, Contact)
+  - Column 4: Resources (Blog, Documentation, Help Center, Community)
+- Bottom bar: copyright, Privacy Policy, Terms of Service
 
 ---
 
-## OUTPUT FORMAT
+## OUTPUT INSTRUCTIONS
 
-For each section, output in this format:
+Build the complete page as production-ready code using Next.js + Tailwind CSS (or React + Tailwind if Next.js is not available).
 
-\`\`\`
-### [SECTION NAME]
+For each section provide:
+1. **Exact copy** — every headline, subheadline, body paragraph, button label, and microcopy line written out in full
+2. **Component code** — responsive, accessible, mobile-first
+3. **Design tokens** — colors, typography scale, spacing consistent across all sections
 
-**Headline:** [exact copy]
-**Subheadline:** [exact copy]
-**Body:** [exact copy]
-**CTA:** [button text] → [destination]
-**Layout:** [description of visual layout]
-**Design Notes:** [colors, imagery, spacing]
-\`\`\`
+### Hero Background
+- Design the hero to accept a full-bleed background video or image
+- CSS: autoplay, muted, loop, object-fit: cover
+- Dark gradient overlay so headline/subheadline/CTA remain readable on any background
+- Responsive: maintain visual impact on mobile (object-fit: cover)
 
-Make every word count. Write copy that converts. Be specific to this business — no generic filler. Every section must feel tailored to this exact product and audience — not a template.`;
+### Style Requirements
+- Premium, modern aesthetic — generous whitespace, clean typography, subtle animations on scroll
+- Dark mode friendly color palette derived from the brand
+- All sections must feel like one cohesive design — consistent typography, spacing, color palette, and motion
+- Mobile-first responsive design throughout
+- Accessible: proper heading hierarchy, contrast ratios, focus states
+
+Make every word count. Write copy that converts using the Conversion Equation above. Be specific to this business — no generic filler. Every section must feel tailored to this exact product and audience.`;
 
 // ── Brand Package Prompt Template ──────────────────────────────────
 const BRAND_PACKAGE_PROMPT_TEMPLATE = `You are a senior product marketer + conversion copywriter + UX writer working at a Fortune 500-caliber branding agency.
